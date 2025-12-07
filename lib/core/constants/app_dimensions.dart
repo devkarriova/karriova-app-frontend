@@ -33,4 +33,16 @@ class AppDimensions {
   // Input Heights
   static const double inputHeightMD = 48.0;
   static const double inputHeightLG = 56.0;
+
+  // Text/Font Sizes
+  static const double fontXS = 11.0;
+  static const double fontSM = 12.0;
+  static const double fontMD = 13.0;
+  static const double fontLG = 14.0;
+  static const double fontXL = 16.0;
+  static const double fontXXL = 18.0;
+  static const double fontHeadingSM = 20.0;
+  static const double fontHeadingMD = 24.0;
+  static const double fontHeadingLG = 28.0;
+  static const double fontHeadingXL = 32.0;
 }

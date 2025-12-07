@@ -4,15 +4,51 @@ import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_datasource.dart';
 import '../datasources/auth_remote_datasource.dart';
 import '../../../../core/utils/logger.dart';
+import '../../../../core/network/api_client.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
   final AuthLocalDataSource localDataSource;
+  final ApiClient apiClient;
 
   AuthRepositoryImpl({
     required this.remoteDataSource,
     required this.localDataSource,
-  });
+    required this.apiClient,
+  }) {
+    _setupTokenRefresh();
+  }
+
+  /// Setup automatic token refresh
+  void _setupTokenRefresh() {
+    apiClient.setTokenRefreshCallback(_handleTokenRefresh);
+  }
+
+  /// Handle token refresh when access token expires
+  Future<bool> _handleTokenRefresh() async {
+    try {
+      final refreshToken = await localDataSource.getRefreshToken();
+      if (refreshToken == null) {
+        return false;
+      }
+
+      final authResponse = await remoteDataSource.refreshToken(refreshToken);
+
+      // Save new tokens
+      await localDataSource.saveAccessToken(authResponse.accessToken);
+      if (authResponse.refreshToken != null) {
+        await localDataSource.saveRefreshToken(authResponse.refreshToken!);
+      }
+
+      // Update ApiClient with new access token
+      apiClient.setAccessToken(authResponse.accessToken);
+
+      return true;
+    } catch (e) {
+      AppLogger.error('Token refresh failed: $e');
+      return false;
+    }
+  }
 
   @override
   Future<Either<String, UserModel>> login({
@@ -20,12 +56,16 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) async {
     try {
-      final user = await remoteDataSource.login(email: email, password: password);
-      await localDataSource.saveUser(user);
-      if (user.token != null) {
-        await localDataSource.saveToken(user.token!);
+      final authResponse = await remoteDataSource.login(email: email, password: password);
+
+      // Save user and tokens
+      await localDataSource.saveUser(authResponse.user);
+      await localDataSource.saveAccessToken(authResponse.accessToken);
+      if (authResponse.refreshToken != null) {
+        await localDataSource.saveRefreshToken(authResponse.refreshToken!);
       }
-      return Right(user);
+
+      return Right(authResponse.user);
     } catch (e) {
       AppLogger.error('Login failed: $e');
       return Left(_handleError(e));
@@ -39,16 +79,20 @@ class AuthRepositoryImpl implements AuthRepository {
     required String name,
   }) async {
     try {
-      final user = await remoteDataSource.signup(
+      final authResponse = await remoteDataSource.signup(
         email: email,
         password: password,
         name: name,
       );
-      await localDataSource.saveUser(user);
-      if (user.token != null) {
-        await localDataSource.saveToken(user.token!);
+
+      // Save user and tokens
+      await localDataSource.saveUser(authResponse.user);
+      await localDataSource.saveAccessToken(authResponse.accessToken);
+      if (authResponse.refreshToken != null) {
+        await localDataSource.saveRefreshToken(authResponse.refreshToken!);
       }
-      return Right(user);
+
+      return Right(authResponse.user);
     } catch (e) {
       AppLogger.error('Signup failed: $e');
       return Left(_handleError(e));
@@ -58,9 +102,15 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<String, void>> logout() async {
     try {
-      await remoteDataSource.logout();
+      // Get refresh token for logout
+      final refreshToken = await localDataSource.getRefreshToken();
+      if (refreshToken != null) {
+        await remoteDataSource.logout(refreshToken);
+      }
+
+      // Clear local data
       await localDataSource.clearUser();
-      await localDataSource.clearToken();
+      await localDataSource.clearTokens();
       return const Right(null);
     } catch (e) {
       AppLogger.error('Logout failed: $e');
@@ -85,8 +135,8 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<String, void>> resetPassword({required String email}) async {
     try {
-      await remoteDataSource.resetPassword(email: email);
-      return const Right(null);
+      // TODO: Implement reset password in backend and datasource
+      throw UnimplementedError('Reset password not implemented yet');
     } catch (e) {
       AppLogger.error('Reset password failed: $e');
       return Left(_handleError(e));
@@ -98,9 +148,6 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final user = await remoteDataSource.loginWithGoogle();
       await localDataSource.saveUser(user);
-      if (user.token != null) {
-        await localDataSource.saveToken(user.token!);
-      }
       return Right(user);
     } catch (e) {
       AppLogger.error('Google login failed: $e');
@@ -111,7 +158,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<bool> isLoggedIn() async {
     try {
-      final token = await localDataSource.getToken();
+      final token = await localDataSource.getAccessToken();
       return token != null && token.isNotEmpty;
     } catch (e) {
       AppLogger.error('Check login status failed: $e');

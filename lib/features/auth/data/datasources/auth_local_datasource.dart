@@ -7,9 +7,11 @@ abstract class AuthLocalDataSource {
   Future<void> saveUser(UserModel user);
   Future<UserModel?> getUser();
   Future<void> clearUser();
-  Future<void> saveToken(String token);
-  Future<String?> getToken();
-  Future<void> clearToken();
+  Future<void> saveAccessToken(String token);
+  Future<String?> getAccessToken();
+  Future<void> saveRefreshToken(String token);
+  Future<String?> getRefreshToken();
+  Future<void> clearTokens();
 }
 
 class AuthLocalDataSourceImpl implements AuthLocalDataSource {
@@ -17,7 +19,8 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   final FlutterSecureStorage secureStorage;
 
   static const String _userKey = 'cached_user';
-  static const String _tokenKey = 'auth_token';
+  static const String _accessTokenKey = 'access_token';
+  static const String _refreshTokenKey = 'refresh_token';
 
   AuthLocalDataSourceImpl({
     required this.sharedPreferences,
@@ -45,17 +48,28 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   }
 
   @override
-  Future<void> saveToken(String token) async {
-    await secureStorage.write(key: _tokenKey, value: token);
+  Future<void> saveAccessToken(String token) async {
+    await secureStorage.write(key: _accessTokenKey, value: token);
   }
 
   @override
-  Future<String?> getToken() async {
-    return await secureStorage.read(key: _tokenKey);
+  Future<String?> getAccessToken() async {
+    return await secureStorage.read(key: _accessTokenKey);
   }
 
   @override
-  Future<void> clearToken() async {
-    await secureStorage.delete(key: _tokenKey);
+  Future<void> saveRefreshToken(String token) async {
+    await secureStorage.write(key: _refreshTokenKey, value: token);
+  }
+
+  @override
+  Future<String?> getRefreshToken() async {
+    return await secureStorage.read(key: _refreshTokenKey);
+  }
+
+  @override
+  Future<void> clearTokens() async {
+    await secureStorage.delete(key: _accessTokenKey);
+    await secureStorage.delete(key: _refreshTokenKey);
   }
 }

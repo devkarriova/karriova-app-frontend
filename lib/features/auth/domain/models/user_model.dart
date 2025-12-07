@@ -5,14 +5,16 @@ class UserModel extends Equatable {
   final String email;
   final String? name;
   final String? photoUrl;
-  final String? token;
+  final bool emailVerified;
+  final DateTime? createdAt;
 
   const UserModel({
     required this.id,
     required this.email,
     this.name,
     this.photoUrl,
-    this.token,
+    this.emailVerified = false,
+    this.createdAt,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -20,8 +22,11 @@ class UserModel extends Equatable {
       id: json['id'] as String,
       email: json['email'] as String,
       name: json['name'] as String?,
-      photoUrl: json['photoUrl'] as String?,
-      token: json['token'] as String?,
+      photoUrl: json['photo_url'] as String?,
+      emailVerified: json['email_verified'] as bool? ?? false,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : null,
     );
   }
 
@@ -30,8 +35,9 @@ class UserModel extends Equatable {
       'id': id,
       'email': email,
       'name': name,
-      'photoUrl': photoUrl,
-      'token': token,
+      'photo_url': photoUrl,
+      'email_verified': emailVerified,
+      'created_at': createdAt?.toIso8601String(),
     };
   }
 
@@ -40,17 +46,19 @@ class UserModel extends Equatable {
     String? email,
     String? name,
     String? photoUrl,
-    String? token,
+    bool? emailVerified,
+    DateTime? createdAt,
   }) {
     return UserModel(
       id: id ?? this.id,
       email: email ?? this.email,
       name: name ?? this.name,
       photoUrl: photoUrl ?? this.photoUrl,
-      token: token ?? this.token,
+      emailVerified: emailVerified ?? this.emailVerified,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
   @override
-  List<Object?> get props => [id, email, name, photoUrl, token];
+  List<Object?> get props => [id, email, name, photoUrl, emailVerified, createdAt];
 }

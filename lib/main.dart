@@ -4,8 +4,10 @@ import 'core/di/injection.dart';
 import 'core/theme/app_theme.dart';
 import 'core/routes/app_router.dart';
 import 'core/config/app_config.dart';
+import 'core/services/inactivity_service.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
+import 'features/auth/presentation/bloc/auth_state.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,25 +18,69 @@ void main() async {
   runApp(const KarriovaApp());
 }
 
-class KarriovaApp extends StatelessWidget {
+class KarriovaApp extends StatefulWidget {
   const KarriovaApp({super.key});
+
+  @override
+  State<KarriovaApp> createState() => _KarriovaAppState();
+}
+
+class _KarriovaAppState extends State<KarriovaApp> {
+  late final InactivityService _inactivityService;
+  late final AuthBloc _authBloc;
+
+  @override
+  void initState() {
+    super.initState();
+    _inactivityService = getIt<InactivityService>();
+    _authBloc = getIt<AuthBloc>()..add(const AuthCheckStatusRequested());
+
+    // Setup inactivity tracking
+    _setupInactivityTracking();
+  }
+
+  void _setupInactivityTracking() {
+    // Listen to auth state changes to enable/disable inactivity tracking
+    _authBloc.stream.listen((state) {
+      if (state.status == AuthStatus.authenticated) {
+        // User is logged in, enable inactivity tracking
+        _inactivityService.enable(
+          onTimeout: () {
+            // Auto logout on inactivity
+            _authBloc.add(const AuthLogoutRequested());
+          },
+        );
+      } else {
+        // User is not logged in, disable tracking
+        _inactivityService.disable();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _inactivityService.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AuthBloc>(
-          create: (context) => getIt<AuthBloc>()
-            ..add(const AuthCheckStatusRequested()),
+        BlocProvider<AuthBloc>.value(
+          value: _authBloc,
         ),
       ],
-      child: MaterialApp.router(
-        title: AppConfig.appName,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system,
-        routerConfig: AppRouter.router,
+      child: InactivityDetector(
+        inactivityService: _inactivityService,
+        child: MaterialApp.router(
+          title: AppConfig.appName,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: ThemeMode.system,
+          routerConfig: AppRouter.router,
+        ),
       ),
     );
   }

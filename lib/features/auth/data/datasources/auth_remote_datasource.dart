@@ -1,106 +1,127 @@
+import '../../../../core/network/api_client.dart';
+import '../../../../core/config/app_config.dart';
 import '../../domain/models/user_model.dart';
 
 abstract class AuthRemoteDataSource {
-  Future<UserModel> login({
+  Future<AuthResponse> login({
     required String email,
     required String password,
   });
 
-  Future<UserModel> signup({
+  Future<AuthResponse> signup({
     required String email,
     required String password,
     required String name,
   });
 
-  Future<void> logout();
+  Future<void> logout(String refreshToken);
 
-  Future<void> resetPassword({required String email});
+  Future<AuthResponse> refreshToken(String refreshToken);
 
   Future<UserModel> loginWithGoogle();
 }
 
-class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
-  // TODO: Inject API service via dependency injection
-  // final ApiService apiService;
+/// Response model for authentication endpoints
+class AuthResponse {
+  final UserModel user;
+  final String accessToken;
+  final String? refreshToken;
+  final int expiresIn;
 
-  AuthRemoteDataSourceImpl();
+  AuthResponse({
+    required this.user,
+    required this.accessToken,
+    this.refreshToken,
+    required this.expiresIn,
+  });
+
+  factory AuthResponse.fromJson(Map<String, dynamic> json) {
+    return AuthResponse(
+      user: UserModel.fromJson(json['user'] as Map<String, dynamic>),
+      accessToken: json['access_token'] as String,
+      refreshToken: json['refresh_token'] as String?,
+      expiresIn: json['expires_in'] as int,
+    );
+  }
+}
+
+class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
+  final ApiClient apiClient;
+
+  AuthRemoteDataSourceImpl({required this.apiClient});
 
   @override
-  Future<UserModel> login({
+  Future<AuthResponse> login({
     required String email,
     required String password,
   }) async {
-    // TODO: Implement actual API call
-    // Example:
-    // final response = await apiService.login(email, password);
-    // return UserModel.fromJson(response.data);
-
-    // Mock implementation for now
-    await Future.delayed(const Duration(seconds: 2));
-    return UserModel(
-      id: '123',
-      email: email,
-      name: 'Mock User',
-      token: 'mock_token_${DateTime.now().millisecondsSinceEpoch}',
+    final response = await apiClient.post(
+      AppConfig.loginEndpoint,
+      body: {
+        'email': email,
+        'password': password,
+      },
     );
+
+    if (!response.isSuccess || response.data == null) {
+      throw Exception(response.errorMessage ?? 'Login failed');
+    }
+
+    return AuthResponse.fromJson(response.data as Map<String, dynamic>);
   }
 
   @override
-  Future<UserModel> signup({
+  Future<AuthResponse> signup({
     required String email,
     required String password,
     required String name,
   }) async {
-    // TODO: Implement actual API call
-    // Example:
-    // final response = await apiService.signup(email, password, name);
-    // return UserModel.fromJson(response.data);
+    final response = await apiClient.post(
+      AppConfig.signupEndpoint,
+      body: {
+        'email': email,
+        'password': password,
+        'name': name,
+      },
+    );
 
-    // Mock implementation for now
-    await Future.delayed(const Duration(seconds: 2));
-    return UserModel(
-      id: '123',
-      email: email,
-      name: name,
-      token: 'mock_token_${DateTime.now().millisecondsSinceEpoch}',
+    if (!response.isSuccess || response.data == null) {
+      throw Exception(response.errorMessage ?? 'Signup failed');
+    }
+
+    return AuthResponse.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<void> logout(String refreshToken) async {
+    await apiClient.post(
+      AppConfig.logoutEndpoint,
+      body: {
+        'refresh_token': refreshToken,
+      },
     );
   }
 
   @override
-  Future<void> logout() async {
-    // TODO: Implement actual API call
-    // Example:
-    // await apiService.logout();
+  Future<AuthResponse> refreshToken(String refreshToken) async {
+    final response = await apiClient.post(
+      AppConfig.refreshTokenEndpoint,
+      body: {
+        'refresh_token': refreshToken,
+      },
+    );
 
-    // Mock implementation for now
-    await Future.delayed(const Duration(milliseconds: 500));
-  }
+    if (!response.isSuccess || response.data == null) {
+      throw Exception(response.errorMessage ?? 'Token refresh failed');
+    }
 
-  @override
-  Future<void> resetPassword({required String email}) async {
-    // TODO: Implement actual API call
-    // Example:
-    // await apiService.resetPassword(email);
-
-    // Mock implementation for now
-    await Future.delayed(const Duration(seconds: 1));
+    return AuthResponse.fromJson(response.data as Map<String, dynamic>);
   }
 
   @override
   Future<UserModel> loginWithGoogle() async {
     // TODO: Implement Google Sign-In
-    // Example:
-    // final googleUser = await GoogleSignIn().signIn();
-    // final response = await apiService.loginWithGoogle(googleUser.idToken);
-    // return UserModel.fromJson(response.data);
-
-    // Mock implementation for now
-    await Future.delayed(const Duration(seconds: 2));
-    return UserModel(
-      id: '456',
-      email: 'google.user@example.com',
-      name: 'Google User',
-      token: 'mock_google_token_${DateTime.now().millisecondsSinceEpoch}',
-    );
+    // This requires Google Sign-In package integration
+    throw UnimplementedError('Google Sign-In not implemented yet');
   }
 }

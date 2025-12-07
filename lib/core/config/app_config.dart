@@ -1,12 +1,21 @@
 class AppConfig {
   static const String appName = 'Karriova';
-  static const String apiBaseUrl = 'https://api.karriova.com'; // Update with actual API URL
 
-  // API Endpoints
+  // Base URL - Update for production deployment
+  static const String apiBaseUrl = 'http://localhost:8080/api/v1';
+
+  // Auth Endpoints
   static const String loginEndpoint = '/auth/login';
   static const String signupEndpoint = '/auth/signup';
   static const String logoutEndpoint = '/auth/logout';
   static const String refreshTokenEndpoint = '/auth/refresh';
+  static const String googleOAuthEndpoint = '/auth/google';
+  static const String googleCallbackEndpoint = '/auth/google/callback';
+
+  // User Endpoints
+  static const String userProfileEndpoint = '/users/me';
+  static const String updateProfileEndpoint = '/users/me';
+  static const String deleteAccountEndpoint = '/users/me';
 
   // Timeouts
   static const Duration connectionTimeout = Duration(seconds: 30);

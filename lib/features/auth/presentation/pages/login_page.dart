@@ -66,6 +66,8 @@ class _LoginPageState extends State<LoginPage> {
               backgroundColor: AppColors.success,
             ),
           );
+          // Navigate to feed page after successful authentication
+          context.go(AppRouter.feed);
         }
       },
       builder: (context, state) {

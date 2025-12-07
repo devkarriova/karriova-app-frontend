@@ -1,6 +1,8 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../network/api_client.dart';
+import '../services/inactivity_service.dart';
 import '../../features/auth/data/datasources/auth_local_datasource.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
@@ -18,9 +20,21 @@ Future<void> configureDependencies() async {
     () => const FlutterSecureStorage(),
   );
 
+  // Network
+  getIt.registerLazySingleton<ApiClient>(
+    () => ApiClient(),
+  );
+
+  // Services
+  getIt.registerLazySingleton<InactivityService>(
+    () => InactivityService(
+      inactivityDuration: const Duration(minutes: 15),
+    ),
+  );
+
   // Data Sources
   getIt.registerLazySingleton<AuthRemoteDataSource>(
-    () => AuthRemoteDataSourceImpl(),
+    () => AuthRemoteDataSourceImpl(apiClient: getIt()),
   );
 
   getIt.registerLazySingleton<AuthLocalDataSource>(
@@ -35,6 +49,7 @@ Future<void> configureDependencies() async {
     () => AuthRepositoryImpl(
       remoteDataSource: getIt(),
       localDataSource: getIt(),
+      apiClient: getIt(),
     ),
   );
 

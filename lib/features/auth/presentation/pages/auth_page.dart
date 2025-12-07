@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
+import '../../../../core/routes/app_router.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../shared/widgets/gradient_button.dart';
 import '../../../../shared/widgets/social_login_button.dart';
@@ -55,6 +57,10 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   void _handleSubmit() {
+    // DEBUG: Bypass authentication and go directly to feed
+    context.go(AppRouter.feed);
+
+    /* TODO: Remove debug bypass and uncomment this
     if (_formKey.currentState?.validate() ?? false) {
       if (_isLoginMode) {
         context.read<AuthBloc>().add(
@@ -73,6 +79,7 @@ class _AuthPageState extends State<AuthPage> {
             );
       }
     }
+    */
   }
 
   void _handleSocialLogin(String provider) {
@@ -98,6 +105,8 @@ class _AuthPageState extends State<AuthPage> {
               backgroundColor: AppColors.success,
             ),
           );
+          // Navigate to feed page after successful authentication
+          context.go(AppRouter.feed);
         }
       },
       builder: (context, state) {
