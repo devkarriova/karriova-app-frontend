@@ -5,7 +5,7 @@ import 'profile_sections/experience_section.dart';
 import 'profile_sections/skills_section.dart';
 import 'profile_sections/achievements_section.dart';
 
-/// Profile tabs widget - About, Education, Experience, Skills, Achievements
+/// Profile tabs widget - Consolidated profile sections
 class ProfileTabs extends StatefulWidget {
   const ProfileTabs({super.key});
 
@@ -63,8 +63,8 @@ class _ProfileTabsState extends State<ProfileTabs> with SingleTickerProviderStat
             ),
             tabs: const [
               Tab(text: 'About'),
-              Tab(text: 'Education'),
               Tab(text: 'Experience'),
+              Tab(text: 'Education'),
               Tab(text: 'Skills'),
               Tab(text: 'Achievements'),
             ],
@@ -80,8 +80,8 @@ class _ProfileTabsState extends State<ProfileTabs> with SingleTickerProviderStat
             controller: _tabController,
             children: const [
               AboutSection(),
-              EducationSection(),
               ExperienceSection(),
+              EducationSection(),
               SkillsSection(),
               AchievementsSection(),
             ],

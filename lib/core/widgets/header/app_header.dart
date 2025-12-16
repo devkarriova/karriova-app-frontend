@@ -180,35 +180,44 @@ class _ProfileMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      offset: const Offset(0, 50),
+      offset: const Offset(0, 56),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      elevation: 8,
+      shadowColor: Colors.black.withOpacity(0.1),
       child: const CircleAvatar(
         radius: 18,
-        child: Icon(Icons.person),
+        backgroundColor: AppColors.primary,
+        child: Icon(Icons.person, color: Colors.white, size: 20),
       ),
       itemBuilder: (context) => [
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'profile',
-          child: ListTile(
-            leading: Icon(Icons.person),
-            title: Text('Profile'),
-            contentPadding: EdgeInsets.zero,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: _buildMenuItem(
+            icon: Icons.person_outline,
+            label: 'Profile',
+            color: const Color(0xFF374151),
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'settings',
-          child: ListTile(
-            leading: Icon(Icons.settings),
-            title: Text('Settings'),
-            contentPadding: EdgeInsets.zero,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: _buildMenuItem(
+            icon: Icons.settings_outlined,
+            label: 'Settings',
+            color: const Color(0xFF374151),
           ),
         ),
-        const PopupMenuDivider(),
-        const PopupMenuItem(
+        const PopupMenuDivider(height: 8),
+        PopupMenuItem(
           value: 'logout',
-          child: ListTile(
-            leading: Icon(Icons.logout),
-            title: Text('Logout'),
-            contentPadding: EdgeInsets.zero,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: _buildMenuItem(
+            icon: Icons.logout_outlined,
+            label: 'Logout',
+            color: const Color(0xFFDC2626),
           ),
         ),
       ],
@@ -226,6 +235,27 @@ class _ProfileMenu extends StatelessWidget {
             break;
         }
       },
+    );
+  }
+
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }

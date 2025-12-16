@@ -13,6 +13,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthGoogleLoginRequested>(_onGoogleLoginRequested);
     on<AuthCheckStatusRequested>(_onCheckStatusRequested);
     on<AuthResetPasswordRequested>(_onResetPasswordRequested);
+    on<AuthTokenExpired>(_onTokenExpired);
   }
 
   Future<void> _onLoginRequested(
@@ -142,5 +143,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         successMessage: 'Password reset email sent!',
       )),
     );
+  }
+
+  Future<void> _onTokenExpired(
+    AuthTokenExpired event,
+    Emitter<AuthState> emit,
+  ) async {
+    // Clear tokens and logout user silently
+    await authRepository.logout();
+    emit(const AuthState(
+      status: AuthStatus.unauthenticated,
+      errorMessage: 'Session expired. Please login again.',
+    ));
   }
 }

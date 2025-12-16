@@ -57,10 +57,6 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   void _handleSubmit() {
-    // DEBUG: Bypass authentication and go directly to feed
-    context.go(AppRouter.feed);
-
-    /* TODO: Remove debug bypass and uncomment this
     if (_formKey.currentState?.validate() ?? false) {
       if (_isLoginMode) {
         context.read<AuthBloc>().add(
@@ -79,7 +75,6 @@ class _AuthPageState extends State<AuthPage> {
             );
       }
     }
-    */
   }
 
   void _handleSocialLogin(String provider) {

@@ -5,11 +5,15 @@ import '../config/app_config.dart';
 /// Callback type for token refresh
 typedef TokenRefreshCallback = Future<bool> Function();
 
+/// Callback type for logout on token expiration
+typedef LogoutCallback = Future<void> Function();
+
 /// API Client for making HTTP requests to the backend
 class ApiClient {
   final http.Client _client;
   String? _accessToken;
   TokenRefreshCallback? _onTokenExpired;
+  LogoutCallback? _onLogoutRequired;
   bool _isRefreshing = false;
 
   ApiClient({http.Client? client}) : _client = client ?? http.Client();
@@ -25,6 +29,11 @@ class ApiClient {
   /// Set callback for token refresh
   void setTokenRefreshCallback(TokenRefreshCallback callback) {
     _onTokenExpired = callback;
+  }
+
+  /// Set callback for logout when token refresh fails
+  void setLogoutCallback(LogoutCallback callback) {
+    _onLogoutRequired = callback;
   }
 
   /// Build headers for requests
@@ -146,19 +155,39 @@ class ApiClient {
   ) async {
     final apiResponse = _handleResponse(response);
 
-    // If 401 Unauthorized and we have a refresh callback, try to refresh token
-    if (apiResponse.statusCode == 401 && _onTokenExpired != null && !_isRefreshing) {
-      _isRefreshing = true;
-      try {
-        final refreshed = await _onTokenExpired!();
-        _isRefreshing = false;
-
-        if (refreshed) {
-          // Retry the original request with new token
-          return await retry();
+    // If 401 Unauthorized, handle based on token state
+    if (apiResponse.statusCode == 401) {
+      // If no access token at all, logout immediately (shouldn't be here)
+      if (_accessToken == null || _accessToken!.isEmpty) {
+        if (_onLogoutRequired != null) {
+          await _onLogoutRequired!();
         }
-      } catch (e) {
-        _isRefreshing = false;
+        return apiResponse;
+      }
+
+      // If we have a token but got 401, try to refresh it
+      if (_onTokenExpired != null && !_isRefreshing) {
+        _isRefreshing = true;
+        try {
+          final refreshed = await _onTokenExpired!();
+          _isRefreshing = false;
+
+          if (refreshed) {
+            // Retry the original request with new token
+            return await retry();
+          } else {
+            // Token refresh failed - logout user
+            if (_onLogoutRequired != null) {
+              await _onLogoutRequired!();
+            }
+          }
+        } catch (e) {
+          _isRefreshing = false;
+          // Token refresh threw exception - logout user
+          if (_onLogoutRequired != null) {
+            await _onLogoutRequired!();
+          }
+        }
       }
     }
 

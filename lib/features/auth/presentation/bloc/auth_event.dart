@@ -55,3 +55,7 @@ class AuthResetPasswordRequested extends AuthEvent {
   @override
   List<Object?> get props => [email];
 }
+
+class AuthTokenExpired extends AuthEvent {
+  const AuthTokenExpired();
+}

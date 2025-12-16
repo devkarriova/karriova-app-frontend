@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'attachment_model.dart';
 
 /// Post model - represents a social media post
 class PostModel extends Equatable {
@@ -6,6 +7,7 @@ class PostModel extends Equatable {
   final String userId;
   final String content;
   final List<String> mediaUrls;
+  final List<AttachmentModel> attachments;
   final int likeCount;
   final int commentCount;
   final int shareCount;
@@ -18,6 +20,7 @@ class PostModel extends Equatable {
     required this.userId,
     required this.content,
     this.mediaUrls = const [],
+    this.attachments = const [],
     this.likeCount = 0,
     this.commentCount = 0,
     this.shareCount = 0,
@@ -33,6 +36,10 @@ class PostModel extends Equatable {
       content: json['content'] as String,
       mediaUrls: (json['media_urls'] as List<dynamic>?)
               ?.map((e) => e as String)
+              .toList() ??
+          [],
+      attachments: (json['attachments'] as List<dynamic>?)
+              ?.map((e) => AttachmentModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
       likeCount: json['like_count'] as int? ?? 0,
@@ -65,6 +72,7 @@ class PostModel extends Equatable {
         userId,
         content,
         mediaUrls,
+        attachments,
         likeCount,
         commentCount,
         shareCount,
@@ -72,4 +80,13 @@ class PostModel extends Equatable {
         createdAt,
         updatedAt,
       ];
+
+  // Helper to get all image URLs (from both mediaUrls and attachments)
+  List<String> get allImageUrls {
+    final attachmentUrls = attachments
+        .where((a) => a.isImage)
+        .map((a) => a.fileUrl)
+        .toList();
+    return [...mediaUrls, ...attachmentUrls];
+  }
 }

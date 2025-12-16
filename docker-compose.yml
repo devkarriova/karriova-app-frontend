@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Flutter Web Application
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: karriova-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - API_BASE_URL=http://localhost:8080/api/v1
+    restart: unless-stopped
+    networks:
+      - karriova-network
+
+  # Development server (hot reload)
+  frontend-dev:
+    image: debian:latest
+    container_name: karriova-frontend-dev
+    working_dir: /app
+    volumes:
+      - .:/app
+      - flutter-pub-cache:/root/.pub-cache
+    ports:
+      - "3001:8080"
+    command: >
+      bash -c "
+        apt-get update &&
+        apt-get install -y curl git unzip xz-utils zip libglu1-mesa &&
+        git clone https://github.com/flutter/flutter.git /usr/local/flutter || true &&
+        export PATH=\"/usr/local/flutter/bin:/usr/local/flutter/bin/cache/dart-sdk/bin:\$PATH\" &&
+        flutter channel stable &&
+        flutter upgrade &&
+        flutter config --enable-web &&
+        flutter pub get &&
+        flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0
+      "
+    networks:
+      - karriova-network
+    profiles:
+      - dev
+
+networks:
+  karriova-network:
+    driver: bridge
+
+volumes:
+  flutter-pub-cache:

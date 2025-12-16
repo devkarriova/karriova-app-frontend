@@ -8,6 +8,15 @@ import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/feed/data/datasources/post_remote_datasource.dart';
+import '../../features/feed/data/datasources/media_remote_datasource.dart';
+import '../../features/feed/data/repositories/post_repository_impl.dart';
+import '../../features/feed/domain/repositories/post_repository.dart';
+import '../../features/feed/presentation/bloc/feed_bloc.dart';
+import '../../features/profile/data/datasources/profile_remote_datasource.dart';
+import '../../features/profile/data/repositories/profile_repository_impl.dart';
+import '../../features/profile/domain/repositories/profile_repository.dart';
+import '../../features/profile/presentation/bloc/profile_bloc.dart';
 
 final getIt = GetIt.instance;
 
@@ -44,6 +53,18 @@ Future<void> configureDependencies() async {
     ),
   );
 
+  getIt.registerLazySingleton<PostRemoteDataSource>(
+    () => PostRemoteDataSourceImpl(apiClient: getIt()),
+  );
+
+  getIt.registerLazySingleton<MediaRemoteDataSource>(
+    () => MediaRemoteDataSourceImpl(apiClient: getIt()),
+  );
+
+  getIt.registerLazySingleton<ProfileRemoteDataSource>(
+    () => ProfileRemoteDataSourceImpl(apiClient: getIt()),
+  );
+
   // Repositories
   getIt.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(
@@ -53,8 +74,31 @@ Future<void> configureDependencies() async {
     ),
   );
 
+  getIt.registerLazySingleton<PostRepository>(
+    () => PostRepositoryImpl(
+      remoteDataSource: getIt(),
+    ),
+  );
+
+  getIt.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepositoryImpl(
+      remoteDataSource: getIt(),
+    ),
+  );
+
   // BLoCs
   getIt.registerFactory<AuthBloc>(
     () => AuthBloc(authRepository: getIt()),
+  );
+
+  getIt.registerFactory<FeedBloc>(
+    () => FeedBloc(
+      postRepository: getIt(),
+      mediaDataSource: getIt(),
+    ),
+  );
+
+  getIt.registerFactory<ProfileBloc>(
+    () => ProfileBloc(profileRepository: getIt()),
   );
 }

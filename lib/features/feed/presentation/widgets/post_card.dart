@@ -14,6 +14,7 @@ class PostCard extends StatelessWidget {
   final int shares;
   final String userInitials;
   final String? userImageUrl;
+  final List<String> imageUrls;
   final VoidCallback? onLike;
   final VoidCallback? onComment;
   final VoidCallback? onShare;
@@ -31,6 +32,7 @@ class PostCard extends StatelessWidget {
     this.shares = 0,
     required this.userInitials,
     this.userImageUrl,
+    this.imageUrls = const [],
     this.onLike,
     this.onComment,
     this.onShare,
@@ -64,10 +66,10 @@ class PostCard extends StatelessWidget {
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: AppColors.primary,
-                  backgroundImage: userImageUrl != null
+                  backgroundImage: userImageUrl != null && userImageUrl!.isNotEmpty
                       ? NetworkImage(userImageUrl!)
                       : null,
-                  child: userImageUrl == null
+                  child: userImageUrl == null || userImageUrl!.isEmpty
                       ? Text(
                           userInitials.toUpperCase(),
                           style: const TextStyle(
@@ -115,17 +117,10 @@ class PostCard extends StatelessWidget {
             ),
           ),
 
-          // Post Content
+          // Post Content with hashtag highlighting
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              content,
-              style: const TextStyle(
-                fontSize: AppDimensions.fontMD,
-                height: 1.5,
-                color: AppColors.textPrimary,
-              ),
-            ),
+            child: _buildContentWithHashtags(),
           ),
 
           // Hashtags
@@ -160,6 +155,12 @@ class PostCard extends StatelessWidget {
                     .toList(),
               ),
             ),
+          ],
+
+          // Post Images
+          if (imageUrls.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _buildImageGrid(),
           ],
 
           const SizedBox(height: 16),
@@ -230,6 +231,228 @@ class PostCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Build content text with highlighted hashtags
+  Widget _buildContentWithHashtags() {
+    final RegExp hashtagRegex = RegExp(r'#\w+');
+    final List<TextSpan> spans = [];
+    int lastMatchEnd = 0;
+
+    for (final match in hashtagRegex.allMatches(content)) {
+      // Add normal text before hashtag
+      if (match.start > lastMatchEnd) {
+        spans.add(
+          TextSpan(
+            text: content.substring(lastMatchEnd, match.start),
+            style: const TextStyle(
+              fontSize: AppDimensions.fontMD,
+              height: 1.5,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        );
+      }
+
+      // Add hashtag with primary color
+      spans.add(
+        TextSpan(
+          text: match.group(0),
+          style: const TextStyle(
+            fontSize: AppDimensions.fontMD,
+            height: 1.5,
+            color: AppColors.primary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+
+      lastMatchEnd = match.end;
+    }
+
+    // Add remaining text
+    if (lastMatchEnd < content.length) {
+      spans.add(
+        TextSpan(
+          text: content.substring(lastMatchEnd),
+          style: const TextStyle(
+            fontSize: AppDimensions.fontMD,
+            height: 1.5,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      );
+    }
+
+    return RichText(
+      text: TextSpan(children: spans.isEmpty ? [
+        TextSpan(
+          text: content,
+          style: const TextStyle(
+            fontSize: AppDimensions.fontMD,
+            height: 1.5,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ] : spans),
+    );
+  }
+
+  /// Build image grid based on number of images
+  Widget _buildImageGrid() {
+    final imageCount = imageUrls.length;
+
+    if (imageCount == 0) return const SizedBox.shrink();
+
+    if (imageCount == 1) {
+      // Single image - full width
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            imageUrls[0],
+            width: double.infinity,
+            height: 250,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              height: 250,
+              color: Colors.grey[300],
+              child: const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+            ),
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                height: 250,
+                color: Colors.grey[200],
+                child: Center(
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded /
+                            loadingProgress.expectedTotalBytes!
+                        : null,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    } else if (imageCount == 2) {
+      // Two images - side by side
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            Expanded(child: _buildImageItem(imageUrls[0], 200)),
+            const SizedBox(width: 4),
+            Expanded(child: _buildImageItem(imageUrls[1], 200)),
+          ],
+        ),
+      );
+    } else if (imageCount == 3) {
+      // Three images - 1 large on left, 2 stacked on right
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: _buildImageItem(imageUrls[0], 250),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              flex: 1,
+              child: Column(
+                children: [
+                  _buildImageItem(imageUrls[1], 123),
+                  const SizedBox(height: 4),
+                  _buildImageItem(imageUrls[2], 123),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // 4+ images - 2x2 grid with counter for remaining
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 4,
+            mainAxisSpacing: 4,
+            childAspectRatio: 1,
+          ),
+          itemCount: imageCount > 4 ? 4 : imageCount,
+          itemBuilder: (context, index) {
+            if (index == 3 && imageCount > 4) {
+              // Show "+N more" overlay on 4th image
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildImageItem(imageUrls[index], 150),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '+${imageCount - 4}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+            return _buildImageItem(imageUrls[index], 150);
+          },
+        ),
+      );
+    }
+  }
+
+  /// Build individual image item
+  Widget _buildImageItem(String url, double height) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        url,
+        height: height,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          height: height,
+          color: Colors.grey[300],
+          child: const Icon(Icons.broken_image, size: 30, color: Colors.grey),
+        ),
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            height: height,
+            color: Colors.grey[200],
+            child: Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

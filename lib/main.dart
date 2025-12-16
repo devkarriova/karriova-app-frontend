@@ -8,6 +8,8 @@ import 'core/services/inactivity_service.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
 import 'features/auth/presentation/bloc/auth_state.dart';
+import 'features/auth/domain/repositories/auth_repository.dart';
+import 'features/auth/data/repositories/auth_repository_impl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,8 +37,22 @@ class _KarriovaAppState extends State<KarriovaApp> {
     _inactivityService = getIt<InactivityService>();
     _authBloc = getIt<AuthBloc>()..add(const AuthCheckStatusRequested());
 
+    // Setup token expiration callback
+    _setupTokenExpirationCallback();
+
     // Setup inactivity tracking
     _setupInactivityTracking();
+  }
+
+  void _setupTokenExpirationCallback() {
+    // Get the auth repository and set up token expiration callback
+    final authRepository = getIt<AuthRepository>();
+    if (authRepository is AuthRepositoryImpl) {
+      authRepository.setTokenExpiredCallback(() {
+        // Trigger token expired event
+        _authBloc.add(const AuthTokenExpired());
+      });
+    }
   }
 
   void _setupInactivityTracking() {
