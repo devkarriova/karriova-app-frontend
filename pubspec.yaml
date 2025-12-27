@@ -41,6 +41,7 @@ dependencies:
   # Networking
   dio: ^5.7.0
   retrofit: ^4.4.1
+  web_socket_channel: ^3.0.1
 
   # Local Storage
   shared_preferences: ^2.3.3

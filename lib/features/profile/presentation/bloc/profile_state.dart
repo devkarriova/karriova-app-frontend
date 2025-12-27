@@ -8,6 +8,7 @@ enum ProfileStatus {
   success,
   error,
   updating,
+  updateSuccess,
 }
 
 /// Profile state class

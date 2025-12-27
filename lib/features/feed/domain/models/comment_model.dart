@@ -8,6 +8,8 @@ class CommentModel extends Equatable {
   final String content;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? userName;
+  final String? userPhotoUrl;
 
   const CommentModel({
     required this.id,
@@ -16,6 +18,8 @@ class CommentModel extends Equatable {
     required this.content,
     required this.createdAt,
     required this.updatedAt,
+    this.userName,
+    this.userPhotoUrl,
   });
 
   factory CommentModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +30,8 @@ class CommentModel extends Equatable {
       content: json['content'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      userName: json['user_name'] as String?,
+      userPhotoUrl: json['user_photo_url'] as String?,
     );
   }
 
@@ -37,9 +43,21 @@ class CommentModel extends Equatable {
       'content': content,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'user_name': userName,
+      'user_photo_url': userPhotoUrl,
     };
   }
 
+  /// Get user initials from name
+  String get userInitials {
+    if (userName == null || userName!.isEmpty) return '?';
+    final parts = userName!.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}';
+    }
+    return userName![0];
+  }
+
   @override
-  List<Object?> get props => [id, postId, userId, content, createdAt, updatedAt];
+  List<Object?> get props => [id, postId, userId, content, createdAt, updatedAt, userName, userPhotoUrl];
 }

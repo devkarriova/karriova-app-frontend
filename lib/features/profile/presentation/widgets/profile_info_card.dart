@@ -5,6 +5,7 @@ class ProfileInfoCard extends StatelessWidget {
   final String name;
   final bool isPremium;
   final String title;
+  final String bio;
   final String institution;
   final String location;
   final bool isOwnProfile;
@@ -17,6 +18,7 @@ class ProfileInfoCard extends StatelessWidget {
     required this.name,
     this.isPremium = false,
     required this.title,
+    this.bio = '',
     required this.institution,
     required this.location,
     this.isOwnProfile = false,
@@ -85,7 +87,7 @@ class ProfileInfoCard extends StatelessWidget {
 
           const SizedBox(height: 8),
 
-          // Title/Bio
+          // Title/Headline
           Text(
             title,
             style: TextStyle(
@@ -93,6 +95,21 @@ class ProfileInfoCard extends StatelessWidget {
               color: Colors.grey[700],
             ),
           ),
+
+          // Bio (if available)
+          if (bio.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              bio,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[600],
+                height: 1.4,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
 
           const SizedBox(height: 16),
 

@@ -5,12 +5,11 @@ import '../../../../core/widgets/header/app_header.dart';
 import '../../../../core/widgets/navigation/app_navigation_bar.dart';
 import '../../../../core/di/injection.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
-import '../../../auth/presentation/bloc/auth_state.dart';
 import '../bloc/feed_bloc.dart';
 import '../bloc/feed_event.dart';
 import '../bloc/feed_state.dart';
 import '../widgets/create_post_card.dart';
-import '../widgets/post_card.dart';
+import '../widgets/post_card_with_comments.dart';
 
 /// Activity feed page - Enterprise-level implementation with BLoC pattern
 class FeedPage extends StatelessWidget {
@@ -154,16 +153,19 @@ class _FeedPageContentState extends State<_FeedPageContent> {
                             }
 
                             final post = state.posts[index - 1];
-                            return PostCard(
-                              userName: 'User ${post.userId}',
-                              userTitle: 'User Title',
+                            return PostCardWithComments(
+                              postId: post.id,
+                              userName: post.userName ?? 'User',
+                              userTitle: 'Professional',
+                              userImageUrl: post.userPhotoUrl,
                               timeAgo: _getTimeAgo(post.createdAt),
                               content: post.content,
                               hashtags: _extractHashtags(post.content),
                               likes: post.likeCount,
                               comments: post.commentCount,
                               shares: post.shareCount,
-                              userInitials: 'U',
+                              isLiked: post.isLiked,
+                              userInitials: _generateUserInitials(post.userName, null),
                               imageUrls: post.attachments.map((a) => a.fileUrl).toList(),
                               onLike: () {
                                 context.read<FeedBloc>().add(
@@ -173,7 +175,6 @@ class _FeedPageContentState extends State<_FeedPageContent> {
                                       ),
                                     );
                               },
-                              onComment: () {},
                               onShare: () {
                                 context.read<FeedBloc>().add(FeedPostShared(postId: post.id));
                               },

@@ -5,6 +5,8 @@ import 'attachment_model.dart';
 class PostModel extends Equatable {
   final String id;
   final String userId;
+  final String? userName;
+  final String? userPhotoUrl;
   final String content;
   final List<String> mediaUrls;
   final List<AttachmentModel> attachments;
@@ -18,6 +20,8 @@ class PostModel extends Equatable {
   const PostModel({
     required this.id,
     required this.userId,
+    this.userName,
+    this.userPhotoUrl,
     required this.content,
     this.mediaUrls = const [],
     this.attachments = const [],
@@ -33,6 +37,8 @@ class PostModel extends Equatable {
     return PostModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
+      userName: json['user_name'] as String?,
+      userPhotoUrl: json['user_photo_url'] as String?,
       content: json['content'] as String,
       mediaUrls: (json['media_urls'] as List<dynamic>?)
               ?.map((e) => e as String)
@@ -70,6 +76,8 @@ class PostModel extends Equatable {
   List<Object?> get props => [
         id,
         userId,
+        userName,
+        userPhotoUrl,
         content,
         mediaUrls,
         attachments,

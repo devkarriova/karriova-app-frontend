@@ -5,6 +5,7 @@ import '../../../../core/widgets/header/app_header.dart';
 import '../../../../core/widgets/navigation/app_navigation_bar.dart';
 import '../../../../core/di/injection.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
@@ -12,9 +13,10 @@ import '../widgets/profile_banner.dart';
 import '../widgets/profile_avatar.dart';
 import '../widgets/profile_info_card.dart';
 import '../widgets/profile_tabs.dart';
+import '../widgets/edit_forms/personal_details_dialog.dart';
 
 /// Profile page - Enterprise-level implementation with BLoC pattern
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   final String? userId; // null means current user's profile
 
   const ProfilePage({
@@ -22,21 +24,61 @@ class ProfilePage extends StatelessWidget {
     this.userId,
   });
 
-  bool get isOwnProfile => userId == null;
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  late ProfileBloc _profileBloc;
+  bool _profileLoaded = false;
+
+  bool get isOwnProfile => widget.userId == null;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileBloc = getIt<ProfileBloc>();
+
+    // Load profile after first frame if already authenticated
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final authBloc = context.read<AuthBloc>();
+      if (authBloc.state.status == AuthStatus.authenticated) {
+        _loadProfile();
+      }
+    });
+  }
+
+  void _loadProfile() {
+    if (_profileLoaded) return;
+    _profileLoaded = true;
+
+    if (isOwnProfile) {
+      _profileBloc.add(const ProfileLoadMyProfileRequested());
+    } else {
+      _profileBloc.add(ProfileLoadRequested(userId: widget.userId!));
+    }
+  }
+
+  @override
+  void dispose() {
+    _profileBloc.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) {
-        final bloc = getIt<ProfileBloc>();
-        if (isOwnProfile) {
-          bloc.add(const ProfileLoadMyProfileRequested());
-        } else {
-          bloc.add(ProfileLoadRequested(userId: userId!));
-        }
-        return bloc;
-      },
-      child: const _ProfilePageContent(),
+    return BlocProvider.value(
+      value: _profileBloc,
+      child: BlocListener<AuthBloc, AuthState>(
+        listener: (context, authState) {
+          // Load profile when auth becomes ready
+          if (authState.status == AuthStatus.authenticated && !_profileLoaded) {
+            _loadProfile();
+          }
+        },
+        child: const _ProfilePageContent(),
+      ),
     );
   }
 }
@@ -85,11 +127,14 @@ class _ProfilePageContent extends StatelessWidget {
                 }
 
                 final profile = state.profile!;
-                final userInitials = _getInitials(profile.headline);
 
                 // Get current user from AuthBloc to determine if this is own profile
                 final currentUser = context.read<AuthBloc>().state.user;
                 final isOwnProfile = currentUser != null && profile.userId == currentUser.id;
+
+                // Get user name and initials - prefer user.name, fallback to email, then headline
+                final userName = currentUser?.name ?? currentUser?.email ?? 'User';
+                final userInitials = _getInitials(userName);
 
                 return RefreshIndicator(
                   onRefresh: () async {
@@ -123,13 +168,17 @@ class _ProfilePageContent extends StatelessWidget {
                       // Profile Info Card
                       SliverToBoxAdapter(
                         child: ProfileInfoCard(
-                          name: profile.headline.split('|').first.trim(),
+                          name: userName,
                           isPremium: true,
-                          title: profile.headline,
+                          title: profile.experience.isNotEmpty
+                              ? '${profile.experience.first.title} at ${profile.experience.first.company}'
+                              : (profile.headline.isNotEmpty ? profile.headline : 'Add your professional headline'),
                           institution: profile.education.isNotEmpty
                               ? profile.education.first.institution
-                              : '',
-                          location: profile.location,
+                              : 'No education added',
+                          location: profile.experience.isNotEmpty
+                              ? profile.experience.first.location
+                              : (profile.location.isNotEmpty ? profile.location : 'Add location'),
                           isOwnProfile: isOwnProfile,
                           onConnect: isOwnProfile
                               ? null
@@ -142,8 +191,28 @@ class _ProfilePageContent extends StatelessWidget {
                                   // TODO: Handle send message action
                                 },
                           onEditProfile: isOwnProfile
-                              ? () {
-                                  // TODO: Navigate to edit profile
+                              ? () async {
+                                  final result = await showDialog<Map<String, dynamic>>(
+                                    context: context,
+                                    builder: (context) => PersonalDetailsDialog(
+                                      initialName: userName,
+                                      initialEmail: currentUser.email,
+                                      initialHeadline: profile.headline,
+                                      initialWebsite: profile.website,
+                                      initialIsPublic: true, // TODO: Get from profile settings
+                                    ),
+                                  );
+                                  if (result != null && context.mounted) {
+                                    context.read<ProfileBloc>().add(
+                                      ProfilePersonalDetailsUpdated(
+                                        name: result['name'] as String?,
+                                        email: result['email'] as String?,
+                                        headline: result['headline'] as String?,
+                                        website: result['website'] as String?,
+                                        isPublic: result['isPublic'] as bool?,
+                                      ),
+                                    );
+                                  }
                                 }
                               : null,
                         ),

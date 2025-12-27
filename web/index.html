@@ -32,6 +32,23 @@
 
   <title>Karriova - Career Networking Platform</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Remove focus outline from all elements */
+    * {
+      outline: none !important;
+    }
+
+    input:focus,
+    textarea:focus,
+    flt-text-editing-host:focus,
+    flt-semantics input:focus,
+    flt-semantics textarea:focus {
+      outline: none !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+  </style>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

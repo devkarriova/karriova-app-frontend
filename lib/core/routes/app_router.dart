@@ -5,6 +5,8 @@ import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/feed/presentation/pages/feed_page.dart';
 import '../../features/chat/presentation/pages/chat_list_page.dart';
 import '../../features/chat/presentation/pages/chat_conversation_page.dart';
+import '../../features/search/presentation/pages/search_page.dart';
+import '../../features/notifications/presentation/pages/notifications_page.dart';
 
 class AppRouter {
   // Auth routes
@@ -17,6 +19,8 @@ class AppRouter {
   static const String feed = '/feed';
   static const String profile = '/profile';
   static const String chat = '/chat';
+  static const String search = '/search';
+  static const String notifications = '/notifications';
 
   // Chat sub-routes
   static const String chatConversation = '/chat/:conversationId';
@@ -94,6 +98,28 @@ class AppRouter {
               conversationId: conversationId,
               otherUserId: otherUserId,
             ),
+          );
+        },
+      ),
+
+      // Search Page
+      GoRoute(
+        path: '/search',
+        name: 'search',
+        pageBuilder: (context, state) {
+          return const MaterialPage(
+            child: SearchPage(),
+          );
+        },
+      ),
+
+      // Notifications Page
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        pageBuilder: (context, state) {
+          return const MaterialPage(
+            child: NotificationsPage(),
           );
         },
       ),

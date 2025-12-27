@@ -66,6 +66,11 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? location,
     String? website,
     List<String>? skills,
+    List<Experience>? experience,
+    List<Education>? education,
+    List<Certification>? certifications,
+    List<Project>? projects,
+    List<Award>? awards,
   }) async {
     try {
       final profile = await remoteDataSource.updateProfile(
@@ -74,6 +79,11 @@ class ProfileRepositoryImpl implements ProfileRepository {
         location: location,
         website: website,
         skills: skills,
+        experience: experience,
+        education: education,
+        certifications: certifications,
+        projects: projects,
+        awards: awards,
       );
       return Right(profile);
     } catch (e) {

@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../bloc/profile_bloc.dart';
+import '../../bloc/profile_state.dart';
+import '../../bloc/profile_event.dart';
 
 /// About section - displays user bio and career goals
 class AboutSection extends StatelessWidget {
@@ -6,49 +10,115 @@ class AboutSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // About Card
-          _buildCard(
-            title: 'About',
-            onEdit: () {
-              // TODO: Handle edit about
-            },
-            child: const Text(
-              'Passionate about leveraging AI and Machine Learning to solve real-world problems. '
-              'Currently pursuing B.Tech in Computer Science at IIT Bombay with a CGPA of 8.9. '
-              'Active member of the Coding Club and Robotics Society.',
-              style: TextStyle(fontSize: 13, height: 1.5),
+    return BlocBuilder<ProfileBloc, ProfileState>(
+      builder: (context, state) {
+        if (!state.hasProfile) {
+          return const Center(
+            child: Text(
+              'No profile data available',
+              style: TextStyle(color: Colors.grey),
             ),
-          ),
+          );
+        }
 
-          const SizedBox(height: 16),
+        final profile = state.profile!;
+        final bio = profile.bio;
 
-          // Career Goals Card
-          _buildCard(
-            title: 'Career Goals',
-            onEdit: () {
-              // TODO: Handle edit career goals
-            },
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildGoalChip('Software Engineering at FAANG'),
-                _buildGoalChip('AI Research'),
-                _buildGoalChip('Startup Founder'),
-              ],
-            ),
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // About Card
+              _buildCard(
+                context: context,
+                title: 'About',
+                onEdit: () => _showEditBioDialog(context, bio),
+                child: bio.isNotEmpty
+                    ? Text(
+                        bio,
+                        style: const TextStyle(fontSize: 13, height: 1.5),
+                      )
+                    : Text(
+                        'No bio added yet. Click edit to add your bio.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.5,
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Career Goals Card
+              _buildCard(
+                context: context,
+                title: 'Career Goals',
+                onEdit: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Career goals feature coming soon!'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                child: Text(
+                  'No career goals added yet',
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.5,
+                    color: Colors.grey[600],
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
+  void _showEditBioDialog(BuildContext context, String currentBio) {
+    final TextEditingController bioController = TextEditingController(text: currentBio);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit About'),
+        content: TextField(
+          controller: bioController,
+          maxLines: 6,
+          maxLength: 500,
+          decoration: const InputDecoration(
+            hintText: 'Tell us about yourself...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final newBio = bioController.text.trim();
+              context.read<ProfileBloc>().add(
+                ProfilePersonalDetailsUpdated(bio: newBio),
+              );
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    ).then((_) => bioController.dispose());
+  }
+
   Widget _buildCard({
+    required BuildContext context,
     required String title,
     required Widget child,
     required VoidCallback onEdit,
@@ -96,25 +166,6 @@ class AboutSection extends StatelessWidget {
           child,
         ],
       ),
-    );
-  }
-
-  Widget _buildGoalChip(String label) {
-    return Chip(
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.star_border, size: 14),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12),
-          ),
-        ],
-      ),
-      backgroundColor: Colors.grey[100],
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      labelPadding: EdgeInsets.zero,
     );
   }
 }

@@ -3,8 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../constants/app_colors.dart';
 import '../../routes/app_router.dart';
+import '../../di/injection.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../features/auth/presentation/bloc/auth_event.dart';
+import '../../../../features/notifications/presentation/bloc/notification_bloc.dart';
+import '../../../../features/notifications/presentation/bloc/notification_event.dart';
+import '../../../../features/notifications/presentation/bloc/notification_state.dart';
+import 'notification_dropdown.dart';
 
 /// Common app header widget used across all pages
 /// Contains: Logo, Search bar, Notifications, Profile menu
@@ -47,45 +52,80 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-/// Search bar widget
-class _SearchBar extends StatelessWidget {
+/// Search bar widget with inline search
+class _SearchBar extends StatefulWidget {
   const _SearchBar();
+
+  @override
+  State<_SearchBar> createState() => _SearchBarState();
+}
+
+class _SearchBarState extends State<_SearchBar> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  bool _isSearching = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleSearchSubmit() {
+    final query = _searchController.text.trim();
+    if (query.isNotEmpty) {
+      context.go('${AppRouter.search}?q=$query');
+      _searchFocusNode.unfocus();
+      _searchController.clear();
+      setState(() => _isSearching = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 40,
       constraints: const BoxConstraints(maxWidth: 400),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(20),
+        border: _isSearching
+            ? Border.all(color: AppColors.primary, width: 2)
+            : null,
+      ),
       child: TextField(
+        controller: _searchController,
+        focusNode: _searchFocusNode,
+        style: const TextStyle(fontSize: 14),
         decoration: InputDecoration(
           hintText: 'Search jobs, events, people...',
-          hintStyle: TextStyle(
+          hintStyle: const TextStyle(
             color: AppColors.textTertiary,
             fontSize: 14,
           ),
-          prefixIcon: const Icon(Icons.search, size: 20),
-          filled: true,
-          fillColor: const Color(0xFFF5F5F5),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: const BorderSide(
-              color: AppColors.primary,
-              width: 1.5,
-            ),
-          ),
+          prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textTertiary),
+          suffixIcon: _isSearching
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 20),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _isSearching = false);
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         ),
-        onSubmitted: (value) {
-          // TODO: Implement search functionality
+        onTap: () => setState(() => _isSearching = true),
+        onChanged: (value) {
+          if (value.isEmpty && _isSearching) {
+            setState(() => _isSearching = false);
+          } else if (value.isNotEmpty && !_isSearching) {
+            setState(() => _isSearching = true);
+          }
         },
+        onSubmitted: (_) => _handleSearchSubmit(),
       ),
     );
   }
@@ -113,47 +153,105 @@ class _LogoSection extends StatelessWidget {
 }
 
 /// Notification icon widget with badge
-class _NotificationIcon extends StatelessWidget {
+class _NotificationIcon extends StatefulWidget {
   const _NotificationIcon();
 
   @override
-  Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined),
-          onPressed: () {
-            // TODO: Open notifications panel
-          },
-        ),
-        // Notification badge
-        Positioned(
-          right: 8,
-          top: 8,
-          child: Container(
-            padding: const EdgeInsets.all(4),
-            decoration: const BoxDecoration(
-              color: Colors.red,
-              shape: BoxShape.circle,
-            ),
-            constraints: const BoxConstraints(
-              minWidth: 18,
-              minHeight: 18,
-            ),
-            child: const Center(
-              child: Text(
-                '3',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+  State<_NotificationIcon> createState() => _NotificationIconState();
+}
+
+class _NotificationIconState extends State<_NotificationIcon> {
+  late final NotificationBloc _notificationBloc;
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationBloc = getIt<NotificationBloc>()
+      ..add(const UnreadCountRefreshRequested());
+  }
+
+  @override
+  void dispose() {
+    _notificationBloc.close();
+    super.dispose();
+  }
+
+  void _showNotificationDropdown(BuildContext context) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final RenderBox overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+    final RelativeRect position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset(0, button.size.height), ancestor: overlay),
+        button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu(
+      context: context,
+      position: position,
+      elevation: 8,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Colors.transparent,
+      shadowColor: Colors.transparent,
+      constraints: const BoxConstraints(maxWidth: 400),
+      items: [
+        PopupMenuItem(
+          enabled: false,
+          padding: EdgeInsets.zero,
+          child: BlocProvider.value(
+            value: _notificationBloc,
+            child: const NotificationDropdown(),
           ),
         ),
       ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<NotificationBloc, NotificationState>(
+      bloc: _notificationBloc,
+      builder: (context, state) {
+        final unreadCount = state.unreadCount;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              onPressed: () => _showNotificationDropdown(context),
+            ),
+            // Notification badge
+            if (unreadCount > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Center(
+                    child: Text(
+                      unreadCount > 99 ? '99+' : unreadCount.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

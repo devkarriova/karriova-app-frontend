@@ -4,6 +4,9 @@ import 'package:intl/intl.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../bloc/profile_bloc.dart';
 import '../../bloc/profile_state.dart';
+import '../../bloc/profile_event.dart';
+import '../edit_forms/profile_item_dialog.dart';
+import '../../../domain/models/profile_model.dart';
 
 /// Experience section - displays work experience with timeline progression
 class ExperienceSection extends StatelessWidget {
@@ -17,8 +20,8 @@ class ExperienceSection extends StatelessWidget {
           return const Center(child: Text('No profile data'));
         }
 
-        // Mock data for demonstration - replace with actual data when backend is ready
-        final experiences = _getMockExperiences();
+        // Get real experience data from profile
+        final experiences = state.profile!.experience;
 
         return Stack(
           children: [
@@ -39,13 +42,27 @@ class ExperienceSection extends StatelessWidget {
               bottom: 16,
               right: 16,
               child: FloatingActionButton(
-                onPressed: () {
-                  // TODO: Navigate to add experience page
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Add experience functionality coming soon'),
+                onPressed: () async {
+                  final result = await showDialog<Map<String, dynamic>>(
+                    context: context,
+                    builder: (context) => const ProfileItemDialog(
+                      type: ProfileItemType.experience,
                     ),
                   );
+                  if (result != null && context.mounted) {
+                    context.read<ProfileBloc>().add(
+                      ProfileExperienceAdded(
+                        title: result['jobTitle'] as String,
+                        company: result['companyName'] as String,
+                        companyId: '', // TODO: Get from company search
+                        location: result['location'] as String,
+                        startDate: result['startDate'] as DateTime,
+                        endDate: result['endDate'] as DateTime?,
+                        current: result['isCurrent'] as bool? ?? false,
+                        description: result['description'] as String? ?? '',
+                      ),
+                    );
+                  }
                 },
                 backgroundColor: AppColors.primary,
                 child: const Icon(Icons.add, color: Colors.white),
@@ -74,19 +91,42 @@ class ExperienceSection extends StatelessWidget {
     );
   }
 
-  Widget _buildTimelineList(List<Map<String, dynamic>> experiences) {
+  Widget _buildTimelineList(List<Experience> experiences) {
+    if (experiences.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            children: [
+              Icon(Icons.work_outline, size: 64, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                'No work experience added yet',
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tap the + button to add your work experience',
+                style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Column(
       children: List.generate(experiences.length, (index) {
         final experience = experiences[index];
         final isLast = index == experiences.length - 1;
         return Builder(
-          builder: (context) => _buildTimelineItem(context, experience, isLast),
+          builder: (context) => _buildTimelineItem(context, experience, isLast, index),
         );
       }),
     );
   }
 
-  Widget _buildTimelineItem(BuildContext context, Map<String, dynamic> experience, bool isLast) {
+  Widget _buildTimelineItem(BuildContext context, Experience experience, bool isLast, int index) {
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,7 +196,7 @@ class ExperienceSection extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          experience['jobTitle'] as String,
+                          experience.title,
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -170,13 +210,39 @@ class ExperienceSection extends StatelessWidget {
                         children: [
                           IconButton(
                             icon: Icon(Icons.edit_outlined, size: 18, color: Colors.grey[600]),
-                            onPressed: () {
-                              // TODO: Navigate to edit experience page
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Edit experience functionality coming soon'),
+                            onPressed: () async {
+                              final experienceMap = {
+                                'jobTitle': experience.title,
+                                'companyName': experience.company,
+                                'location': experience.location,
+                                'startDate': experience.startDate,
+                                'endDate': experience.endDate,
+                                'isCurrent': experience.current,
+                                'description': experience.description,
+                                'employmentType': null, // Not in Experience model currently
+                              };
+                              final result = await showDialog<Map<String, dynamic>>(
+                                context: context,
+                                builder: (context) => ProfileItemDialog(
+                                  type: ProfileItemType.experience,
+                                  initialData: experienceMap,
                                 ),
                               );
+                              if (result != null && context.mounted) {
+                                context.read<ProfileBloc>().add(
+                                  ProfileExperienceUpdated(
+                                    index: index,
+                                    title: result['jobTitle'] as String,
+                                    company: result['companyName'] as String,
+                                    companyId: '', // TODO: Get from company search
+                                    location: result['location'] as String,
+                                    startDate: result['startDate'] as DateTime,
+                                    endDate: result['endDate'] as DateTime?,
+                                    current: result['isCurrent'] as bool? ?? false,
+                                    description: result['description'] as String? ?? '',
+                                  ),
+                                );
+                              }
                             },
                             padding: const EdgeInsets.all(4),
                             constraints: const BoxConstraints(),
@@ -185,13 +251,30 @@ class ExperienceSection extends StatelessWidget {
                           const SizedBox(width: 4),
                           IconButton(
                             icon: Icon(Icons.delete_outline, size: 18, color: Colors.red[400]),
-                            onPressed: () {
-                              // TODO: Show confirmation dialog and delete
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Delete experience functionality coming soon'),
+                            onPressed: () async {
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Delete Experience'),
+                                  content: Text('Are you sure you want to delete "${experience.title}"?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
                                 ),
                               );
+                              if (confirmed == true && context.mounted) {
+                                context.read<ProfileBloc>().add(
+                                  ProfileExperienceDeleted(index: index),
+                                );
+                              }
                             },
                             padding: const EdgeInsets.all(4),
                             constraints: const BoxConstraints(),
@@ -208,7 +291,7 @@ class ExperienceSection extends StatelessWidget {
                       Icon(Icons.business, size: 16, color: Colors.grey[600]),
                       const SizedBox(width: 6),
                       Text(
-                        experience['companyName'] as String,
+                        experience.company,
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
@@ -218,62 +301,43 @@ class ExperienceSection extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  // Date range and employment type
+                  // Date range
                   Row(
                     children: [
                       Icon(Icons.calendar_today, size: 14, color: Colors.grey[500]),
                       const SizedBox(width: 6),
                       Text(
                         _formatDateRange(
-                          experience['startDate'] as DateTime,
-                          experience['endDate'] as DateTime?,
-                          experience['isCurrent'] as bool,
+                          experience.startDate,
+                          experience.endDate,
+                          experience.current,
                         ),
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey[600],
                         ),
                       ),
-                      if (experience['employmentType'] != null) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            experience['employmentType'] as String,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
-                  if (experience['location'] != null) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
-                        const SizedBox(width: 6),
-                        Text(
-                          experience['location'] as String,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
-                          ),
+                  const SizedBox(height: 6),
+                  // Location
+                  Row(
+                    children: [
+                      Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
+                      const SizedBox(width: 6),
+                      Text(
+                        experience.location,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[600],
                         ),
-                      ],
-                    ),
-                  ],
-                  if (experience['description'] != null) ...[
+                      ),
+                    ],
+                  ),
+                  if (experience.description.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Text(
-                      experience['description'] as String,
+                      experience.description,
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[700],
@@ -302,44 +366,5 @@ class ExperienceSection extends StatelessWidget {
     }
 
     return start;
-  }
-
-  // Mock data - replace with actual data from backend
-  List<Map<String, dynamic>> _getMockExperiences() {
-    return [
-      {
-        'jobTitle': 'Senior Flutter Developer',
-        'companyName': 'Tech Solutions Inc.',
-        'employmentType': 'Full-time',
-        'location': 'San Francisco, CA',
-        'startDate': DateTime(2022, 1),
-        'endDate': null,
-        'isCurrent': true,
-        'description':
-            'Leading the development of cross-platform mobile applications using Flutter. Mentoring junior developers and implementing best practices for code quality and performance.',
-      },
-      {
-        'jobTitle': 'Flutter Developer',
-        'companyName': 'Digital Innovations',
-        'employmentType': 'Full-time',
-        'location': 'Remote',
-        'startDate': DateTime(2020, 6),
-        'endDate': DateTime(2021, 12),
-        'isCurrent': false,
-        'description':
-            'Developed and maintained multiple mobile applications for clients across various industries. Collaborated with designers and backend developers to deliver high-quality products.',
-      },
-      {
-        'jobTitle': 'Mobile App Developer',
-        'companyName': 'StartUp Labs',
-        'employmentType': 'Contract',
-        'location': 'New York, NY',
-        'startDate': DateTime(2019, 3),
-        'endDate': DateTime(2020, 5),
-        'isCurrent': false,
-        'description':
-            'Built mobile applications from scratch using Flutter and React Native. Worked directly with stakeholders to understand requirements and deliver MVPs.',
-      },
-    ];
   }
 }

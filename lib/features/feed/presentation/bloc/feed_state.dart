@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/models/post_model.dart';
+import '../../domain/models/comment_model.dart';
 
 enum FeedStatus {
   initial,
@@ -17,6 +18,8 @@ class FeedState extends Equatable {
   final bool hasReachedMax;
   final int currentPage;
   final String? successMessage;
+  final Map<String, List<CommentModel>> comments;
+  final Map<String, bool> commentsLoading;
 
   const FeedState({
     this.status = FeedStatus.initial,
@@ -25,6 +28,8 @@ class FeedState extends Equatable {
     this.hasReachedMax = false,
     this.currentPage = 0,
     this.successMessage,
+    this.comments = const {},
+    this.commentsLoading = const {},
   });
 
   /// Check if we're in a loading state
@@ -46,6 +51,8 @@ class FeedState extends Equatable {
     bool? hasReachedMax,
     int? currentPage,
     String? successMessage,
+    Map<String, List<CommentModel>>? comments,
+    Map<String, bool>? commentsLoading,
     bool clearError = false,
     bool clearSuccess = false,
   }) {
@@ -56,6 +63,8 @@ class FeedState extends Equatable {
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       currentPage: currentPage ?? this.currentPage,
       successMessage: clearSuccess ? null : (successMessage ?? this.successMessage),
+      comments: comments ?? this.comments,
+      commentsLoading: commentsLoading ?? this.commentsLoading,
     );
   }
 
@@ -67,5 +76,7 @@ class FeedState extends Equatable {
         hasReachedMax,
         currentPage,
         successMessage,
+        comments,
+        commentsLoading,
       ];
 }

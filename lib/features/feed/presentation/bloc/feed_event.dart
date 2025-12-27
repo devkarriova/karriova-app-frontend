@@ -74,3 +74,27 @@ class FeedPostCreated extends FeedEvent {
   @override
   List<Object?> get props => [content, images];
 }
+
+/// Fetch comments for a post
+class FeedCommentFetchRequested extends FeedEvent {
+  final String postId;
+
+  const FeedCommentFetchRequested({required this.postId});
+
+  @override
+  List<Object?> get props => [postId];
+}
+
+/// Add a comment to a post
+class FeedCommentAddRequested extends FeedEvent {
+  final String postId;
+  final String content;
+
+  const FeedCommentAddRequested({
+    required this.postId,
+    required this.content,
+  });
+
+  @override
+  List<Object?> get props => [postId, content];
+}

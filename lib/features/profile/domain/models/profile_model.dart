@@ -136,6 +136,90 @@ class Certification extends Equatable {
   List<Object?> get props => [name, issuer, issueDate, expiryDate, credentialUrl];
 }
 
+/// Project model matching backend structure
+class Project extends Equatable {
+  final String name;
+  final String description;
+  final DateTime startDate;
+  final DateTime? endDate;
+  final bool current;
+  final String url;
+  final List<String> technologies;
+
+  const Project({
+    required this.name,
+    required this.description,
+    required this.startDate,
+    this.endDate,
+    required this.current,
+    required this.url,
+    required this.technologies,
+  });
+
+  factory Project.fromJson(Map<String, dynamic> json) {
+    return Project(
+      name: json['Name'] as String,
+      description: json['Description'] as String,
+      startDate: DateTime.parse(json['StartDate'] as String),
+      endDate: json['EndDate'] != null ? DateTime.parse(json['EndDate'] as String) : null,
+      current: json['Current'] as bool,
+      url: json['URL'] as String,
+      technologies: (json['Technologies'] as List<dynamic>).map((e) => e as String).toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'Name': name,
+      'Description': description,
+      'StartDate': startDate.toIso8601String(),
+      'EndDate': endDate?.toIso8601String(),
+      'Current': current,
+      'URL': url,
+      'Technologies': technologies,
+    };
+  }
+
+  @override
+  List<Object?> get props => [name, description, startDate, endDate, current, url, technologies];
+}
+
+/// Award model matching backend structure
+class Award extends Equatable {
+  final String title;
+  final String issuer;
+  final DateTime date;
+  final String description;
+
+  const Award({
+    required this.title,
+    required this.issuer,
+    required this.date,
+    required this.description,
+  });
+
+  factory Award.fromJson(Map<String, dynamic> json) {
+    return Award(
+      title: json['Title'] as String,
+      issuer: json['Issuer'] as String,
+      date: DateTime.parse(json['Date'] as String),
+      description: json['Description'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'Title': title,
+      'Issuer': issuer,
+      'Date': date.toIso8601String(),
+      'Description': description,
+    };
+  }
+
+  @override
+  List<Object?> get props => [title, issuer, date, description];
+}
+
 /// Profile model matching backend PublicProfile structure
 class ProfileModel extends Equatable {
   final String userId;
@@ -147,6 +231,8 @@ class ProfileModel extends Equatable {
   final List<Experience> experience;
   final List<Education> education;
   final List<Certification> certifications;
+  final List<Project> projects;
+  final List<Award> awards;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -160,6 +246,8 @@ class ProfileModel extends Equatable {
     required this.experience,
     required this.education,
     required this.certifications,
+    required this.projects,
+    required this.awards,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -181,6 +269,12 @@ class ProfileModel extends Equatable {
       certifications: (json['certifications'] as List<dynamic>)
           .map((e) => Certification.fromJson(e as Map<String, dynamic>))
           .toList(),
+      projects: (json['projects'] as List<dynamic>? ?? [])
+          .map((e) => Project.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      awards: (json['awards'] as List<dynamic>? ?? [])
+          .map((e) => Award.fromJson(e as Map<String, dynamic>))
+          .toList(),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -197,9 +291,43 @@ class ProfileModel extends Equatable {
       'experience': experience.map((e) => e.toJson()).toList(),
       'education': education.map((e) => e.toJson()).toList(),
       'certifications': certifications.map((e) => e.toJson()).toList(),
+      'projects': projects.map((e) => e.toJson()).toList(),
+      'awards': awards.map((e) => e.toJson()).toList(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
+  }
+
+  ProfileModel copyWith({
+    String? userId,
+    String? bio,
+    String? headline,
+    String? location,
+    String? website,
+    List<String>? skills,
+    List<Experience>? experience,
+    List<Education>? education,
+    List<Certification>? certifications,
+    List<Project>? projects,
+    List<Award>? awards,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return ProfileModel(
+      userId: userId ?? this.userId,
+      bio: bio ?? this.bio,
+      headline: headline ?? this.headline,
+      location: location ?? this.location,
+      website: website ?? this.website,
+      skills: skills ?? this.skills,
+      experience: experience ?? this.experience,
+      education: education ?? this.education,
+      certifications: certifications ?? this.certifications,
+      projects: projects ?? this.projects,
+      awards: awards ?? this.awards,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 
   @override
@@ -213,6 +341,8 @@ class ProfileModel extends Equatable {
         experience,
         education,
         certifications,
+        projects,
+        awards,
         createdAt,
         updatedAt,
       ];

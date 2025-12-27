@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../../domain/models/post_model.dart';
+import '../../domain/models/comment_model.dart';
 import '../../data/datasources/media_remote_datasource.dart';
 import 'feed_event.dart';
 import 'feed_state.dart';
@@ -22,6 +23,8 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     on<FeedPostShared>(_onPostShared);
     on<FeedPostDeleted>(_onPostDeleted);
     on<FeedPostCreated>(_onPostCreated);
+    on<FeedCommentFetchRequested>(_onCommentFetchRequested);
+    on<FeedCommentAddRequested>(_onCommentAddRequested);
   }
 
   /// Load initial feed
@@ -139,6 +142,8 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
         return PostModel(
           id: post.id,
           userId: post.userId,
+          userName: post.userName,
+          userPhotoUrl: post.userPhotoUrl,
           content: post.content,
           mediaUrls: post.mediaUrls,
           likeCount: event.isCurrentlyLiked
@@ -195,6 +200,8 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
             return PostModel(
               id: post.id,
               userId: post.userId,
+              userName: post.userName,
+              userPhotoUrl: post.userPhotoUrl,
               content: post.content,
               mediaUrls: post.mediaUrls,
               likeCount: post.likeCount,
@@ -315,5 +322,90 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       AppLogger.error('Unexpected error creating post: $e');
       emit(state.copyWith(errorMessage: 'Failed to create post: $e'));
     }
+  }
+
+  /// Fetch comments for a post
+  Future<void> _onCommentFetchRequested(
+    FeedCommentFetchRequested event,
+    Emitter<FeedState> emit,
+  ) async {
+    // Set loading state for this post's comments
+    final updatedLoading = Map<String, bool>.from(state.commentsLoading);
+    updatedLoading[event.postId] = true;
+    emit(state.copyWith(commentsLoading: updatedLoading));
+
+    final result = await postRepository.getComments(event.postId);
+
+    result.fold(
+      (error) {
+        AppLogger.error('Failed to fetch comments: $error');
+        final updatedLoading = Map<String, bool>.from(state.commentsLoading);
+        updatedLoading[event.postId] = false;
+        emit(state.copyWith(
+          commentsLoading: updatedLoading,
+          errorMessage: error,
+        ));
+      },
+      (comments) {
+        final updatedComments = Map<String, List<CommentModel>>.from(state.comments);
+        updatedComments[event.postId] = comments;
+
+        final updatedLoading = Map<String, bool>.from(state.commentsLoading);
+        updatedLoading[event.postId] = false;
+
+        emit(state.copyWith(
+          comments: updatedComments,
+          commentsLoading: updatedLoading,
+        ));
+      },
+    );
+  }
+
+  /// Add a comment to a post
+  Future<void> _onCommentAddRequested(
+    FeedCommentAddRequested event,
+    Emitter<FeedState> emit,
+  ) async {
+    final result = await postRepository.createComment(event.postId, event.content);
+
+    result.fold(
+      (error) {
+        AppLogger.error('Failed to add comment: $error');
+        emit(state.copyWith(errorMessage: error));
+      },
+      (newComment) {
+        // Add new comment to the list
+        final updatedComments = Map<String, List<CommentModel>>.from(state.comments);
+        final postComments = List<CommentModel>.from(updatedComments[event.postId] ?? []);
+        postComments.add(newComment);
+        updatedComments[event.postId] = postComments;
+
+        // Update comment count in post
+        final updatedPosts = state.posts.map((post) {
+          if (post.id == event.postId) {
+            return PostModel(
+              id: post.id,
+              userId: post.userId,
+              userName: post.userName,
+              userPhotoUrl: post.userPhotoUrl,
+              content: post.content,
+              mediaUrls: post.mediaUrls,
+              likeCount: post.likeCount,
+              commentCount: post.commentCount + 1,
+              shareCount: post.shareCount,
+              isLiked: post.isLiked,
+              createdAt: post.createdAt,
+              updatedAt: post.updatedAt,
+            );
+          }
+          return post;
+        }).toList();
+
+        emit(state.copyWith(
+          comments: updatedComments,
+          posts: updatedPosts,
+        ));
+      },
+    );
   }
 }

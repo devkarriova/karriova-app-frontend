@@ -42,7 +42,7 @@ class AppConfig {
   static const String profileEndpoint = '/profiles/{userId}';
   static const String myProfileEndpoint = '/profiles/me';
   static const String createProfileEndpoint = '/profiles';
-  static const String updateProfileUserEndpoint = '/profiles/me';
+  static const String updateProfileUserEndpoint = '/profiles/me/basic';
 
   // Timeouts
   static const Duration connectionTimeout = Duration(seconds: 30);

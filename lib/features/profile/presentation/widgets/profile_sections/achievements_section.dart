@@ -4,6 +4,9 @@ import 'package:intl/intl.dart';
 import '../../../../../core/constants/app_colors.dart';
 import '../../bloc/profile_bloc.dart';
 import '../../bloc/profile_state.dart';
+import '../../bloc/profile_event.dart';
+import '../edit_forms/profile_item_dialog.dart';
+import '../../../domain/models/profile_model.dart';
 
 /// Achievements section - displays certifications, projects, and awards in tabs
 class AchievementsSection extends StatefulWidget {
@@ -63,6 +66,8 @@ class _AchievementsSectionState extends State<AchievementsSection>
                   fontSize: 14,
                   fontWeight: FontWeight.normal,
                 ),
+                labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+                indicatorSize: TabBarIndicatorSize.tab,
                 tabs: const [
                   Tab(text: 'Certifications'),
                   Tab(text: 'Projects'),
@@ -93,38 +98,83 @@ class _AchievementsSectionState extends State<AchievementsSection>
 class _CertificationsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // Mock data
-    final certifications = _getMockCertifications();
+    return BlocBuilder<ProfileBloc, ProfileState>(
+      builder: (context, state) {
+        if (!state.hasProfile) {
+          return const Center(child: Text('No profile data'));
+        }
 
-    return Stack(
-      children: [
-        ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: certifications.length,
-          itemBuilder: (context, index) {
-            final cert = certifications[index];
-            return _buildCertificationCard(context, cert);
-          },
-        ),
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: FloatingActionButton(
-            heroTag: 'add_cert',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Add certification functionality coming soon')),
-              );
-            },
-            backgroundColor: AppColors.primary,
-            child: const Icon(Icons.add, color: Colors.white),
-          ),
-        ),
-      ],
+        // Get real certifications from profile
+        final certifications = state.profile!.certifications;
+
+        return Stack(
+          children: [
+            if (certifications.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.verified_outlined, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No certifications added yet',
+                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tap the + button to add your certifications',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: certifications.length,
+                itemBuilder: (context, index) {
+                  final cert = certifications[index];
+                  return _buildCertificationCard(context, cert, index);
+                },
+              ),
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: FloatingActionButton(
+                heroTag: 'add_cert',
+                onPressed: () async {
+                  final result = await showDialog<Map<String, dynamic>>(
+                    context: context,
+                    builder: (context) => const ProfileItemDialog(
+                      type: ProfileItemType.certification,
+                    ),
+                  );
+                  if (result != null && context.mounted) {
+                    context.read<ProfileBloc>().add(
+                      ProfileCertificationAdded(
+                        name: result['name'] as String,
+                        issuer: result['issuer'] as String,
+                        issueDate: result['issueDate'] as DateTime,
+                        expiryDate: result['expiryDate'] as DateTime?,
+                        credentialUrl: result['credentialUrl'] as String? ?? '',
+                      ),
+                    );
+                  }
+                },
+                backgroundColor: AppColors.primary,
+                child: const Icon(Icons.add, color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildCertificationCard(BuildContext context, Map<String, dynamic> cert) {
+  Widget _buildCertificationCard(BuildContext context, Certification cert, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -157,7 +207,7 @@ class _CertificationsTab extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  cert['name'] as String,
+                  cert.name,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -166,7 +216,7 @@ class _CertificationsTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  cert['issuer'] as String,
+                  cert.issuer,
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[700],
@@ -174,12 +224,22 @@ class _CertificationsTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Issued: ${DateFormat('MMM yyyy').format(cert['issueDate'] as DateTime)}',
+                  'Issued: ${DateFormat('MMM yyyy').format(cert.issueDate)}',
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey[600],
                   ),
                 ),
+                if (cert.expiryDate != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Expires: ${DateFormat('MMM yyyy').format(cert.expiryDate!)}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -192,30 +252,64 @@ class _CertificationsTab extends StatelessWidget {
                 child: Text('Delete', style: TextStyle(color: Colors.red)),
               ),
             ],
-            onSelected: (value) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('$value certification coming soon')),
-              );
+            onSelected: (value) async {
+              if (value == 'edit') {
+                final certData = {
+                  'name': cert.name,
+                  'issuer': cert.issuer,
+                  'issueDate': cert.issueDate,
+                  'expiryDate': cert.expiryDate,
+                  'credentialUrl': cert.credentialUrl,
+                };
+                final result = await showDialog<Map<String, dynamic>>(
+                  context: context,
+                  builder: (context) => ProfileItemDialog(
+                    type: ProfileItemType.certification,
+                    initialData: certData,
+                  ),
+                );
+                if (result != null && context.mounted) {
+                  context.read<ProfileBloc>().add(
+                    ProfileCertificationUpdated(
+                      index: index,
+                      name: result['name'] as String,
+                      issuer: result['issuer'] as String,
+                      issueDate: result['issueDate'] as DateTime,
+                      expiryDate: result['expiryDate'] as DateTime?,
+                      credentialUrl: result['credentialUrl'] as String? ?? '',
+                    ),
+                  );
+                }
+              } else if (value == 'delete') {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Delete Certification'),
+                    content: Text('Are you sure you want to delete "${cert.name}"?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true && context.mounted) {
+                  context.read<ProfileBloc>().add(
+                    ProfileCertificationDeleted(index: index),
+                  );
+                }
+              }
             },
           ),
         ],
       ),
     );
-  }
-
-  List<Map<String, dynamic>> _getMockCertifications() {
-    return [
-      {
-        'name': 'AWS Certified Solutions Architect',
-        'issuer': 'Amazon Web Services',
-        'issueDate': DateTime(2023, 6),
-      },
-      {
-        'name': 'Google Cloud Professional',
-        'issuer': 'Google Cloud',
-        'issueDate': DateTime(2023, 3),
-      },
-    ];
   }
 }
 
@@ -223,37 +317,85 @@ class _CertificationsTab extends StatelessWidget {
 class _ProjectsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final projects = _getMockProjects();
+    return BlocBuilder<ProfileBloc, ProfileState>(
+      builder: (context, state) {
+        if (!state.hasProfile) {
+          return const Center(child: Text('No profile data'));
+        }
 
-    return Stack(
-      children: [
-        ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: projects.length,
-          itemBuilder: (context, index) {
-            final project = projects[index];
-            return _buildProjectCard(context, project);
-          },
-        ),
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: FloatingActionButton(
-            heroTag: 'add_project',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Add project functionality coming soon')),
-              );
-            },
-            backgroundColor: AppColors.primary,
-            child: const Icon(Icons.add, color: Colors.white),
-          ),
-        ),
-      ],
+        // Get real projects from profile
+        final projects = state.profile!.projects;
+
+        return Stack(
+          children: [
+            if (projects.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.work_outline, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No projects added yet',
+                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tap the + button to add your projects',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: projects.length,
+                itemBuilder: (context, index) {
+                  final project = projects[index];
+                  return _buildProjectCard(context, project, index);
+                },
+              ),
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: FloatingActionButton(
+                heroTag: 'add_project',
+                onPressed: () async {
+                  final result = await showDialog<Map<String, dynamic>>(
+                    context: context,
+                    builder: (context) => const ProfileItemDialog(
+                      type: ProfileItemType.project,
+                    ),
+                  );
+                  if (result != null && context.mounted) {
+                    context.read<ProfileBloc>().add(
+                      ProfileProjectAdded(
+                        name: result['name'] as String,
+                        description: result['description'] as String,
+                        startDate: result['startDate'] as DateTime,
+                        endDate: result['endDate'] as DateTime?,
+                        current: result['current'] as bool? ?? false,
+                        url: result['url'] as String? ?? '',
+                        technologies: List<String>.from(result['technologies'] as List? ?? []),
+                      ),
+                    );
+                  }
+                },
+                backgroundColor: AppColors.primary,
+                child: const Icon(Icons.add, color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildProjectCard(BuildContext context, Map<String, dynamic> project) {
+  Widget _buildProjectCard(BuildContext context, Project project, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -276,7 +418,7 @@ class _ProjectsTab extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  project['name'] as String,
+                  project.name,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -293,17 +435,70 @@ class _ProjectsTab extends StatelessWidget {
                     child: Text('Delete', style: TextStyle(color: Colors.red)),
                   ),
                 ],
-                onSelected: (value) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('$value project coming soon')),
-                  );
+                onSelected: (value) async {
+                  if (value == 'edit') {
+                    final projectData = {
+                      'name': project.name,
+                      'description': project.description,
+                      'startDate': project.startDate,
+                      'endDate': project.endDate,
+                      'current': project.current,
+                      'url': project.url,
+                      'technologies': project.technologies,
+                    };
+                    final result = await showDialog<Map<String, dynamic>>(
+                      context: context,
+                      builder: (context) => ProfileItemDialog(
+                        type: ProfileItemType.project,
+                        initialData: projectData,
+                      ),
+                    );
+                    if (result != null && context.mounted) {
+                      context.read<ProfileBloc>().add(
+                        ProfileProjectUpdated(
+                          index: index,
+                          name: result['name'] as String,
+                          description: result['description'] as String,
+                          startDate: result['startDate'] as DateTime,
+                          endDate: result['endDate'] as DateTime?,
+                          current: result['current'] as bool? ?? false,
+                          url: result['url'] as String? ?? '',
+                          technologies: List<String>.from(result['technologies'] as List? ?? []),
+                        ),
+                      );
+                    }
+                  } else if (value == 'delete') {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete Project'),
+                        content: Text('Are you sure you want to delete "${project.name}"?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            style: TextButton.styleFrom(foregroundColor: Colors.red),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true && context.mounted) {
+                      context.read<ProfileBloc>().add(
+                        ProfileProjectDeleted(index: index),
+                      );
+                    }
+                  }
                 },
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            project['description'] as String,
+            project.description,
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[700],
@@ -314,7 +509,7 @@ class _ProjectsTab extends StatelessWidget {
           Wrap(
             spacing: 6,
             runSpacing: 6,
-            children: (project['technologies'] as List<String>)
+            children: project.technologies
                 .map((tech) => Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
@@ -336,60 +531,88 @@ class _ProjectsTab extends StatelessWidget {
       ),
     );
   }
-
-  List<Map<String, dynamic>> _getMockProjects() {
-    return [
-      {
-        'name': 'E-Commerce Mobile App',
-        'description':
-            'Built a full-stack e-commerce application with Flutter and Node.js, featuring payment integration and real-time inventory management.',
-        'technologies': ['Flutter', 'Node.js', 'MongoDB', 'Stripe'],
-      },
-      {
-        'name': 'AI Chatbot',
-        'description':
-            'Developed an AI-powered customer service chatbot using Python and TensorFlow, reducing response time by 60%.',
-        'technologies': ['Python', 'TensorFlow', 'NLP', 'Docker'],
-      },
-    ];
-  }
 }
 
 /// Awards Tab
 class _AwardsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final awards = _getMockAwards();
+    return BlocBuilder<ProfileBloc, ProfileState>(
+      builder: (context, state) {
+        if (!state.hasProfile) {
+          return const Center(child: Text('No profile data'));
+        }
 
-    return Stack(
-      children: [
-        ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: awards.length,
-          itemBuilder: (context, index) {
-            final award = awards[index];
-            return _buildAwardCard(context, award);
-          },
-        ),
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: FloatingActionButton(
-            heroTag: 'add_award',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Add award functionality coming soon')),
-              );
-            },
-            backgroundColor: AppColors.primary,
-            child: const Icon(Icons.add, color: Colors.white),
-          ),
-        ),
-      ],
+        // Get real awards from profile
+        final awards = state.profile!.awards;
+
+        return Stack(
+          children: [
+            if (awards.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.emoji_events_outlined, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No awards added yet',
+                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tap the + button to add your awards',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: awards.length,
+                itemBuilder: (context, index) {
+                  final award = awards[index];
+                  return _buildAwardCard(context, award, index);
+                },
+              ),
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: FloatingActionButton(
+                heroTag: 'add_award',
+                onPressed: () async {
+                  final result = await showDialog<Map<String, dynamic>>(
+                    context: context,
+                    builder: (context) => const ProfileItemDialog(
+                      type: ProfileItemType.award,
+                    ),
+                  );
+                  if (result != null && context.mounted) {
+                    context.read<ProfileBloc>().add(
+                      ProfileAwardAdded(
+                        title: result['title'] as String,
+                        issuer: result['issuer'] as String,
+                        date: result['date'] as DateTime,
+                        description: result['description'] as String? ?? '',
+                      ),
+                    );
+                  }
+                },
+                backgroundColor: AppColors.primary,
+                child: const Icon(Icons.add, color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildAwardCard(BuildContext context, Map<String, dynamic> award) {
+  Widget _buildAwardCard(BuildContext context, Award award, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -422,7 +645,7 @@ class _AwardsTab extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  award['name'] as String,
+                  award.title,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -431,7 +654,7 @@ class _AwardsTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  award['issuer'] as String,
+                  award.issuer,
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[700],
@@ -439,7 +662,7 @@ class _AwardsTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  DateFormat('MMM yyyy').format(award['date'] as DateTime),
+                  DateFormat('MMM yyyy').format(award.date),
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey[600],
@@ -457,29 +680,61 @@ class _AwardsTab extends StatelessWidget {
                 child: Text('Delete', style: TextStyle(color: Colors.red)),
               ),
             ],
-            onSelected: (value) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('$value award coming soon')),
-              );
+            onSelected: (value) async {
+              if (value == 'edit') {
+                final awardData = {
+                  'title': award.title,
+                  'issuer': award.issuer,
+                  'date': award.date,
+                  'description': award.description,
+                };
+                final result = await showDialog<Map<String, dynamic>>(
+                  context: context,
+                  builder: (context) => ProfileItemDialog(
+                    type: ProfileItemType.award,
+                    initialData: awardData,
+                  ),
+                );
+                if (result != null && context.mounted) {
+                  context.read<ProfileBloc>().add(
+                    ProfileAwardUpdated(
+                      index: index,
+                      title: result['title'] as String,
+                      issuer: result['issuer'] as String,
+                      date: result['date'] as DateTime,
+                      description: result['description'] as String? ?? '',
+                    ),
+                  );
+                }
+              } else if (value == 'delete') {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Delete Award'),
+                    content: Text('Are you sure you want to delete "${award.title}"?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true && context.mounted) {
+                  context.read<ProfileBloc>().add(
+                    ProfileAwardDeleted(index: index),
+                  );
+                }
+              }
             },
           ),
         ],
       ),
     );
-  }
-
-  List<Map<String, dynamic>> _getMockAwards() {
-    return [
-      {
-        'name': 'Best Innovation Award',
-        'issuer': 'Tech Innovation Summit 2023',
-        'date': DateTime(2023, 9),
-      },
-      {
-        'name': 'Employee of the Year',
-        'issuer': 'Tech Solutions Inc.',
-        'date': DateTime(2022, 12),
-      },
-    ];
   }
 }

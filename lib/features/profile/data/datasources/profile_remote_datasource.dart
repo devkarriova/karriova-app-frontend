@@ -34,6 +34,11 @@ abstract class ProfileRemoteDataSource {
     String? location,
     String? website,
     List<String>? skills,
+    List<Experience>? experience,
+    List<Education>? education,
+    List<Certification>? certifications,
+    List<Project>? projects,
+    List<Award>? awards,
   });
 
   // ========== NEW PROFILE METHODS ==========
@@ -169,6 +174,11 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     String? location,
     String? website,
     List<String>? skills,
+    List<Experience>? experience,
+    List<Education>? education,
+    List<Certification>? certifications,
+    List<Project>? projects,
+    List<Award>? awards,
   }) async {
     try {
       final Map<String, dynamic> body = {};
@@ -177,6 +187,11 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       if (location != null) body['location'] = location;
       if (website != null) body['website'] = website;
       if (skills != null) body['skills'] = skills;
+      if (experience != null) body['experience'] = experience.map((e) => e.toJson()).toList();
+      if (education != null) body['education'] = education.map((e) => e.toJson()).toList();
+      if (certifications != null) body['certifications'] = certifications.map((e) => e.toJson()).toList();
+      if (projects != null) body['projects'] = projects.map((e) => e.toJson()).toList();
+      if (awards != null) body['awards'] = awards.map((e) => e.toJson()).toList();
 
       final response = await apiClient.put(
         AppConfig.updateProfileUserEndpoint,
@@ -230,7 +245,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       if (website != null) body['website'] = website;
 
       final response = await apiClient.put(
-        '/api/profile/$userId/basic',
+        '/api/v1/profiles/me/basic',
         body: body,
         requiresAuth: true,
       );

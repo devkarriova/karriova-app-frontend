@@ -34,6 +34,11 @@ abstract class ProfileRepository {
     String? location,
     String? website,
     List<String>? skills,
+    List<Experience>? experience,
+    List<Education>? education,
+    List<Certification>? certifications,
+    List<Project>? projects,
+    List<Award>? awards,
   });
 
   // ========== NEW PROFILE METHODS ==========
