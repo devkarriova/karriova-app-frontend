@@ -6,6 +6,7 @@ import '../../../../core/widgets/navigation/app_navigation_bar.dart';
 import '../../../../core/di/injection.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../follow/presentation/bloc/follow_bloc.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
@@ -68,8 +69,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: _profileBloc,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: _profileBloc),
+        BlocProvider(create: (context) => getIt<FollowBloc>()),
+      ],
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, authState) {
           // Load profile when auth becomes ready
@@ -132,9 +136,9 @@ class _ProfilePageContent extends StatelessWidget {
                 final currentUser = context.read<AuthBloc>().state.user;
                 final isOwnProfile = currentUser != null && profile.userId == currentUser.id;
 
-                // Get user name and initials - prefer user.name, fallback to email, then headline
-                final userName = currentUser?.name ?? currentUser?.email ?? 'User';
-                final userInitials = _getInitials(userName);
+                // Use profile data for display (works for both own and other profiles)
+                final userName = profile.name.isNotEmpty ? profile.name : (profile.email.isNotEmpty ? profile.email : 'User');
+                final userInitials = profile.initials;
 
                 return RefreshIndicator(
                   onRefresh: () async {
@@ -169,6 +173,7 @@ class _ProfilePageContent extends StatelessWidget {
                       SliverToBoxAdapter(
                         child: ProfileInfoCard(
                           name: userName,
+                          userId: profile.userId,
                           isPremium: true,
                           title: profile.experience.isNotEmpty
                               ? '${profile.experience.first.title} at ${profile.experience.first.company}'
@@ -180,23 +185,15 @@ class _ProfilePageContent extends StatelessWidget {
                               ? profile.experience.first.location
                               : (profile.location.isNotEmpty ? profile.location : 'Add location'),
                           isOwnProfile: isOwnProfile,
-                          onConnect: isOwnProfile
-                              ? null
-                              : () {
-                                  // TODO: Handle connect action
-                                },
-                          onSendMessage: isOwnProfile
-                              ? null
-                              : () {
-                                  // TODO: Handle send message action
-                                },
                           onEditProfile: isOwnProfile
                               ? () async {
+                                  final user = context.read<AuthBloc>().state.user;
+                                  if (user == null) return;
                                   final result = await showDialog<Map<String, dynamic>>(
                                     context: context,
                                     builder: (context) => PersonalDetailsDialog(
                                       initialName: userName,
-                                      initialEmail: currentUser.email,
+                                      initialEmail: user.email,
                                       initialHeadline: profile.headline,
                                       initialWebsite: profile.website,
                                       initialIsPublic: true, // TODO: Get from profile settings
@@ -283,22 +280,5 @@ class _ProfilePageContent extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _getInitials(String headline) {
-    if (headline.trim().isEmpty) return '??';
-
-    final words = headline.trim().split(RegExp(r'\s+'));
-    final nonEmptyWords = words.where((w) => w.isNotEmpty).toList();
-
-    if (nonEmptyWords.isEmpty) return '??';
-
-    if (nonEmptyWords.length == 1) {
-      return nonEmptyWords[0].length >= 2
-          ? nonEmptyWords[0].substring(0, 2).toUpperCase()
-          : nonEmptyWords[0][0].toUpperCase();
-    }
-
-    return '${nonEmptyWords[0][0]}${nonEmptyWords[1][0]}'.toUpperCase();
   }
 }

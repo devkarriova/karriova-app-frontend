@@ -223,6 +223,9 @@ class Award extends Equatable {
 /// Profile model matching backend PublicProfile structure
 class ProfileModel extends Equatable {
   final String userId;
+  final String name;
+  final String email;
+  final String? photoUrl;
   final String bio;
   final String headline;
   final String location;
@@ -238,6 +241,9 @@ class ProfileModel extends Equatable {
 
   const ProfileModel({
     required this.userId,
+    required this.name,
+    required this.email,
+    this.photoUrl,
     required this.bio,
     required this.headline,
     required this.location,
@@ -252,23 +258,39 @@ class ProfileModel extends Equatable {
     required this.updatedAt,
   });
 
+  /// Get user initials from name
+  String get initials {
+    if (name.isEmpty) return '??';
+    final words = name.trim().split(RegExp(r'\s+'));
+    if (words.isEmpty) return '??';
+    if (words.length == 1) {
+      return words[0].length >= 2
+          ? words[0].substring(0, 2).toUpperCase()
+          : words[0][0].toUpperCase();
+    }
+    return '${words[0][0]}${words[1][0]}'.toUpperCase();
+  }
+
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
     return ProfileModel(
       userId: json['user_id'] as String,
-      bio: json['bio'] as String,
-      headline: json['headline'] as String,
-      location: json['location'] as String,
-      website: json['website'] as String,
-      skills: (json['skills'] as List<dynamic>).map((e) => e as String).toList(),
-      experience: (json['experience'] as List<dynamic>)
-          .map((e) => Experience.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      education: (json['education'] as List<dynamic>)
-          .map((e) => Education.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      certifications: (json['certifications'] as List<dynamic>)
-          .map((e) => Certification.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      name: json['name'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      photoUrl: json['photo_url'] as String?,
+      bio: json['bio'] as String? ?? '',
+      headline: json['headline'] as String? ?? '',
+      location: json['location'] as String? ?? '',
+      website: json['website'] as String? ?? '',
+      skills: (json['skills'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
+      experience: (json['experience'] as List<dynamic>?)
+          ?.map((e) => Experience.fromJson(e as Map<String, dynamic>))
+          .toList() ?? [],
+      education: (json['education'] as List<dynamic>?)
+          ?.map((e) => Education.fromJson(e as Map<String, dynamic>))
+          .toList() ?? [],
+      certifications: (json['certifications'] as List<dynamic>?)
+          ?.map((e) => Certification.fromJson(e as Map<String, dynamic>))
+          .toList() ?? [],
       projects: (json['projects'] as List<dynamic>? ?? [])
           .map((e) => Project.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -283,6 +305,9 @@ class ProfileModel extends Equatable {
   Map<String, dynamic> toJson() {
     return {
       'user_id': userId,
+      'name': name,
+      'email': email,
+      'photo_url': photoUrl,
       'bio': bio,
       'headline': headline,
       'location': location,
@@ -300,6 +325,9 @@ class ProfileModel extends Equatable {
 
   ProfileModel copyWith({
     String? userId,
+    String? name,
+    String? email,
+    String? photoUrl,
     String? bio,
     String? headline,
     String? location,
@@ -315,6 +343,9 @@ class ProfileModel extends Equatable {
   }) {
     return ProfileModel(
       userId: userId ?? this.userId,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      photoUrl: photoUrl ?? this.photoUrl,
       bio: bio ?? this.bio,
       headline: headline ?? this.headline,
       location: location ?? this.location,
@@ -333,6 +364,9 @@ class ProfileModel extends Equatable {
   @override
   List<Object?> get props => [
         userId,
+        name,
+        email,
+        photoUrl,
         bio,
         headline,
         location,

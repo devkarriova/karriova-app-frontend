@@ -59,7 +59,7 @@ class AppRouter {
         },
       ),
 
-      // Profile Page
+      // Profile Page (own profile)
       GoRoute(
         path: '/profile',
         name: 'profile',
@@ -71,13 +71,30 @@ class AppRouter {
         },
       ),
 
+      // Profile Page (other user's profile)
+      GoRoute(
+        path: '/profile/:userId',
+        name: 'user-profile',
+        pageBuilder: (context, state) {
+          final userId = state.pathParameters['userId'];
+          return MaterialPage(
+            child: ProfilePage(userId: userId),
+          );
+        },
+      ),
+
       // Chat Page (unified with conversation list + conversation view)
       GoRoute(
         path: '/chat',
         name: 'chat',
         pageBuilder: (context, state) {
-          return const MaterialPage(
-            child: ChatPage(),
+          final userId = state.uri.queryParameters['userId'];
+          final userName = state.uri.queryParameters['userName'];
+          return MaterialPage(
+            child: ChatPage(
+              initialUserId: userId,
+              initialUserName: userName,
+            ),
           );
         },
       ),

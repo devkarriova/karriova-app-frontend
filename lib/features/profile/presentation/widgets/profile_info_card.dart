@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../../follow/presentation/widgets/follow_button.dart';
 
 /// Profile info card widget - displays user info and action buttons
 class ProfileInfoCard extends StatelessWidget {
   final String name;
+  final String? userId; // User ID for follow/message actions
   final bool isPremium;
   final String title;
   final String bio;
   final String institution;
   final String location;
   final bool isOwnProfile;
-  final VoidCallback? onConnect;
-  final VoidCallback? onSendMessage;
   final VoidCallback? onEditProfile;
 
   const ProfileInfoCard({
     super.key,
     required this.name,
+    this.userId,
     this.isPremium = false,
     required this.title,
     this.bio = '',
     required this.institution,
     required this.location,
     this.isOwnProfile = false,
-    this.onConnect,
-    this.onSendMessage,
     this.onEditProfile,
   });
 
@@ -150,57 +150,44 @@ class ProfileInfoCard extends StatelessWidget {
           ),
 
           // Action buttons for other users
-          if (!isOwnProfile) ...[
+          if (!isOwnProfile && userId != null) ...[
             const SizedBox(height: 24),
             Row(
               children: [
-                if (onConnect != null)
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: onConnect,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF6B9D),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                // Follow/Connect Button
+                SizedBox(
+                  width: 120,
+                  child: FollowButton(userId: userId!),
+                ),
+                const SizedBox(width: 12),
+                // Message Button
+                SizedBox(
+                  width: 140,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      // Navigate to chat with this user
+                      context.push('/chat?userId=$userId&userName=$name');
+                    },
+                    icon: const Icon(Icons.mail_outline, size: 18),
+                    label: const Text(
+                      'Message',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                       ),
-                      child: const Text(
-                        'Connect',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                      side: BorderSide(
+                        color: Colors.grey[400]!,
+                        width: 1.5,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                   ),
-                if (onConnect != null && onSendMessage != null)
-                  const SizedBox(width: 12),
-                if (onSendMessage != null)
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: onSendMessage,
-                      icon: const Icon(Icons.mail_outline, size: 20),
-                      label: const Text(
-                        'Send Message',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(
-                          color: Colors.grey[400]!,
-                          width: 1.5,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
+                ),
               ],
             ),
           ],

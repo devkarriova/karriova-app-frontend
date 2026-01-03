@@ -21,7 +21,14 @@ import '../widgets/message_bubble.dart';
 /// Left side: Conversation list
 /// Right side: Active conversation
 class ChatPage extends StatelessWidget {
-  const ChatPage({super.key});
+  final String? initialUserId;
+  final String? initialUserName;
+
+  const ChatPage({
+    super.key,
+    this.initialUserId,
+    this.initialUserName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -39,13 +46,22 @@ class ChatPage extends StatelessWidget {
             ..add(LoadFollowingEvent(currentUserId, refresh: true)),
         ),
       ],
-      child: const _ChatPageView(),
+      child: _ChatPageView(
+        initialUserId: initialUserId,
+        initialUserName: initialUserName,
+      ),
     );
   }
 }
 
 class _ChatPageView extends StatefulWidget {
-  const _ChatPageView();
+  final String? initialUserId;
+  final String? initialUserName;
+
+  const _ChatPageView({
+    this.initialUserId,
+    this.initialUserName,
+  });
 
   @override
   State<_ChatPageView> createState() => _ChatPageViewState();
@@ -58,6 +74,17 @@ class _ChatPageViewState extends State<_ChatPageView> {
 
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // If initial user is provided, select them for a new conversation
+    if (widget.initialUserId != null) {
+      _selectedConversationId = '';
+      _selectedOtherUserId = widget.initialUserId;
+      _selectedUserName = widget.initialUserName ?? 'User';
+    }
+  }
 
   @override
   void dispose() {
