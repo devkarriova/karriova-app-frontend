@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../follow/domain/models/follow_model.dart';
+import '../../../follow/presentation/bloc/follow_bloc.dart';
+import '../../../follow/presentation/bloc/follow_event.dart';
+import '../../../follow/presentation/bloc/follow_state.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
@@ -14,9 +20,21 @@ class ChatListPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<ChatBloc>()
-        ..add(const ChatConversationsRequested()),
+    // Get current user ID from auth bloc
+    final authState = context.read<AuthBloc>().state;
+    final currentUserId = authState.user?.id ?? '';
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) => getIt<ChatBloc>()
+            ..add(const ChatConversationsRequested()),
+        ),
+        BlocProvider(
+          create: (context) => getIt<FollowBloc>()
+            ..add(LoadFollowingEvent(currentUserId, refresh: true)),
+        ),
+      ],
       child: const _ChatListView(),
     );
   }
@@ -108,35 +126,7 @@ class _ChatListView extends StatelessWidget {
           }
 
           if (state.conversations.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.chat_bubble_outline,
-                    size: 80,
-                    color: AppColors.textTertiary.withOpacity(0.5),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No conversations yet',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Start a conversation to see it here',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textTertiary,
-                    ),
-                  ),
-                ],
-              ),
-            );
+            return _buildEmptyStateWithSuggestions(context);
           }
 
           return RefreshIndicator(
@@ -188,5 +178,191 @@ class _ChatListView extends StatelessWidget {
     // For now, return null
     // In production, this should come from a user cache or API
     return null;
+  }
+
+  Widget _buildEmptyStateWithSuggestions(BuildContext context) {
+    return BlocBuilder<FollowBloc, FollowState>(
+      builder: (context, followState) {
+        return CustomScrollView(
+          slivers: [
+            // Header message
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_outline,
+                      size: 64,
+                      color: AppColors.textTertiary.withOpacity(0.5),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'No conversations yet',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Start a conversation with someone you follow',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textTertiary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Section header
+            if (followState.following.isNotEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text(
+                    'People you follow',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+
+            // List of followed users
+            if (followState.following.isNotEmpty)
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final user = followState.following[index];
+                    return _buildUserTile(context, user);
+                  },
+                  childCount: followState.following.length,
+                ),
+              ),
+
+            // Loading state
+            if (followState.status == FollowStatus.loading)
+              const SliverToBoxAdapter(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
+                ),
+              ),
+
+            // Empty following list
+            if (followState.following.isEmpty && 
+                followState.status != FollowStatus.loading)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Follow people to start conversations',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textTertiary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          // Navigate to search using GoRouter
+                          context.push('/search');
+                        },
+                        icon: const Icon(Icons.search),
+                        label: const Text('Find People'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildUserTile(BuildContext context, FollowUserModel user) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: CircleAvatar(
+        radius: 24,
+        backgroundColor: AppColors.surfaceVariant,
+        backgroundImage: user.photoUrl != null && user.photoUrl!.isNotEmpty
+            ? NetworkImage(user.photoUrl!)
+            : null,
+        child: user.photoUrl == null || user.photoUrl!.isEmpty
+            ? Text(
+                user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              )
+            : null,
+      ),
+      title: Text(
+        user.name,
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        ),
+      ),
+      subtitle: user.headline != null && user.headline!.isNotEmpty
+          ? Text(
+              user.headline!,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            )
+          : null,
+      trailing: IconButton(
+        icon: const Icon(Icons.chat_bubble_outline, color: AppColors.primary),
+        onPressed: () {
+          // Start a new conversation with this user
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatConversationPage(
+                conversationId: '', // Empty means new conversation
+                otherUserId: user.id,
+              ),
+            ),
+          );
+        },
+        tooltip: 'Start conversation',
+      ),
+      onTap: () {
+        // Start a new conversation with this user
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatConversationPage(
+              conversationId: '', // Empty means new conversation
+              otherUserId: user.id,
+            ),
+          ),
+        );
+      },
+    );
   }
 }

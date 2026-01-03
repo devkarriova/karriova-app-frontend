@@ -32,6 +32,10 @@ import '../../features/notifications/data/datasources/notification_remote_dataso
 import '../../features/notifications/data/repositories/notification_repository_impl.dart';
 import '../../features/notifications/domain/repositories/notification_repository.dart';
 import '../../features/notifications/presentation/bloc/notification_bloc.dart';
+import '../../features/follow/data/datasources/follow_remote_datasource.dart';
+import '../../features/follow/data/repositories/follow_repository_impl.dart';
+import '../../features/follow/domain/repositories/follow_repository.dart';
+import '../../features/follow/presentation/bloc/follow_bloc.dart';
 
 final getIt = GetIt.instance;
 
@@ -114,7 +118,7 @@ Future<void> configureDependencies() async {
   );
 
   getIt.registerLazySingleton<SearchRemoteDataSource>(
-    () => SearchRemoteDataSource(getIt<Dio>(), baseUrl: AppConfig.apiBaseUrl),
+    () => SearchRemoteDataSourceImpl(apiClient: getIt()),
   );
 
   getIt.registerLazySingleton<NotificationRemoteDataSource>(
@@ -160,6 +164,16 @@ Future<void> configureDependencies() async {
     ),
   );
 
+  getIt.registerLazySingleton<FollowRemoteDataSource>(
+    () => FollowRemoteDataSourceImpl(apiClient: getIt()),
+  );
+
+  getIt.registerLazySingleton<FollowRepository>(
+    () => FollowRepositoryImpl(
+      remoteDataSource: getIt(),
+    ),
+  );
+
   // BLoCs
   getIt.registerFactory<AuthBloc>(
     () => AuthBloc(authRepository: getIt()),
@@ -189,5 +203,9 @@ Future<void> configureDependencies() async {
 
   getIt.registerFactory<NotificationBloc>(
     () => NotificationBloc(notificationRepository: getIt()),
+  );
+
+  getIt.registerFactory<FollowBloc>(
+    () => FollowBloc(followRepository: getIt()),
   );
 }

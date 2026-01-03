@@ -4,6 +4,7 @@ import '../../domain/models/comment_model.dart';
 
 abstract class PostRemoteDataSource {
   Future<List<PostModel>> getFeed({int limit = 20, int offset = 0});
+  Future<List<PostModel>> getDiscover({int limit = 20, int offset = 0});
   Future<List<PostModel>> getUserPosts(String userId, {int limit = 20, int offset = 0});
   Future<PostModel> getPost(String postId);
   Future<PostModel> createPost(String content, List<String> mediaUrls);
@@ -32,6 +33,22 @@ class PostRemoteDataSourceImpl implements PostRemoteDataSource {
 
     if (!response.isSuccess || response.data == null) {
       throw Exception(response.errorMessage ?? 'Failed to get feed');
+    }
+
+    final List<dynamic> posts = response.data as List<dynamic>;
+    return posts.map((json) => PostModel.fromJson(json as Map<String, dynamic>)).toList();
+  }
+
+  @override
+  Future<List<PostModel>> getDiscover({int limit = 20, int offset = 0}) async {
+    final response = await apiClient.get(
+      '/posts/discover',
+      requiresAuth: true,
+      queryParams: {'limit': limit.toString(), 'offset': offset.toString()},
+    );
+
+    if (!response.isSuccess || response.data == null) {
+      throw Exception(response.errorMessage ?? 'Failed to get discover posts');
     }
 
     final List<dynamic> posts = response.data as List<dynamic>;

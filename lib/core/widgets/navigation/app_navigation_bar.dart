@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../constants/app_colors.dart';
 import '../../routes/app_router.dart';
+import '../../../features/auth/presentation/bloc/auth_bloc.dart';
 
 /// Horizontal navigation bar with menu items
 /// Displays below the header on main app pages
@@ -15,6 +17,9 @@ class AppNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+    final isAdmin = authState.user?.isAdmin ?? false;
+
     return Container(
       height: 44,
       width: double.infinity,
@@ -65,12 +70,13 @@ class AppNavigationBar extends StatelessWidget {
                 route: '/cv-generator',
                 isActive: currentRoute == '/cv-generator',
               ),
-              _NavItem(
-                icon: Icons.admin_panel_settings_outlined,
-                label: 'Admin',
-                route: '/admin',
-                isActive: currentRoute == '/admin',
-              ),
+              if (isAdmin)
+                _NavItem(
+                  icon: Icons.admin_panel_settings_outlined,
+                  label: 'Admin',
+                  route: '/admin',
+                  isActive: currentRoute == '/admin',
+                ),
             ],
           ),
         ),

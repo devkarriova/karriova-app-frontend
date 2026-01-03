@@ -3,8 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/pages/auth_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/feed/presentation/pages/feed_page.dart';
-import '../../features/chat/presentation/pages/chat_list_page.dart';
-import '../../features/chat/presentation/pages/chat_conversation_page.dart';
+import '../../features/chat/presentation/pages/chat_page.dart';
 import '../../features/search/presentation/pages/search_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 
@@ -21,9 +20,6 @@ class AppRouter {
   static const String chat = '/chat';
   static const String search = '/search';
   static const String notifications = '/notifications';
-
-  // Chat sub-routes
-  static const String chatConversation = '/chat/:conversationId';
 
   static final GoRouter router = GoRouter(
     initialLocation: auth, // Default landing page is login
@@ -75,29 +71,13 @@ class AppRouter {
         },
       ),
 
-      // Chat List Page
+      // Chat Page (unified with conversation list + conversation view)
       GoRoute(
         path: '/chat',
         name: 'chat',
         pageBuilder: (context, state) {
           return const MaterialPage(
-            child: ChatListPage(),
-          );
-        },
-      ),
-
-      // Chat Conversation Page
-      GoRoute(
-        path: '/chat/:conversationId',
-        name: 'conversation',
-        pageBuilder: (context, state) {
-          final conversationId = state.pathParameters['conversationId']!;
-          final otherUserId = state.uri.queryParameters['otherUserId'] ?? '';
-          return MaterialPage(
-            child: ChatConversationPage(
-              conversationId: conversationId,
-              otherUserId: otherUserId,
-            ),
+            child: ChatPage(),
           );
         },
       ),

@@ -22,6 +22,17 @@ class PostRepositoryImpl implements PostRepository {
   }
 
   @override
+  Future<Either<String, List<PostModel>>> getDiscover({int limit = 20, int offset = 0}) async {
+    try {
+      final posts = await remoteDataSource.getDiscover(limit: limit, offset: offset);
+      return Right(posts);
+    } catch (e) {
+      AppLogger.error('Failed to get discover posts: $e');
+      return Left(_handleError(e));
+    }
+  }
+
+  @override
   Future<Either<String, List<PostModel>>> getUserPosts(String userId, {int limit = 20, int offset = 0}) async {
     try {
       final posts = await remoteDataSource.getUserPosts(userId, limit: limit, offset: offset);

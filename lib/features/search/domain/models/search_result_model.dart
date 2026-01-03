@@ -22,13 +22,13 @@ class UserSearchResult extends Equatable {
 
   factory UserSearchResult.fromJson(Map<String, dynamic> json) {
     return UserSearchResult(
-      id: json['id'] as String,
-      username: json['username'] as String,
-      email: json['email'] as String,
-      fullName: json['full_name'] as String,
-      headline: json['headline'] as String?,
-      photoUrl: json['photo_url'] as String?,
-      location: json['location'] as String?,
+      id: json['id']?.toString() ?? '',
+      username: json['username']?.toString() ?? json['email']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      fullName: json['full_name']?.toString() ?? json['name']?.toString() ?? '',
+      headline: json['headline']?.toString(),
+      photoUrl: json['photo_url']?.toString(),
+      location: json['location']?.toString(),
     );
   }
 

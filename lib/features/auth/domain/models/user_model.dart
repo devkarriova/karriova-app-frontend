@@ -5,6 +5,7 @@ class UserModel extends Equatable {
   final String email;
   final String? name;
   final String? photoUrl;
+  final String userRole;
   final bool emailVerified;
   final DateTime? createdAt;
 
@@ -13,9 +14,13 @@ class UserModel extends Equatable {
     required this.email,
     this.name,
     this.photoUrl,
+    this.userRole = 'user',
     this.emailVerified = false,
     this.createdAt,
   });
+
+  /// Check if user has admin privileges
+  bool get isAdmin => userRole == 'admin';
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
@@ -23,6 +28,7 @@ class UserModel extends Equatable {
       email: json['email'] as String,
       name: json['name'] as String?,
       photoUrl: json['photo_url'] as String?,
+      userRole: json['user_role'] as String? ?? 'user',
       emailVerified: json['email_verified'] as bool? ?? false,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -36,6 +42,7 @@ class UserModel extends Equatable {
       'email': email,
       'name': name,
       'photo_url': photoUrl,
+      'user_role': userRole,
       'email_verified': emailVerified,
       'created_at': createdAt?.toIso8601String(),
     };
@@ -46,6 +53,7 @@ class UserModel extends Equatable {
     String? email,
     String? name,
     String? photoUrl,
+    String? userRole,
     bool? emailVerified,
     DateTime? createdAt,
   }) {
@@ -54,11 +62,12 @@ class UserModel extends Equatable {
       email: email ?? this.email,
       name: name ?? this.name,
       photoUrl: photoUrl ?? this.photoUrl,
+      userRole: userRole ?? this.userRole,
       emailVerified: emailVerified ?? this.emailVerified,
       createdAt: createdAt ?? this.createdAt,
     );
   }
 
   @override
-  List<Object?> get props => [id, email, name, photoUrl, emailVerified, createdAt];
+  List<Object?> get props => [id, email, name, photoUrl, userRole, emailVerified, createdAt];
 }

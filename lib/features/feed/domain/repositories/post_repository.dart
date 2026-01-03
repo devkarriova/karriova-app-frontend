@@ -5,6 +5,7 @@ import '../models/comment_model.dart';
 /// Repository interface for post operations
 abstract class PostRepository {
   Future<Either<String, List<PostModel>>> getFeed({int limit = 20, int offset = 0});
+  Future<Either<String, List<PostModel>>> getDiscover({int limit = 20, int offset = 0});
   Future<Either<String, List<PostModel>>> getUserPosts(String userId, {int limit = 20, int offset = 0});
   Future<Either<String, PostModel>> getPost(String postId);
   Future<Either<String, PostModel>> createPost(String content, List<String> mediaUrls);

@@ -1,14 +1,22 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:stream_transform/stream_transform.dart';
 import '../../domain/models/search_result_model.dart';
 import '../../domain/repositories/search_repository.dart';
 import 'search_event.dart';
 import 'search_state.dart';
 
+EventTransformer<E> debounce<E>(Duration duration) {
+  return (events, mapper) => events.debounce(duration).switchMap(mapper);
+}
+
 class SearchBloc extends Bloc<SearchEvent, SearchState> {
   final SearchRepository searchRepository;
 
   SearchBloc({required this.searchRepository}) : super(const SearchState()) {
-    on<SearchQueryChanged>(_onQueryChanged);
+    on<SearchQueryChanged>(
+      _onQueryChanged,
+      transformer: debounce(const Duration(milliseconds: 400)),
+    );
     on<SearchUsersRequested>(_onSearchUsers);
     on<SearchPostsRequested>(_onSearchPosts);
     on<SearchAllRequested>(_onSearchAll);
@@ -40,15 +48,21 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     final result = await searchRepository.searchUsers(event.query);
 
     result.fold(
-      (error) => emit(state.copyWith(
-        status: SearchStatus.error,
-        errorMessage: error,
-      )),
-      (users) => emit(state.copyWith(
-        status: SearchStatus.success,
-        users: users,
-        usersCount: users.length,
-      )),
+      (error) {
+        print('Search error: $error');
+        emit(state.copyWith(
+          status: SearchStatus.error,
+          errorMessage: error,
+        ));
+      },
+      (users) {
+        print('Search success: found ${users.length} users');
+        emit(state.copyWith(
+          status: SearchStatus.success,
+          users: users,
+          usersCount: users.length,
+        ));
+      },
     );
   }
 

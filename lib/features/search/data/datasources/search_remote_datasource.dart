@@ -1,21 +1,65 @@
-import 'package:dio/dio.dart';
-import 'package:retrofit/retrofit.dart';
+import '../../../../core/network/api_client.dart';
 import '../../domain/models/search_result_model.dart';
 
-part 'search_remote_datasource.g.dart';
-
-@RestApi()
 abstract class SearchRemoteDataSource {
-  factory SearchRemoteDataSource(Dio dio, {String baseUrl}) = _SearchRemoteDataSource;
+  Future<SearchUsersResponse> searchUsers(String query);
+  Future<SearchPostsResponse> searchPosts(String query);
+  Future<SearchAllResponse> searchAll(String query);
+}
 
-  @GET('/search/users')
-  Future<SearchUsersResponse> searchUsers(@Query('q') String query);
+class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
+  final ApiClient apiClient;
 
-  @GET('/search/posts')
-  Future<SearchPostsResponse> searchPosts(@Query('q') String query);
+  SearchRemoteDataSourceImpl({required this.apiClient});
 
-  @GET('/search/all')
-  Future<SearchAllResponse> searchAll(@Query('q') String query);
+  @override
+  Future<SearchUsersResponse> searchUsers(String query) async {
+    final response = await apiClient.get(
+      '/search/users',
+      requiresAuth: true,
+      queryParams: {'q': query},
+    );
+
+    print('Datasource: API response success=${response.isSuccess}, data=${response.data}');
+
+    if (!response.isSuccess || response.data == null) {
+      throw Exception(response.errorMessage ?? 'Failed to search users');
+    }
+
+    final parsed = SearchUsersResponse.fromJson(response.data as Map<String, dynamic>);
+    print('Datasource: Parsed ${parsed.users.length} users');
+    return parsed;
+  }
+
+  @override
+  Future<SearchPostsResponse> searchPosts(String query) async {
+    final response = await apiClient.get(
+      '/search/posts',
+      requiresAuth: true,
+      queryParams: {'q': query},
+    );
+
+    if (!response.isSuccess || response.data == null) {
+      throw Exception(response.errorMessage ?? 'Failed to search posts');
+    }
+
+    return SearchPostsResponse.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<SearchAllResponse> searchAll(String query) async {
+    final response = await apiClient.get(
+      '/search/all',
+      requiresAuth: true,
+      queryParams: {'q': query},
+    );
+
+    if (!response.isSuccess || response.data == null) {
+      throw Exception(response.errorMessage ?? 'Failed to search');
+    }
+
+    return SearchAllResponse.fromJson(response.data as Map<String, dynamic>);
+  }
 }
 
 class SearchUsersResponse {
@@ -25,11 +69,26 @@ class SearchUsersResponse {
   SearchUsersResponse({required this.users, required this.count});
 
   factory SearchUsersResponse.fromJson(Map<String, dynamic> json) {
+    print('SearchUsersResponse.fromJson: json=$json');
+    print('SearchUsersResponse.fromJson: users raw = ${json['users']}');
+    
+    final usersList = json['users'] as List?;
+    print('SearchUsersResponse.fromJson: usersList = $usersList, length = ${usersList?.length}');
+    
+    final parsedUsers = <UserSearchResult>[];
+    if (usersList != null) {
+      for (var i = 0; i < usersList.length; i++) {
+        try {
+          print('Parsing user $i: ${usersList[i]}');
+          parsedUsers.add(UserSearchResult.fromJson(usersList[i] as Map<String, dynamic>));
+        } catch (e) {
+          print('Error parsing user $i: $e');
+        }
+      }
+    }
+    
     return SearchUsersResponse(
-      users: (json['users'] as List?)
-              ?.map((e) => UserSearchResult.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
+      users: parsedUsers,
       count: json['count'] as int? ?? 0,
     );
   }

@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../follow/presentation/bloc/follow_bloc.dart';
+import '../../../follow/presentation/widgets/follow_button.dart';
 import '../bloc/search_bloc.dart';
 import '../bloc/search_event.dart';
 import '../bloc/search_state.dart';
@@ -16,8 +18,11 @@ class SearchPage extends StatelessWidget {
     // Get query parameter from URL
     final query = GoRouterState.of(context).uri.queryParameters['q'];
 
-    return BlocProvider(
-      create: (context) => getIt<SearchBloc>(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => getIt<SearchBloc>()),
+        BlocProvider(create: (context) => getIt<FollowBloc>()),
+      ],
       child: _SearchPageContent(initialQuery: query),
     );
   }
@@ -205,6 +210,10 @@ class _SearchPageContentState extends State<_SearchPageContent> {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(12),
+        onTap: () {
+          // Navigate to user profile
+          context.push('/profile/${user.id}');
+        },
         leading: CircleAvatar(
           radius: 24,
           backgroundColor: AppColors.surfaceVariant,
@@ -254,19 +263,9 @@ class _SearchPageContentState extends State<_SearchPageContent> {
             ],
           ],
         ),
-        trailing: OutlinedButton(
-          onPressed: () {
-            // TODO: Navigate to user profile
-          },
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: AppColors.primary),
-            foregroundColor: AppColors.primary,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-          ),
-          child: const Text('View'),
+        trailing: SizedBox(
+          width: 100,
+          child: FollowButton(userId: user.id),
         ),
       ),
     );

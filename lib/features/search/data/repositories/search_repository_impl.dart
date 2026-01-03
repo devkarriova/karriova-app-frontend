@@ -1,5 +1,4 @@
 import 'package:dartz/dartz.dart';
-import 'package:dio/dio.dart';
 import '../../domain/models/search_result_model.dart';
 import '../../domain/repositories/search_repository.dart';
 import '../datasources/search_remote_datasource.dart';
@@ -13,11 +12,11 @@ class SearchRepositoryImpl implements SearchRepository {
   Future<Either<String, List<UserSearchResult>>> searchUsers(String query) async {
     try {
       final response = await remoteDataSource.searchUsers(query);
+      print('Repository: Got ${response.users.length} users from datasource');
       return Right(response.users);
-    } on DioException catch (e) {
-      return Left(e.response?.data['message'] ?? 'Failed to search users');
     } catch (e) {
-      return Left('An unexpected error occurred');
+      print('Repository error: $e');
+      return Left(e.toString());
     }
   }
 
@@ -26,10 +25,8 @@ class SearchRepositoryImpl implements SearchRepository {
     try {
       final response = await remoteDataSource.searchPosts(query);
       return Right(response.posts);
-    } on DioException catch (e) {
-      return Left(e.response?.data['message'] ?? 'Failed to search posts');
     } catch (e) {
-      return Left('An unexpected error occurred');
+      return Left(e.toString());
     }
   }
 
@@ -43,20 +40,8 @@ class SearchRepositoryImpl implements SearchRepository {
         'users_count': response.usersCount,
         'posts_count': response.postsCount,
       });
-    } on DioException catch (e) {
-      // Better error logging
-      print('DioException during search: ${e.type}');
-      print('Status code: ${e.response?.statusCode}');
-      print('Error message: ${e.message}');
-      print('Response data: ${e.response?.data}');
-
-      final errorMsg = e.response?.data?['message'] ??
-                       e.response?.data?.toString() ??
-                       'Failed to search: ${e.message}';
-      return Left(errorMsg);
     } catch (e) {
-      print('Unexpected error during search: $e');
-      return Left('An unexpected error occurred: ${e.toString()}');
+      return Left(e.toString());
     }
   }
 }
