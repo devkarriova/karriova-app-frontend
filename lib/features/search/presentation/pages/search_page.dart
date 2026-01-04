@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../follow/presentation/bloc/follow_bloc.dart';
+import '../../../follow/presentation/bloc/follow_event.dart';
+import '../../../follow/presentation/bloc/follow_state.dart';
 import '../../../follow/presentation/widgets/follow_button.dart';
 import '../bloc/search_bloc.dart';
 import '../bloc/search_event.dart';
@@ -18,10 +20,15 @@ class SearchPage extends StatelessWidget {
     // Get query parameter from URL
     final query = GoRouterState.of(context).uri.queryParameters['q'];
 
+    // Get singleton FollowBloc and always refresh followingIds to ensure correct state
+    final followBloc = getIt<FollowBloc>();
+    // Always load fresh followingIds when entering search page
+    followBloc.add(const LoadFollowingIdsEvent());
+
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (context) => getIt<SearchBloc>()),
-        BlocProvider(create: (context) => getIt<FollowBloc>()),
+        BlocProvider.value(value: followBloc),
       ],
       child: _SearchPageContent(initialQuery: query),
     );
@@ -50,7 +57,9 @@ class _SearchPageContentState extends State<_SearchPageContent> {
       // Trigger search with initial query
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          context.read<SearchBloc>().add(SearchQueryChanged(query: widget.initialQuery!));
+          context
+              .read<SearchBloc>()
+              .add(SearchQueryChanged(query: widget.initialQuery!));
         }
       });
     }
@@ -108,7 +117,8 @@ class _SearchPageContentState extends State<_SearchPageContent> {
                                 ),
                               ),
                             )
-                          : const Icon(Icons.search, color: AppColors.textSecondary),
+                          : const Icon(Icons.search,
+                              color: AppColors.textSecondary),
                       suffixIcon: state.query.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear, size: 20),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -20,7 +21,7 @@ import '../widgets/message_bubble.dart';
 /// Unified Chat Page with split view
 /// Left side: Conversation list
 /// Right side: Active conversation
-class ChatPage extends StatelessWidget {
+class ChatPage extends StatefulWidget {
   final String? initialUserId;
   final String? initialUserName;
 
@@ -31,24 +32,42 @@ class ChatPage extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  State<ChatPage> createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<ChatPage> {
+  late final ChatBloc _chatBloc;
+  late final FollowBloc _followBloc;
+
+  @override
+  void initState() {
+    super.initState();
+    _chatBloc = getIt<ChatBloc>();
+    _followBloc = getIt<FollowBloc>();
+
+    // Only load data if bloc is in initial state
+    if (_chatBloc.state.status == ChatStatus.initial) {
+      _chatBloc.add(const ChatConversationsRequested());
+    }
+
+    // Only load following if bloc hasn't loaded yet
     final authState = context.read<AuthBloc>().state;
     final currentUserId = authState.user?.id ?? '';
+    if (_followBloc.state.status == FollowStatus.initial) {
+      _followBloc.add(LoadFollowingEvent(currentUserId, refresh: true));
+    }
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(
-          create: (context) => getIt<ChatBloc>()
-            ..add(const ChatConversationsRequested()),
-        ),
-        BlocProvider(
-          create: (context) => getIt<FollowBloc>()
-            ..add(LoadFollowingEvent(currentUserId, refresh: true)),
-        ),
+        BlocProvider.value(value: _chatBloc),
+        BlocProvider.value(value: _followBloc),
       ],
       child: _ChatPageView(
-        initialUserId: initialUserId,
-        initialUserName: initialUserName,
+        initialUserId: widget.initialUserId,
+        initialUserName: widget.initialUserName,
       ),
     );
   }
@@ -74,15 +93,17 @@ class _ChatPageViewState extends State<_ChatPageView> {
 
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _messageFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
-    // If initial user is provided, select them for a new conversation
+    // If initial user is provided, we'll check for existing conversation
+    // after conversations are loaded (handled in BlocListener below)
     if (widget.initialUserId != null) {
-      _selectedConversationId = '';
       _selectedOtherUserId = widget.initialUserId;
       _selectedUserName = widget.initialUserName ?? 'User';
+      // Don't set _selectedConversationId yet - wait for conversations to load
     }
   }
 
@@ -90,10 +111,12 @@ class _ChatPageViewState extends State<_ChatPageView> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _messageFocusNode.dispose();
     super.dispose();
   }
 
-  void _selectConversation(String conversationId, String otherUserId, String userName) {
+  void _selectConversation(
+      String conversationId, String otherUserId, String userName) {
     setState(() {
       _selectedConversationId = conversationId;
       _selectedOtherUserId = otherUserId;
@@ -102,16 +125,44 @@ class _ChatPageViewState extends State<_ChatPageView> {
 
     // Load messages for the selected conversation
     if (conversationId.isNotEmpty) {
-      context.read<ChatBloc>().add(ChatMessagesRequested(conversationId: conversationId));
+      context
+          .read<ChatBloc>()
+          .add(ChatMessagesRequested(conversationId: conversationId));
     }
   }
 
   void _startNewConversation(FollowUserModel user) {
-    setState(() {
-      _selectedConversationId = '';
-      _selectedOtherUserId = user.id;
-      _selectedUserName = user.name;
-    });
+    // Check if a conversation already exists with this user in LOCAL state
+    final chatState = context.read<ChatBloc>().state;
+    final existingConversation = chatState.conversations.firstWhere(
+      (conv) => conv.otherUserId == user.id,
+      orElse: () => ConversationModel(
+        id: '',
+        otherUserId: '',
+        lastMessage: '',
+        lastMessageAt: DateTime.now(),
+        unreadCount: 0,
+        createdAt: DateTime.now(),
+      ),
+    );
+
+    if (existingConversation.id.isNotEmpty) {
+      // Conversation already exists locally - select it
+      _selectConversation(existingConversation.id, user.id, user.name);
+    } else {
+      // No conversation found locally - call backend to get or create
+      // Store temp user info for display while loading
+      setState(() {
+        _selectedOtherUserId = user.id;
+        _selectedUserName = user.name;
+        _selectedConversationId = null; // null = loading state
+      });
+      
+      // Call backend API to get or create conversation
+      context.read<ChatBloc>().add(
+        ChatConversationStarted(otherUserId: user.id),
+      );
+    }
   }
 
   void _scrollToBottom() {
@@ -187,7 +238,8 @@ class _ChatPageViewState extends State<_ChatPageView> {
         Expanded(
           child: BlocBuilder<ChatBloc, ChatState>(
             builder: (context, state) {
-              if (state.status == ChatStatus.loading && state.conversations.isEmpty) {
+              if (state.status == ChatStatus.loading &&
+                  state.conversations.isEmpty) {
                 return const Center(
                   child: CircularProgressIndicator(color: AppColors.primary),
                 );
@@ -204,13 +256,32 @@ class _ChatPageViewState extends State<_ChatPageView> {
                       );
                 },
                 color: AppColors.primary,
-                child: ListView.builder(
-                  itemCount: state.conversations.length,
-                  itemBuilder: (context, index) {
-                    final conversation = state.conversations[index];
-                    final isSelected = _selectedConversationId == conversation.id;
-                    
-                    return _buildConversationItem(conversation, isSelected);
+                child: Builder(
+                  builder: (context) {
+                    return ListView.builder(
+                      // Add 1 for pending/loading conversation if selected
+                      itemCount: state.conversations.length + 
+                          ((_selectedConversationId == null || _selectedConversationId!.isEmpty) && 
+                           _selectedOtherUserId != null ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        // Show pending new conversation at the top while loading or new
+                        if ((_selectedConversationId == null || _selectedConversationId!.isEmpty) && 
+                            _selectedOtherUserId != null &&
+                            index == 0) {
+                          return _buildPendingConversationItem();
+                        }
+                        
+                        // Adjust index for existing conversations
+                        final adjustedIndex = ((_selectedConversationId == null || _selectedConversationId!.isEmpty) && 
+                            _selectedOtherUserId != null) ? index - 1 : index;
+                        
+                        final conversation = state.conversations[adjustedIndex];
+                        final isSelected =
+                            _selectedConversationId == conversation.id;
+
+                        return _buildConversationItem(conversation, isSelected);
+                      },
+                    );
                   },
                 ),
               );
@@ -221,18 +292,159 @@ class _ChatPageViewState extends State<_ChatPageView> {
     );
   }
 
-  Widget _buildConversationItem(ConversationModel conversation, bool isSelected) {
+  Widget _buildPendingConversationItem() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {}, // Already selected
+        splashColor: AppColors.primary.withOpacity(0.08),
+        highlightColor: AppColors.primary.withOpacity(0.04),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.06),
+            border: const Border(
+              left: BorderSide(
+                color: AppColors.primary,
+                width: 3,
+              ),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Avatar matching ConversationTile style
+              Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary.withOpacity(0.2),
+                          AppColors.secondary.withOpacity(0.2),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      radius: 26,
+                      backgroundColor: Colors.transparent,
+                      child: Text(
+                        _selectedUserName?.isNotEmpty == true
+                            ? _selectedUserName![0].toUpperCase()
+                            : '?',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _selectedUserName ?? 'New Conversation',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Loading spinner or "NEW" badge
+                        if (_selectedConversationId == null)
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                            ),
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [AppColors.primary, AppColors.secondary],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              'NEW',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _selectedConversationId == null 
+                          ? 'Loading conversation...'
+                          : 'Start a new conversation',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w400,
+                        height: 1.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConversationItem(
+      ConversationModel conversation, bool isSelected) {
     return Container(
       color: isSelected ? AppColors.primary.withOpacity(0.1) : null,
       child: ConversationTile(
         conversation: conversation,
-        otherUserName: _getUserName(conversation.otherUserId),
-        otherUserPhotoUrl: _getUserPhotoUrl(conversation.otherUserId),
+        otherUserName: conversation.otherUserName,
+        otherUserPhotoUrl: conversation.otherUserPhoto,
         onTap: () {
           _selectConversation(
             conversation.id,
             conversation.otherUserId,
-            _getUserName(conversation.otherUserId),
+            conversation.otherUserName,
           );
         },
       ),
@@ -355,7 +567,7 @@ class _ChatPageViewState extends State<_ChatPageView> {
 
   Widget _buildFollowedUserTile(FollowUserModel user) {
     final isSelected = _selectedOtherUserId == user.id;
-    
+
     return Container(
       color: isSelected ? AppColors.primary.withOpacity(0.1) : null,
       child: ListTile(
@@ -408,18 +620,109 @@ class _ChatPageViewState extends State<_ChatPageView> {
     }
 
     return BlocConsumer<ChatBloc, ChatState>(
+      listenWhen: (previous, current) {
+        // Listen when message send status changes, conversation started, or messages load
+        final prevConvState = _selectedConversationId != null && _selectedConversationId!.isNotEmpty
+            ? previous.getConversationLoadingState(_selectedConversationId!)
+            : null;
+        final currConvState = _selectedConversationId != null && _selectedConversationId!.isNotEmpty
+            ? current.getConversationLoadingState(_selectedConversationId!)
+            : null;
+        
+        // Also listen when conversations are first loaded (for initial user from profile)
+        final conversationsJustLoaded = previous.conversations.isEmpty && 
+            current.conversations.isNotEmpty;
+        
+        return previous.messageSendStatus != current.messageSendStatus ||
+            previous.startedConversation != current.startedConversation ||
+            conversationsJustLoaded ||
+            (prevConvState != ChatStatus.success && currConvState == ChatStatus.success);
+      },
       listener: (context, state) {
+        // Check if we came from a profile and conversations just loaded
+        if (widget.initialUserId != null && 
+            _selectedConversationId == null &&
+            state.conversations.isNotEmpty) {
+          // Look for existing conversation with this user
+          final existingConv = state.conversations.firstWhere(
+            (conv) => conv.otherUserId == widget.initialUserId,
+            orElse: () => ConversationModel(
+              id: '',
+              otherUserId: '',
+              lastMessage: '',
+              lastMessageAt: DateTime.now(),
+              unreadCount: 0,
+              createdAt: DateTime.now(),
+            ),
+          );
+          
+          if (existingConv.id.isNotEmpty) {
+            // Found existing conversation - select it
+            setState(() {
+              _selectedConversationId = existingConv.id;
+              _selectedUserName = existingConv.otherUserName.isNotEmpty 
+                  ? existingConv.otherUserName 
+                  : _selectedUserName;
+            });
+            // Load messages
+            context.read<ChatBloc>().add(
+              ChatMessagesRequested(conversationId: existingConv.id),
+            );
+          } else {
+            // No existing conversation - set empty string to show "new conversation" state
+            setState(() {
+              _selectedConversationId = '';
+            });
+          }
+        }
+        
+        // Handle started conversation (from ChatConversationStarted event)
+        if (state.startedConversation != null &&
+            _selectedOtherUserId == state.startedConversation!.otherUserId) {
+          final conv = state.startedConversation!;
+          setState(() {
+            _selectedConversationId = conv.id;
+          });
+          // Load messages for this conversation
+          context.read<ChatBloc>().add(
+            ChatMessagesRequested(conversationId: conv.id),
+          );
+          // Clear the started conversation state
+          context.read<ChatBloc>().add(const ChatStartedConversationCleared());
+        }
+        
         if (state.messageSendStatus == MessageSendStatus.success) {
           _scrollToBottom();
           // Refresh conversations to get the new one
-          context.read<ChatBloc>().add(const ChatConversationsRequested(isRefresh: true));
-        }
+          context
+              .read<ChatBloc>()
+              .add(const ChatConversationsRequested(isRefresh: true));
 
-        // Mark messages as read
+          // If this was a new conversation, update the selected conversation ID
+          if (state.lastCreatedConversationId != null &&
+              (_selectedConversationId == null ||
+                  _selectedConversationId!.isEmpty)) {
+            setState(() {
+              _selectedConversationId = state.lastCreatedConversationId;
+            });
+            // Load messages for the new conversation
+            context.read<ChatBloc>().add(
+                  ChatMessagesRequested(
+                      conversationId: state.lastCreatedConversationId!),
+                );
+          }
+          
+          // Reset the message send status so we can detect the next send
+          context.read<ChatBloc>().add(const ChatMessageSendStatusReset());
+        }
+        
+        // Mark messages as read when conversation messages first load
         if (_selectedConversationId != null &&
             _selectedConversationId!.isNotEmpty &&
-            state.getConversationLoadingState(_selectedConversationId!) == ChatStatus.success) {
-          final messages = state.getMessagesForConversation(_selectedConversationId!);
+            state.getConversationLoadingState(_selectedConversationId!) ==
+                ChatStatus.success) {
+          final messages =
+              state.getMessagesForConversation(_selectedConversationId!);
           final authState = context.read<AuthBloc>().state;
           if (authState.user != null) {
             final unreadMessageIds = messages
@@ -441,7 +744,16 @@ class _ChatPageViewState extends State<_ChatPageView> {
           }
         }
       },
+      buildWhen: (previous, current) {
+        // Only rebuild when relevant state changes (not just messageSendStatus)
+        return previous.messagesMap != current.messagesMap ||
+            previous.conversationLoadingStates != current.conversationLoadingStates ||
+            previous.status != current.status ||
+            previous.startedConversation != current.startedConversation;
+      },
       builder: (context, state) {
+        // NOTE: Mark messages as read logic moved to a separate method that's called
+        // only when conversation is selected, not on every rebuild
         return Column(
           children: [
             // Conversation header
@@ -526,13 +838,6 @@ class _ChatPageViewState extends State<_ChatPageView> {
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
                     color: AppColors.textPrimary,
-                  ),
-                ),
-                const Text(
-                  'Online',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.success,
                   ),
                 ),
               ],
@@ -646,7 +951,8 @@ class _ChatPageViewState extends State<_ChatPageView> {
               return MessageBubble(
                 message: message,
                 isSentByMe: isSentByMe,
-                senderName: isSentByMe ? authState.user?.name : _selectedUserName,
+                senderName:
+                    isSentByMe ? authState.user?.name : _selectedUserName,
                 senderPhotoUrl: isSentByMe ? authState.user?.photoUrl : null,
               );
             },
@@ -658,6 +964,8 @@ class _ChatPageViewState extends State<_ChatPageView> {
 
   Widget _buildMessageInput(ChatState state) {
     final isSending = state.messageSendStatus == MessageSendStatus.sending;
+    final isLoading = _selectedConversationId == null; // Waiting for conversation to load
+    final canSend = !isSending && !isLoading;
 
     return Container(
       decoration: BoxDecoration(
@@ -677,29 +985,44 @@ class _ChatPageViewState extends State<_ChatPageView> {
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: AppColors.border),
               ),
-              child: TextField(
-                controller: _messageController,
-                maxLines: null,
-                keyboardType: TextInputType.multiline,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  hintText: 'Type a message...',
-                  hintStyle: TextStyle(color: AppColors.textTertiary),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+              child: Focus(
+                onKeyEvent: (node, event) {
+                  // Handle Enter key press (without Shift)
+                  if (event is KeyDownEvent &&
+                      event.logicalKey == LogicalKeyboardKey.enter &&
+                      !HardwareKeyboard.instance.isShiftPressed) {
+                    // Enter without Shift - send message
+                    if (canSend) {
+                      _sendMessage();
+                      return KeyEventResult.handled; // Prevent newline
+                    }
+                  }
+                  return KeyEventResult.ignored; // Let other keys through
+                },
+                child: TextField(
+                  controller: _messageController,
+                  focusNode: _messageFocusNode,
+                  maxLines: null,
+                  keyboardType: TextInputType.multiline,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    hintText: isLoading ? 'Loading conversation...' : 'Type a message...',
+                    hintStyle: const TextStyle(color: AppColors.textTertiary),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
+                  enabled: canSend,
                 ),
-                enabled: !isSending,
-                onSubmitted: (_) => _sendMessage(),
               ),
             ),
           ),
           const SizedBox(width: 8),
           Container(
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
+            decoration: BoxDecoration(
+              color: canSend ? AppColors.primary : AppColors.primary.withOpacity(0.5),
               shape: BoxShape.circle,
             ),
             child: IconButton(
@@ -713,7 +1036,9 @@ class _ChatPageViewState extends State<_ChatPageView> {
                       ),
                     )
                   : const Icon(Icons.send, color: Colors.white),
-              onPressed: isSending ? null : _sendMessage,
+              onPressed: canSend ? () {
+                _sendMessage();
+              } : null,
             ),
           ),
         ],
@@ -723,11 +1048,23 @@ class _ChatPageViewState extends State<_ChatPageView> {
 
   void _sendMessage() {
     final content = _messageController.text.trim();
-    if (content.isEmpty || _selectedOtherUserId == null) return;
+    // Don't send if no content or no receiver
+    if (content.isEmpty) {
+      return;
+    }
+    if (_selectedOtherUserId == null) {
+      return;
+    }
+    
+    // Don't send if conversation is still loading (null means loading)
+    if (_selectedConversationId == null) {
+      return;
+    }
 
     context.read<ChatBloc>().add(
           ChatMessageSent(
-            conversationId: _selectedConversationId ?? '',
+            // Empty string means new conversation - backend will create it
+            conversationId: _selectedConversationId!,
             receiverId: _selectedOtherUserId!,
             content: content,
             messageType: MessageType.text,

@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/datasources/chat_websocket_service.dart';
+import '../../domain/models/conversation_model.dart';
 import '../../domain/models/message_model.dart';
 import '../../domain/repositories/chat_repository.dart';
 import 'chat_event.dart';
@@ -22,6 +24,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<ChatMessageRead>(_onMessageRead);
     on<ChatConversationMessagesRead>(_onConversationMessagesRead);
     on<ChatConversationStarted>(_onConversationStarted);
+    on<ChatMessageSendStatusReset>(_onMessageSendStatusReset);
+    on<ChatStartedConversationCleared>(_onStartedConversationCleared);
     on<ChatWebSocketConnectRequested>(_onWebSocketConnect);
     on<ChatWebSocketDisconnectRequested>(_onWebSocketDisconnect);
     on<ChatWebSocketMessageReceived>(_onWebSocketMessageReceived);
@@ -49,15 +53,19 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     final result = await chatRepository.getConversations(limit: 20, offset: 0);
 
     result.fold(
-      (error) => emit(state.copyWith(
-        status: ChatStatus.error,
-        errorMessage: error,
-      )),
-      (conversations) => emit(state.copyWith(
-        status: ChatStatus.success,
-        conversations: conversations,
-        hasMoreConversations: conversations.length >= 20,
-      )),
+      (error) {
+        emit(state.copyWith(
+          status: ChatStatus.error,
+          errorMessage: error,
+        ));
+      },
+      (conversations) {
+        emit(state.copyWith(
+          status: ChatStatus.success,
+          conversations: conversations,
+          hasMoreConversations: conversations.length >= 20,
+        ));
+      },
     );
   }
 
@@ -123,22 +131,39 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     );
 
     result.fold(
-      (error) => emit(state.copyWith(
-        messageSendStatus: MessageSendStatus.error,
-        errorMessage: error,
-      )),
+      (error) {
+        emit(state.copyWith(
+          messageSendStatus: MessageSendStatus.error,
+          errorMessage: error,
+        ));
+      },
       (message) {
-        // Add the new message to the messages map
+        // Use the conversation ID from the message response (for new conversations)
+        final actualConversationId = message.conversationId;
+
+        // Add the new message to the messages map using the actual conversation ID
         final updatedMessagesMap =
             Map<String, List<MessageModel>>.from(state.messagesMap);
-        final conversationMessages =
-            List<MessageModel>.from(updatedMessagesMap[event.conversationId] ?? []);
+        final conversationMessages = List<MessageModel>.from(
+            updatedMessagesMap[actualConversationId] ?? []);
         conversationMessages.add(message);
-        updatedMessagesMap[event.conversationId] = conversationMessages;
+        updatedMessagesMap[actualConversationId] = conversationMessages;
+
+        // If this was a new conversation (event had empty conversationId),
+        // also copy any messages that were added under empty key
+        if (event.conversationId.isEmpty &&
+            updatedMessagesMap.containsKey('')) {
+          final emptyKeyMessages = updatedMessagesMap[''] ?? [];
+          if (emptyKeyMessages.isNotEmpty) {
+            conversationMessages.insertAll(
+                0, emptyKeyMessages.where((m) => m.id != message.id));
+            updatedMessagesMap.remove('');
+          }
+        }
 
         // Update the conversation in the list with the new last message
         final updatedConversations = state.conversations.map((conv) {
-          if (conv.id == event.conversationId) {
+          if (conv.id == actualConversationId) {
             return conv;
           }
           return conv;
@@ -148,16 +173,29 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           messageSendStatus: MessageSendStatus.success,
           messagesMap: updatedMessagesMap,
           conversations: updatedConversations,
+          // Store the new conversation ID so the UI can access it
+          lastCreatedConversationId:
+              event.conversationId.isEmpty ? actualConversationId : null,
         ));
-
-        // Reset send status after a brief moment
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (!isClosed) {
-            emit(state.copyWith(messageSendStatus: MessageSendStatus.idle));
-          }
-        });
       },
     );
+  }
+
+  void _onMessageSendStatusReset(
+    ChatMessageSendStatusReset event,
+    Emitter<ChatState> emit,
+  ) {
+    emit(state.copyWith(
+      messageSendStatus: MessageSendStatus.idle,
+      clearLastCreatedConversationId: true,
+    ));
+  }
+
+  void _onStartedConversationCleared(
+    ChatStartedConversationCleared event,
+    Emitter<ChatState> emit,
+  ) {
+    emit(state.copyWith(clearStartedConversation: true));
   }
 
   Future<void> _onMessageRead(
@@ -180,8 +218,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     // Update local state to mark messages as read
     final updatedMessagesMap =
         Map<String, List<MessageModel>>.from(state.messagesMap);
-    final conversationMessages =
-        updatedMessagesMap[event.conversationId] ?? [];
+    final conversationMessages = updatedMessagesMap[event.conversationId] ?? [];
 
     final updatedMessages = conversationMessages.map((message) {
       if (event.messageIds.contains(message.id)) {
@@ -220,11 +257,24 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         errorMessage: error,
       )),
       (conversation) {
-        final updatedConversations = [conversation, ...state.conversations];
+        // Check if conversation already exists in list
+        final existingIndex = state.conversations.indexWhere(
+          (c) => c.id == conversation.id,
+        );
+        
+        List<ConversationModel> updatedConversations;
+        if (existingIndex >= 0) {
+          // Already in list, don't duplicate
+          updatedConversations = state.conversations;
+        } else {
+          // Add to beginning of list
+          updatedConversations = [conversation, ...state.conversations];
+        }
+        
         emit(state.copyWith(
           status: ChatStatus.success,
           conversations: updatedConversations,
-          successMessage: 'Conversation started',
+          startedConversation: conversation, // Store the started conversation
         ));
       },
     );
@@ -241,7 +291,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     await webSocketService!.connect(event.authToken);
 
     // Listen to incoming messages
-    _webSocketSubscription = webSocketService!.messageStream.listen((wsMessage) {
+    _webSocketSubscription =
+        webSocketService!.messageStream.listen((wsMessage) {
       // Convert WebSocket message to domain message and add to BLoC
       if (wsMessage.type == WebSocketMessageType.message) {
         final message = MessageModel(
@@ -260,7 +311,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     });
 
     // Listen to connection changes
-    _connectionSubscription = webSocketService!.connectionStream.listen((isConnected) {
+    _connectionSubscription =
+        webSocketService!.connectionStream.listen((isConnected) {
       add(ChatWebSocketConnectionChanged(isConnected: isConnected));
     });
   }
@@ -280,9 +332,10 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     Emitter<ChatState> emit,
   ) {
     // Add message to the appropriate conversation
-    final updatedMessagesMap = Map<String, List<MessageModel>>.from(state.messagesMap);
-    final conversationMessages =
-        List<MessageModel>.from(updatedMessagesMap[event.message.conversationId] ?? []);
+    final updatedMessagesMap =
+        Map<String, List<MessageModel>>.from(state.messagesMap);
+    final conversationMessages = List<MessageModel>.from(
+        updatedMessagesMap[event.message.conversationId] ?? []);
 
     // Only add if not already in list (prevent duplicates)
     if (!conversationMessages.any((m) => m.id == event.message.id)) {

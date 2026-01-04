@@ -19,8 +19,14 @@ class FollowButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<FollowBloc, FollowState>(
+      buildWhen: (previous, current) {
+        // Rebuild when followingIds changes or when this user's status changes
+        return previous.followingIds != current.followingIds ||
+            previous.followStatusMap[userId] != current.followStatusMap[userId];
+      },
       builder: (context, state) {
-        final isFollowing = state.isFollowing(userId) || (initialIsFollowing ?? false);
+        final isFollowing =
+            state.isFollowing(userId) || (initialIsFollowing ?? false);
 
         return OutlinedButton(
           onPressed: () {
@@ -32,8 +38,11 @@ class FollowButton extends StatelessWidget {
             onFollowChanged?.call();
           },
           style: OutlinedButton.styleFrom(
-            backgroundColor: isFollowing ? Colors.transparent : Theme.of(context).primaryColor,
-            foregroundColor: isFollowing ? Theme.of(context).primaryColor : Colors.white,
+            backgroundColor: isFollowing
+                ? Colors.transparent
+                : Theme.of(context).primaryColor,
+            foregroundColor:
+                isFollowing ? Theme.of(context).primaryColor : Colors.white,
             side: BorderSide(
               color: Theme.of(context).primaryColor,
               width: 1.5,
@@ -43,11 +52,28 @@ class FollowButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
           ),
-          child: Text(
-            isFollowing ? 'Following' : 'Follow',
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isFollowing) ...[
+                  Icon(
+                    Icons.check,
+                    size: 16,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                Text(
+                  isFollowing ? 'Following' : 'Follow',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
         );
@@ -71,8 +97,14 @@ class FollowIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<FollowBloc, FollowState>(
+      buildWhen: (previous, current) {
+        // Rebuild when followingIds changes or when this user's status changes
+        return previous.followingIds != current.followingIds ||
+            previous.followStatusMap[userId] != current.followStatusMap[userId];
+      },
       builder: (context, state) {
-        final isFollowing = state.isFollowing(userId) || (initialIsFollowing ?? false);
+        final isFollowing =
+            state.isFollowing(userId) || (initialIsFollowing ?? false);
 
         return IconButton(
           onPressed: () {

@@ -166,13 +166,16 @@ class _NotificationIconState extends State<_NotificationIcon> {
   @override
   void initState() {
     super.initState();
-    _notificationBloc = getIt<NotificationBloc>()
-      ..add(const UnreadCountRefreshRequested());
+    _notificationBloc = getIt<NotificationBloc>();
+    // Only request refresh if bloc is in initial state (first time loading)
+    if (_notificationBloc.state.status == NotificationStatus.initial) {
+      _notificationBloc.add(const UnreadCountRefreshRequested());
+    }
   }
 
   @override
   void dispose() {
-    _notificationBloc.close();
+    // Don't close the bloc - it's a singleton shared across the app
     super.dispose();
   }
 

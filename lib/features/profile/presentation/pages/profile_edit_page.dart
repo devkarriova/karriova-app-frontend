@@ -75,6 +75,10 @@ class ProfileEditPage extends StatelessWidget {
           ),
         ),
         body: BlocConsumer<ProfileBloc, ProfileState>(
+          listenWhen: (previous, current) {
+            // Only listen when status actually changes
+            return previous.status != current.status;
+          },
           listener: (context, state) {
             if (state.status == ProfileStatus.updateSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(

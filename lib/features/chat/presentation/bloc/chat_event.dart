@@ -82,6 +82,11 @@ class ChatConversationMessagesRead extends ChatEvent {
   List<Object?> get props => [conversationId, messageIds];
 }
 
+/// Event to reset message send status to idle
+class ChatMessageSendStatusReset extends ChatEvent {
+  const ChatMessageSendStatusReset();
+}
+
 /// Event to start a new conversation
 class ChatConversationStarted extends ChatEvent {
   final String otherUserId;
@@ -125,4 +130,9 @@ class ChatWebSocketConnectionChanged extends ChatEvent {
 
   @override
   List<Object?> get props => [isConnected];
+}
+
+/// Event to clear the started conversation state
+class ChatStartedConversationCleared extends ChatEvent {
+  const ChatStartedConversationCleared();
 }

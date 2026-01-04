@@ -4,6 +4,8 @@ import 'package:equatable/equatable.dart';
 class ConversationModel extends Equatable {
   final String id;
   final String otherUserId;
+  final String otherUserName;
+  final String? otherUserPhoto;
   final String lastMessage;
   final DateTime lastMessageAt;
   final int unreadCount;
@@ -12,6 +14,8 @@ class ConversationModel extends Equatable {
   const ConversationModel({
     required this.id,
     required this.otherUserId,
+    this.otherUserName = 'Unknown User',
+    this.otherUserPhoto,
     required this.lastMessage,
     required this.lastMessageAt,
     this.unreadCount = 0,
@@ -22,6 +26,8 @@ class ConversationModel extends Equatable {
     return ConversationModel(
       id: json['id'] as String,
       otherUserId: json['other_user_id'] as String,
+      otherUserName: json['other_user_name'] as String? ?? 'Unknown User',
+      otherUserPhoto: json['other_user_photo'] as String?,
       lastMessage: json['last_message'] as String,
       lastMessageAt: DateTime.parse(json['last_message_at'] as String),
       unreadCount: json['unread_count'] as int? ?? 0,
@@ -33,6 +39,8 @@ class ConversationModel extends Equatable {
     return {
       'id': id,
       'other_user_id': otherUserId,
+      'other_user_name': otherUserName,
+      'other_user_photo': otherUserPhoto,
       'last_message': lastMessage,
       'last_message_at': lastMessageAt.toIso8601String(),
       'unread_count': unreadCount,
@@ -41,5 +49,5 @@ class ConversationModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, otherUserId, lastMessage, lastMessageAt, unreadCount, createdAt];
+  List<Object?> get props => [id, otherUserId, otherUserName, otherUserPhoto, lastMessage, lastMessageAt, unreadCount, createdAt];
 }

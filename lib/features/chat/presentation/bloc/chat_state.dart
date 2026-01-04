@@ -26,6 +26,8 @@ class ChatState extends Equatable {
   final String? successMessage;
   final bool hasMoreConversations;
   final bool isWebSocketConnected;
+  final String? lastCreatedConversationId;
+  final ConversationModel? startedConversation; // Newly started/fetched conversation
 
   const ChatState({
     this.status = ChatStatus.initial,
@@ -37,6 +39,8 @@ class ChatState extends Equatable {
     this.successMessage,
     this.hasMoreConversations = true,
     this.isWebSocketConnected = false,
+    this.lastCreatedConversationId,
+    this.startedConversation,
   });
 
   ChatState copyWith({
@@ -49,6 +53,10 @@ class ChatState extends Equatable {
     String? successMessage,
     bool? hasMoreConversations,
     bool? isWebSocketConnected,
+    String? lastCreatedConversationId,
+    bool clearLastCreatedConversationId = false,
+    ConversationModel? startedConversation,
+    bool clearStartedConversation = false,
   }) {
     return ChatState(
       status: status ?? this.status,
@@ -61,6 +69,12 @@ class ChatState extends Equatable {
       successMessage: successMessage,
       hasMoreConversations: hasMoreConversations ?? this.hasMoreConversations,
       isWebSocketConnected: isWebSocketConnected ?? this.isWebSocketConnected,
+      lastCreatedConversationId: clearLastCreatedConversationId 
+          ? null 
+          : (lastCreatedConversationId ?? this.lastCreatedConversationId),
+      startedConversation: clearStartedConversation
+          ? null
+          : (startedConversation ?? this.startedConversation),
     );
   }
 
@@ -90,5 +104,7 @@ class ChatState extends Equatable {
         successMessage,
         hasMoreConversations,
         isWebSocketConnected,
+        lastCreatedConversationId,
+        startedConversation,
       ];
 }

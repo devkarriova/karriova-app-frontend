@@ -10,6 +10,8 @@ import 'features/auth/presentation/bloc/auth_event.dart';
 import 'features/auth/presentation/bloc/auth_state.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
+import 'features/follow/presentation/bloc/follow_bloc.dart';
+import 'features/follow/presentation/bloc/follow_event.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,6 +68,12 @@ class _KarriovaAppState extends State<KarriovaApp> {
             _authBloc.add(const AuthLogoutRequested());
           },
         );
+
+        // Load followingIds for the follow button state across the app
+        final followBloc = getIt<FollowBloc>();
+        if (followBloc.state.followingIds.isEmpty) {
+          followBloc.add(const LoadFollowingIdsEvent());
+        }
       } else {
         // User is not logged in, disable tracking
         _inactivityService.disable();

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import '../config/app_config.dart';
 
 /// Callback type for token refresh
@@ -8,6 +9,96 @@ typedef TokenRefreshCallback = Future<bool> Function();
 /// Callback type for logout on token expiration
 typedef LogoutCallback = Future<void> Function();
 
+/// Rate limiter to prevent runaway API calls
+class ApiRateLimiter {
+  final int maxRequestsPerEndpoint;
+  final Duration windowDuration;
+  final Duration cooldownDuration;
+  
+  // Track requests per endpoint: endpoint -> list of timestamps
+  final Map<String, List<DateTime>> _requestTimestamps = {};
+  
+  // Track endpoints in cooldown
+  final Map<String, DateTime> _cooldownEndpoints = {};
+
+  ApiRateLimiter({
+    this.maxRequestsPerEndpoint = 10,
+    this.windowDuration = const Duration(seconds: 5),
+    this.cooldownDuration = const Duration(seconds: 10),
+  });
+
+  /// Check if request should be allowed
+  /// Returns true if allowed, false if rate limited
+  bool shouldAllowRequest(String endpoint) {
+    final now = DateTime.now();
+    
+    // Check if endpoint is in cooldown
+    if (_cooldownEndpoints.containsKey(endpoint)) {
+      final cooldownEnd = _cooldownEndpoints[endpoint]!;
+      if (now.isBefore(cooldownEnd)) {
+        if (kDebugMode) {
+          print('🚫 [RateLimiter] Endpoint "$endpoint" is in cooldown until $cooldownEnd');
+        }
+        return false;
+      } else {
+        // Cooldown expired, remove it
+        _cooldownEndpoints.remove(endpoint);
+        _requestTimestamps.remove(endpoint);
+      }
+    }
+    
+    // Initialize tracking for this endpoint if needed
+    _requestTimestamps[endpoint] ??= [];
+    
+    // Remove timestamps outside the window
+    final windowStart = now.subtract(windowDuration);
+    _requestTimestamps[endpoint]!.removeWhere((ts) => ts.isBefore(windowStart));
+    
+    // Check if we've exceeded the limit
+    if (_requestTimestamps[endpoint]!.length >= maxRequestsPerEndpoint) {
+      // Put endpoint in cooldown
+      _cooldownEndpoints[endpoint] = now.add(cooldownDuration);
+      if (kDebugMode) {
+        print('⚠️ [RateLimiter] ALERT: Endpoint "$endpoint" hit rate limit '
+            '(${_requestTimestamps[endpoint]!.length} requests in ${windowDuration.inSeconds}s). '
+            'Entering ${cooldownDuration.inSeconds}s cooldown.');
+      }
+      return false;
+    }
+    
+    // Record this request
+    _requestTimestamps[endpoint]!.add(now);
+    return true;
+  }
+
+  /// Get current request count for an endpoint (for debugging)
+  int getRequestCount(String endpoint) {
+    final now = DateTime.now();
+    final windowStart = now.subtract(windowDuration);
+    final timestamps = _requestTimestamps[endpoint] ?? [];
+    return timestamps.where((ts) => ts.isAfter(windowStart)).length;
+  }
+
+  /// Check if endpoint is in cooldown
+  bool isInCooldown(String endpoint) {
+    final cooldownEnd = _cooldownEndpoints[endpoint];
+    if (cooldownEnd == null) return false;
+    return DateTime.now().isBefore(cooldownEnd);
+  }
+
+  /// Reset rate limiter (useful for testing or logout)
+  void reset() {
+    _requestTimestamps.clear();
+    _cooldownEndpoints.clear();
+  }
+  
+  /// Force reset a specific endpoint (e.g., after user action)
+  void resetEndpoint(String endpoint) {
+    _requestTimestamps.remove(endpoint);
+    _cooldownEndpoints.remove(endpoint);
+  }
+}
+
 /// API Client for making HTTP requests to the backend
 class ApiClient {
   final http.Client _client;
@@ -15,8 +106,15 @@ class ApiClient {
   TokenRefreshCallback? _onTokenExpired;
   LogoutCallback? _onLogoutRequired;
   bool _isRefreshing = false;
+  
+  /// Rate limiter to prevent runaway API calls
+  final ApiRateLimiter _rateLimiter;
 
-  ApiClient({http.Client? client}) : _client = client ?? http.Client();
+  ApiClient({
+    http.Client? client,
+    ApiRateLimiter? rateLimiter,
+  }) : _client = client ?? http.Client(),
+       _rateLimiter = rateLimiter ?? ApiRateLimiter();
 
   /// Set the access token for authenticated requests
   void setAccessToken(String? token) {
@@ -62,12 +160,38 @@ class ApiClient {
     return '${AppConfig.apiBaseUrl}$endpoint';
   }
 
+  /// Check rate limit before making a request
+  ApiResponse? _checkRateLimit(String endpoint) {
+    if (!_rateLimiter.shouldAllowRequest(endpoint)) {
+      return ApiResponse.error(
+        message: 'Too many requests. Please wait a moment.',
+        code: 'RATE_LIMITED',
+        statusCode: 429,
+      );
+    }
+    return null;
+  }
+
+  /// Reset rate limit for an endpoint (call after user-initiated actions)
+  void resetRateLimitFor(String endpoint) {
+    _rateLimiter.resetEndpoint(endpoint);
+  }
+
+  /// Reset all rate limits (call on logout)
+  void resetAllRateLimits() {
+    _rateLimiter.reset();
+  }
+
   /// Generic GET request
   Future<ApiResponse> get(
     String endpoint, {
     bool requiresAuth = false,
     Map<String, String>? queryParams,
   }) async {
+    // Check rate limit
+    final rateLimitResponse = _checkRateLimit(endpoint);
+    if (rateLimitResponse != null) return rateLimitResponse;
+    
     try {
       var uri = Uri.parse(_buildUrl(endpoint));
       if (queryParams != null && queryParams.isNotEmpty) {
@@ -93,6 +217,10 @@ class ApiClient {
     required Map<String, dynamic> body,
     bool requiresAuth = false,
   }) async {
+    // Check rate limit
+    final rateLimitResponse = _checkRateLimit(endpoint);
+    if (rateLimitResponse != null) return rateLimitResponse;
+    
     try {
       final response = await _client
           .post(
@@ -114,6 +242,10 @@ class ApiClient {
     required Map<String, dynamic> body,
     bool requiresAuth = false,
   }) async {
+    // Check rate limit
+    final rateLimitResponse = _checkRateLimit(endpoint);
+    if (rateLimitResponse != null) return rateLimitResponse;
+    
     try {
       final response = await _client
           .put(
@@ -134,6 +266,10 @@ class ApiClient {
     String endpoint, {
     bool requiresAuth = false,
   }) async {
+    // Check rate limit
+    final rateLimitResponse = _checkRateLimit(endpoint);
+    if (rateLimitResponse != null) return rateLimitResponse;
+    
     try {
       final response = await _client
           .delete(

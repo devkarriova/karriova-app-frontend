@@ -190,7 +190,9 @@ Future<void> configureDependencies() async {
     () => ProfileBloc(profileRepository: getIt()),
   );
 
-  getIt.registerFactory<ChatBloc>(
+  // ChatBloc as singleton - shared across the app to avoid duplicate API calls
+  // WebSocket connection should be maintained across the app
+  getIt.registerLazySingleton<ChatBloc>(
     () => ChatBloc(
       chatRepository: getIt(),
       webSocketService: getIt(),
@@ -201,11 +203,13 @@ Future<void> configureDependencies() async {
     () => SearchBloc(searchRepository: getIt()),
   );
 
-  getIt.registerFactory<NotificationBloc>(
+  // NotificationBloc as singleton - shared across the app to avoid duplicate API calls
+  getIt.registerLazySingleton<NotificationBloc>(
     () => NotificationBloc(notificationRepository: getIt()),
   );
 
-  getIt.registerFactory<FollowBloc>(
+  // FollowBloc as singleton - shared across the app to avoid duplicate API calls
+  getIt.registerLazySingleton<FollowBloc>(
     () => FollowBloc(followRepository: getIt()),
   );
 }

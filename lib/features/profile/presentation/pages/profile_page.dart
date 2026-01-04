@@ -7,6 +7,8 @@ import '../../../../core/di/injection.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../follow/presentation/bloc/follow_bloc.dart';
+import '../../../follow/presentation/bloc/follow_event.dart';
+import '../../../follow/presentation/bloc/follow_state.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
@@ -31,6 +33,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   late ProfileBloc _profileBloc;
+  late FollowBloc _followBloc;
   bool _profileLoaded = false;
 
   bool get isOwnProfile => widget.userId == null;
@@ -39,6 +42,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _profileBloc = getIt<ProfileBloc>();
+    _followBloc = getIt<FollowBloc>();
 
     // Load profile after first frame if already authenticated
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -58,6 +62,14 @@ class _ProfilePageState extends State<ProfilePage> {
       _profileBloc.add(const ProfileLoadMyProfileRequested());
     } else {
       _profileBloc.add(ProfileLoadRequested(userId: widget.userId!));
+      // Load follow status for the user being viewed
+      _followBloc.add(LoadFollowStatusEvent(widget.userId!));
+    }
+
+    // Ensure followingIds are loaded for the follow button state
+    if (_followBloc.state.followingIds.isEmpty &&
+        _followBloc.state.status != FollowStatus.loading) {
+      _followBloc.add(const LoadFollowingIdsEvent());
     }
   }
 
@@ -72,7 +84,8 @@ class _ProfilePageState extends State<ProfilePage> {
     return MultiBlocProvider(
       providers: [
         BlocProvider.value(value: _profileBloc),
-        BlocProvider(create: (context) => getIt<FollowBloc>()),
+        // FollowBloc is now a singleton - use value instead of create
+        BlocProvider.value(value: _followBloc),
       ],
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, authState) {
@@ -134,15 +147,20 @@ class _ProfilePageContent extends StatelessWidget {
 
                 // Get current user from AuthBloc to determine if this is own profile
                 final currentUser = context.read<AuthBloc>().state.user;
-                final isOwnProfile = currentUser != null && profile.userId == currentUser.id;
+                final isOwnProfile =
+                    currentUser != null && profile.userId == currentUser.id;
 
                 // Use profile data for display (works for both own and other profiles)
-                final userName = profile.name.isNotEmpty ? profile.name : (profile.email.isNotEmpty ? profile.email : 'User');
+                final userName = profile.name.isNotEmpty
+                    ? profile.name
+                    : (profile.email.isNotEmpty ? profile.email : 'User');
                 final userInitials = profile.initials;
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    context.read<ProfileBloc>().add(const ProfileRefreshRequested());
+                    context
+                        .read<ProfileBloc>()
+                        .add(const ProfileRefreshRequested());
                     await context.read<ProfileBloc>().stream.firstWhere(
                           (s) => !s.isLoading,
                         );
@@ -177,38 +195,48 @@ class _ProfilePageContent extends StatelessWidget {
                           isPremium: true,
                           title: profile.experience.isNotEmpty
                               ? '${profile.experience.first.title} at ${profile.experience.first.company}'
-                              : (profile.headline.isNotEmpty ? profile.headline : 'Add your professional headline'),
+                              : (profile.headline.isNotEmpty
+                                  ? profile.headline
+                                  : 'Add your professional headline'),
                           institution: profile.education.isNotEmpty
                               ? profile.education.first.institution
                               : 'No education added',
                           location: profile.experience.isNotEmpty
                               ? profile.experience.first.location
-                              : (profile.location.isNotEmpty ? profile.location : 'Add location'),
+                              : (profile.location.isNotEmpty
+                                  ? profile.location
+                                  : 'Add location'),
                           isOwnProfile: isOwnProfile,
                           onEditProfile: isOwnProfile
                               ? () async {
-                                  final user = context.read<AuthBloc>().state.user;
+                                  final user =
+                                      context.read<AuthBloc>().state.user;
                                   if (user == null) return;
-                                  final result = await showDialog<Map<String, dynamic>>(
+                                  final result =
+                                      await showDialog<Map<String, dynamic>>(
                                     context: context,
                                     builder: (context) => PersonalDetailsDialog(
                                       initialName: userName,
                                       initialEmail: user.email,
                                       initialHeadline: profile.headline,
                                       initialWebsite: profile.website,
-                                      initialIsPublic: true, // TODO: Get from profile settings
+                                      initialIsPublic:
+                                          true, // TODO: Get from profile settings
                                     ),
                                   );
                                   if (result != null && context.mounted) {
                                     context.read<ProfileBloc>().add(
-                                      ProfilePersonalDetailsUpdated(
-                                        name: result['name'] as String?,
-                                        email: result['email'] as String?,
-                                        headline: result['headline'] as String?,
-                                        website: result['website'] as String?,
-                                        isPublic: result['isPublic'] as bool?,
-                                      ),
-                                    );
+                                          ProfilePersonalDetailsUpdated(
+                                            name: result['name'] as String?,
+                                            email: result['email'] as String?,
+                                            headline:
+                                                result['headline'] as String?,
+                                            website:
+                                                result['website'] as String?,
+                                            isPublic:
+                                                result['isPublic'] as bool?,
+                                          ),
+                                        );
                                   }
                                 }
                               : null,
