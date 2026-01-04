@@ -71,6 +71,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     List<Certification>? certifications,
     List<Project>? projects,
     List<Award>? awards,
+    List<Language>? languages,
   }) async {
     try {
       final profile = await remoteDataSource.updateProfile(
@@ -84,6 +85,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         certifications: certifications,
         projects: projects,
         awards: awards,
+        languages: languages,
       );
       return Right(profile);
     } catch (e) {

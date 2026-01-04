@@ -39,6 +39,7 @@ abstract class ProfileRepository {
     List<Certification>? certifications,
     List<Project>? projects,
     List<Award>? awards,
+    List<Language>? languages,
   });
 
   // ========== NEW PROFILE METHODS ==========

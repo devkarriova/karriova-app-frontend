@@ -39,6 +39,7 @@ abstract class ProfileRemoteDataSource {
     List<Certification>? certifications,
     List<Project>? projects,
     List<Award>? awards,
+    List<Language>? languages,
   });
 
   // ========== NEW PROFILE METHODS ==========
@@ -179,6 +180,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     List<Certification>? certifications,
     List<Project>? projects,
     List<Award>? awards,
+    List<Language>? languages,
   }) async {
     try {
       final Map<String, dynamic> body = {};
@@ -192,6 +194,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       if (certifications != null) body['certifications'] = certifications.map((e) => e.toJson()).toList();
       if (projects != null) body['projects'] = projects.map((e) => e.toJson()).toList();
       if (awards != null) body['awards'] = awards.map((e) => e.toJson()).toList();
+      if (languages != null) body['languages'] = languages.map((e) => e.toJson()).toList();
 
       final response = await apiClient.put(
         AppConfig.updateProfileUserEndpoint,

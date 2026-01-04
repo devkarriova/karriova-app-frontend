@@ -399,3 +399,43 @@ class ProfileAwardDeleted extends ProfileEvent {
   @override
   List<Object?> get props => [index];
 }
+
+/// Event to add language
+class ProfileLanguageAdded extends ProfileEvent {
+  final String name;
+  final String proficiencyLevel;
+
+  const ProfileLanguageAdded({
+    required this.name,
+    required this.proficiencyLevel,
+  });
+
+  @override
+  List<Object?> get props => [name, proficiencyLevel];
+}
+
+/// Event to update language
+class ProfileLanguageUpdated extends ProfileEvent {
+  final int index;
+  final String name;
+  final String proficiencyLevel;
+
+  const ProfileLanguageUpdated({
+    required this.index,
+    required this.name,
+    required this.proficiencyLevel,
+  });
+
+  @override
+  List<Object?> get props => [index, name, proficiencyLevel];
+}
+
+/// Event to delete language
+class ProfileLanguageDeleted extends ProfileEvent {
+  final int index;
+
+  const ProfileLanguageDeleted({required this.index});
+
+  @override
+  List<Object?> get props => [index];
+}

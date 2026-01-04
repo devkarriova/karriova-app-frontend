@@ -35,6 +35,9 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     on<ProfileAwardAdded>(_onAwardAdded);
     on<ProfileAwardUpdated>(_onAwardUpdated);
     on<ProfileAwardDeleted>(_onAwardDeleted);
+    on<ProfileLanguageAdded>(_onLanguageAdded);
+    on<ProfileLanguageUpdated>(_onLanguageUpdated);
+    on<ProfileLanguageDeleted>(_onLanguageDeleted);
   }
 
   /// Load profile by user ID
@@ -802,6 +805,95 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         status: ProfileStatus.success,
         profile: profile,
         successMessage: 'Award deleted',
+      )),
+    );
+  }
+
+  /// Add language
+  Future<void> _onLanguageAdded(
+    ProfileLanguageAdded event,
+    Emitter<ProfileState> emit,
+  ) async {
+    if (state.profile == null) return;
+
+    final newLanguage = Language(
+      name: event.name,
+      proficiencyLevel: event.proficiencyLevel,
+    );
+
+    final updatedLanguages = [...state.profile!.languages, newLanguage];
+
+    emit(state.copyWith(status: ProfileStatus.updating));
+
+    final result = await profileRepository.updateProfile(languages: updatedLanguages);
+
+    result.fold(
+      (error) => emit(state.copyWith(
+        status: ProfileStatus.error,
+        errorMessage: error,
+      )),
+      (profile) => emit(state.copyWith(
+        status: ProfileStatus.success,
+        profile: profile,
+        successMessage: 'Language "${event.name}" added successfully',
+      )),
+    );
+  }
+
+  /// Update language
+  Future<void> _onLanguageUpdated(
+    ProfileLanguageUpdated event,
+    Emitter<ProfileState> emit,
+  ) async {
+    if (state.profile == null) return;
+
+    final updatedLanguage = Language(
+      name: event.name,
+      proficiencyLevel: event.proficiencyLevel,
+    );
+
+    final updatedList = List<Language>.from(state.profile!.languages);
+    updatedList[event.index] = updatedLanguage;
+
+    emit(state.copyWith(status: ProfileStatus.updating));
+
+    final result = await profileRepository.updateProfile(languages: updatedList);
+
+    result.fold(
+      (error) => emit(state.copyWith(
+        status: ProfileStatus.error,
+        errorMessage: error,
+      )),
+      (profile) => emit(state.copyWith(
+        status: ProfileStatus.success,
+        profile: profile,
+        successMessage: 'Language "${event.name}" updated successfully',
+      )),
+    );
+  }
+
+  /// Delete language
+  Future<void> _onLanguageDeleted(
+    ProfileLanguageDeleted event,
+    Emitter<ProfileState> emit,
+  ) async {
+    if (state.profile == null) return;
+
+    final updatedLanguages = List<Language>.from(state.profile!.languages)..removeAt(event.index);
+
+    emit(state.copyWith(status: ProfileStatus.updating));
+
+    final result = await profileRepository.updateProfile(languages: updatedLanguages);
+
+    result.fold(
+      (error) => emit(state.copyWith(
+        status: ProfileStatus.error,
+        errorMessage: error,
+      )),
+      (profile) => emit(state.copyWith(
+        status: ProfileStatus.success,
+        profile: profile,
+        successMessage: 'Language deleted',
       )),
     );
   }
