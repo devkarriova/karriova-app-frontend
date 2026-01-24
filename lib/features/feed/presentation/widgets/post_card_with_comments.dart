@@ -227,7 +227,7 @@ class _PostCardWithCommentsState extends State<PostCardWithComments> with Ticker
                     // Add comment input
                     Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: AppColors.surfaceVariant,
                         border: Border(
                           top: BorderSide(color: AppColors.divider),

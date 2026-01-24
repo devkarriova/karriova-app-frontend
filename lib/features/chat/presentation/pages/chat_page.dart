@@ -343,7 +343,7 @@ class _ChatPageViewState extends State<_ChatPageView> {
                         _selectedUserName?.isNotEmpty == true
                             ? _selectedUserName![0].toUpperCase()
                             : '?',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primary,
@@ -413,7 +413,7 @@ class _ChatPageViewState extends State<_ChatPageView> {
                       _selectedConversationId == null 
                           ? 'Loading conversation...'
                           : 'Start a new conversation',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w400,
@@ -1072,14 +1072,5 @@ class _ChatPageViewState extends State<_ChatPageView> {
         );
 
     _messageController.clear();
-  }
-
-  String _getUserName(String userId) {
-    // TODO: Fetch from user cache/API
-    return 'User ${userId.substring(0, 8)}';
-  }
-
-  String? _getUserPhotoUrl(String userId) {
-    return null;
   }
 }

@@ -5,7 +5,6 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../follow/presentation/bloc/follow_bloc.dart';
 import '../../../follow/presentation/bloc/follow_event.dart';
-import '../../../follow/presentation/bloc/follow_state.dart';
 import '../../../follow/presentation/widgets/follow_button.dart';
 import '../bloc/search_bloc.dart';
 import '../bloc/search_event.dart';
@@ -309,24 +308,6 @@ class _SearchPageContentState extends State<_SearchPageContent> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-
-  const _SectionHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textPrimary,
       ),
     );
   }

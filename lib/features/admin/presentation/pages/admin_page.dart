@@ -135,7 +135,7 @@ class _EventManagementTab extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.error_outline,
                         size: 64,
                         color: AppColors.textSecondary,
@@ -143,7 +143,7 @@ class _EventManagementTab extends StatelessWidget {
                       const SizedBox(height: 16),
                       Text(
                         state.eventsError!,
-                        style: TextStyle(color: AppColors.textSecondary),
+                        style: const TextStyle(color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
@@ -158,7 +158,7 @@ class _EventManagementTab extends StatelessWidget {
               }
 
               if (state.events.isEmpty) {
-                return Center(
+                return const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -167,7 +167,7 @@ class _EventManagementTab extends StatelessWidget {
                         size: 64,
                         color: AppColors.textSecondary,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Text(
                         'No events found',
                         style: TextStyle(
@@ -175,7 +175,7 @@ class _EventManagementTab extends StatelessWidget {
                           fontSize: 16,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Text(
                         'Create your first event to get started',
                         style: TextStyle(
@@ -390,7 +390,7 @@ class _EventCard extends StatelessWidget {
                           : null,
                     ),
                     child: event.thumbnailImage == null
-                        ? Icon(
+                        ? const Icon(
                             Icons.event,
                             size: 40,
                             color: AppColors.primary,
@@ -424,7 +424,7 @@ class _EventCard extends StatelessWidget {
                         if (event.categoryName != null)
                           Text(
                             event.categoryName!,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12,
                               color: AppColors.secondary,
                               fontWeight: FontWeight.w500,
@@ -433,7 +433,7 @@ class _EventCard extends StatelessWidget {
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.calendar_today,
                               size: 14,
                               color: AppColors.textSecondary,
@@ -442,7 +442,7 @@ class _EventCard extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 dateFormat.format(event.startTime),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 12,
                                   color: AppColors.textSecondary,
                                 ),
@@ -466,7 +466,7 @@ class _EventCard extends StatelessWidget {
                                 event.isVirtual
                                     ? 'Virtual • ${event.virtualPlatform ?? 'Online'}'
                                     : event.location ?? 'Location TBD',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 12,
                                   color: AppColors.textSecondary,
                                 ),
@@ -538,7 +538,7 @@ class _EventCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (event.isFeatured) ...[
-            Icon(Icons.star, size: 12, color: Colors.amber),
+            const Icon(Icons.star, size: 12, color: Colors.amber),
             const SizedBox(width: 4),
           ],
           Text(
@@ -574,7 +574,7 @@ class _EventCard extends StatelessWidget {
         ),
         Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 10,
             color: AppColors.textTertiary,
           ),
@@ -589,7 +589,7 @@ class _EventCard extends StatelessWidget {
       children: [
         if (event.status == 'draft')
           IconButton(
-            icon: Icon(Icons.publish, color: Colors.green),
+            icon: const Icon(Icons.publish, color: Colors.green),
             onPressed: () => _publishEvent(context),
             tooltip: 'Publish',
           ),
@@ -602,12 +602,12 @@ class _EventCard extends StatelessWidget {
           tooltip: event.isFeatured ? 'Unfeature' : 'Feature',
         ),
         IconButton(
-          icon: Icon(Icons.edit, color: AppColors.primary),
+          icon: const Icon(Icons.edit, color: AppColors.primary),
           onPressed: () => _showEditEventDialog(context),
           tooltip: 'Edit',
         ),
         IconButton(
-          icon: Icon(Icons.delete_outline, color: Colors.red),
+          icon: const Icon(Icons.delete_outline, color: Colors.red),
           onPressed: () => _confirmDelete(context),
           tooltip: 'Delete',
         ),
@@ -704,7 +704,7 @@ class _ContentModerationTab extends StatelessWidget {
             color: AppColors.textSecondary.withOpacity(0.5),
           ),
           const SizedBox(height: 24),
-          Text(
+          const Text(
             'Content Moderation',
             style: TextStyle(
               fontSize: 20,
@@ -713,7 +713,7 @@ class _ContentModerationTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Coming soon...',
             style: TextStyle(
               fontSize: 14,
@@ -721,7 +721,7 @@ class _ContentModerationTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'This section will include:\n• Reported content review\n• User moderation\n• Content flagging',
             textAlign: TextAlign.center,
             style: TextStyle(

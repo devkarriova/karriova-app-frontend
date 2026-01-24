@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -76,7 +75,7 @@ class _FeedPageContentState extends State<_FeedPageContent> {
         appBar: const AppHeader(),
         body: Column(
           children: [
-            AppNavigationBar(currentRoute: AppRouter.feed),
+            const AppNavigationBar(currentRoute: AppRouter.feed),
             Expanded(
               child: Center(
                 child: ConstrainedBox(
@@ -308,7 +307,7 @@ class _FeedPageContentState extends State<_FeedPageContent> {
     );
 
     if (shouldLogout == true && context.mounted) {
-      context.read<AuthBloc>().add(AuthLogoutRequested());
+      context.read<AuthBloc>().add(const AuthLogoutRequested());
       context.go(AppRouter.auth);
     }
   }
@@ -360,10 +359,12 @@ class _FeedPageContentState extends State<_FeedPageContent> {
   String _getTimeAgo(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
-    if (difference.inDays > 365)
+    if (difference.inDays > 365) {
       return '${(difference.inDays / 365).floor()}y ago';
-    if (difference.inDays > 30)
+    }
+    if (difference.inDays > 30) {
       return '${(difference.inDays / 30).floor()}mo ago';
+    }
     if (difference.inDays > 0) return '${difference.inDays}d ago';
     if (difference.inHours > 0) return '${difference.inHours}h ago';
     if (difference.inMinutes > 0) return '${difference.inMinutes}m ago';

@@ -35,7 +35,7 @@ class _NotificationsPageContent extends StatelessWidget {
           // Notifications header with title and actions
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.white,
               border: Border(
                 bottom: BorderSide(color: AppColors.divider),

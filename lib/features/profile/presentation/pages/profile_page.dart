@@ -109,7 +109,7 @@ class _ProfilePageContent extends StatelessWidget {
       appBar: const AppHeader(),
       body: Column(
         children: [
-          AppNavigationBar(currentRoute: AppRouter.profile),
+          const AppNavigationBar(currentRoute: AppRouter.profile),
           Expanded(
             child: BlocConsumer<ProfileBloc, ProfileState>(
               listener: (context, state) {

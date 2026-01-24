@@ -79,7 +79,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
           // Header
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               border: Border(
                 bottom: BorderSide(
                   color: AppColors.divider,
@@ -173,7 +173,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border(
+              border: const Border(
                 top: BorderSide(
                   color: AppColors.divider,
                   width: 1,

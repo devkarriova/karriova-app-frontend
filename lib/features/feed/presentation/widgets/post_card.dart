@@ -469,7 +469,6 @@ class _ActionButton extends StatefulWidget {
   final Color? color;
 
   const _ActionButton({
-    super.key,
     required this.icon,
     required this.label,
     this.onTap,

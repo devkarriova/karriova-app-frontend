@@ -152,9 +152,9 @@ class _EventFormDialogState extends State<EventFormDialog> {
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.primary,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
       child: Row(
         children: [
@@ -480,7 +480,7 @@ class _EventFormDialogState extends State<EventFormDialog> {
 
         return Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: AppColors.surface,
             border: Border(
               top: BorderSide(color: AppColors.border),
@@ -529,7 +529,7 @@ class _EventFormDialogState extends State<EventFormDialog> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: TextStyle(
+      style: const TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.bold,
         color: AppColors.primary,
@@ -689,7 +689,7 @@ class _DateTimePicker extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(value),
-            Icon(
+            const Icon(
               Icons.arrow_drop_down,
               color: AppColors.textSecondary,
             ),

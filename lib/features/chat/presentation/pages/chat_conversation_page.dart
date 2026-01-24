@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
@@ -387,7 +386,7 @@ class _ChatConversationPageState extends State<ChatConversationPage>
               const SizedBox(height: 8),
               Text(
                 'Start your conversation with\n${_getUserName(widget.otherUserId)}',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 15,
                   color: AppColors.textSecondary,
                   height: 1.4,
@@ -485,7 +484,7 @@ class _ChatConversationPageState extends State<ChatConversationPage>
                   color: AppColors.surfaceVariant,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.add_rounded,
                   size: 22,
                   color: AppColors.textSecondary,
@@ -523,14 +522,14 @@ class _ChatConversationPageState extends State<ChatConversationPage>
                   fontSize: 15,
                   color: AppColors.textPrimary,
                 ),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Type a message...',
                   hintStyle: TextStyle(
                     color: AppColors.textTertiary,
                     fontSize: 15,
                   ),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
+                  contentPadding: EdgeInsets.symmetric(
                     horizontal: 18,
                     vertical: 12,
                   ),

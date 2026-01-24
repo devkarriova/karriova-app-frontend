@@ -256,7 +256,7 @@ class _ChatListViewState extends State<_ChatListView>
                     if (unreadCount > 0) {
                       return Text(
                         '$unreadCount unread message${unreadCount > 1 ? 's' : ''}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: AppColors.primary,
@@ -303,7 +303,7 @@ class _ChatListViewState extends State<_ChatListView>
       child: TextField(
         controller: _searchController,
         autofocus: true,
-        decoration: InputDecoration(
+        decoration: const InputDecoration(
           hintText: 'Search conversations...',
           hintStyle: TextStyle(
             color: AppColors.textTertiary,
@@ -316,7 +316,7 @@ class _ChatListViewState extends State<_ChatListView>
           ),
           border: InputBorder.none,
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
         onChanged: (value) {
           setState(() {
@@ -477,7 +477,7 @@ class _ChatListViewState extends State<_ChatListView>
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Try a different search term',
             style: TextStyle(
               fontSize: 14,
@@ -581,7 +581,7 @@ class _ChatListViewState extends State<_ChatListView>
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
+                    const Text(
                       'Connect with people you follow and start\nmeaningful conversations',
                       style: TextStyle(
                         fontSize: 15,
@@ -630,7 +630,7 @@ class _ChatListViewState extends State<_ChatListView>
                       const Spacer(),
                       Text(
                         '${followState.following.length}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: AppColors.primary,
@@ -832,7 +832,7 @@ class _ChatListViewState extends State<_ChatListView>
                         const SizedBox(height: 3),
                         Text(
                           user.headline!,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 13,
                             color: AppColors.textSecondary,
                           ),

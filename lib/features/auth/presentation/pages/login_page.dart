@@ -103,7 +103,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: AppDimensions.paddingSM),
-                  Text(
+                  const Text(
                     'Join thousands of students building their future',
                     style: TextStyle(
                       fontSize: 14,
@@ -125,7 +125,7 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: AppDimensions.paddingLG),
 
                   // Email or Mobile Field
-                  Text(
+                  const Text(
                     'Email or Mobile',
                     style: TextStyle(
                       fontSize: 14,
@@ -139,7 +139,7 @@ class _LoginPageState extends State<LoginPage> {
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       hintText: '[email protected] or +91-9876543210',
-                      hintStyle: TextStyle(
+                      hintStyle: const TextStyle(
                         color: AppColors.textTertiary,
                         fontSize: 14,
                       ),
@@ -166,7 +166,7 @@ class _LoginPageState extends State<LoginPage> {
                           color: AppColors.error,
                         ),
                       ),
-                      suffixIcon: Icon(
+                      suffixIcon: const Icon(
                         Icons.lock_outline,
                         color: AppColors.textTertiary,
                         size: 20,
@@ -182,7 +182,7 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: AppDimensions.paddingMD),
 
                   // Password Field
-                  Text(
+                  const Text(
                     'Password',
                     style: TextStyle(
                       fontSize: 14,
@@ -196,7 +196,7 @@ class _LoginPageState extends State<LoginPage> {
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
                       hintText: 'Enter your password',
-                      hintStyle: TextStyle(
+                      hintStyle: const TextStyle(
                         color: AppColors.textTertiary,
                         fontSize: 14,
                       ),
@@ -254,7 +254,7 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: () {
                         // TODO: Implement forgot password
                       },
-                      child: Text(
+                      child: const Text(
                         'Forgot Password?',
                         style: TextStyle(
                           fontSize: 14,
@@ -276,11 +276,11 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: AppDimensions.paddingLG),
 
                   // Divider
-                  Row(
+                  const Row(
                     children: [
-                      const Expanded(child: Divider()),
+                      Expanded(child: Divider()),
                       Padding(
-                        padding: const EdgeInsets.symmetric(
+                        padding: EdgeInsets.symmetric(
                           horizontal: AppDimensions.paddingMD,
                         ),
                         child: Text(
@@ -291,7 +291,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ),
-                      const Expanded(child: Divider()),
+                      Expanded(child: Divider()),
                     ],
                   ),
 

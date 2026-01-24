@@ -237,7 +237,7 @@ class _CreatePostCardState extends State<CreatePostCard> {
   }
 
   Widget _buildImagePreview() {
-    return Container(
+    return SizedBox(
       height: 100,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,

@@ -30,9 +30,9 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
       elevation: 1,
       shadowColor: Colors.black.withOpacity(0.1),
       leading: const _LogoSection(),
-      title: Row(
+      title: const Row(
         children: [
-          const Text(
+          Text(
             'Karriova',
             style: TextStyle(
               fontSize: 20,
@@ -40,7 +40,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
               color: AppColors.textPrimary,
             ),
           ),
-          const Expanded(child: Center(child: _SearchBar())),
+          Expanded(child: Center(child: _SearchBar())),
         ],
       ),
       actions: const [

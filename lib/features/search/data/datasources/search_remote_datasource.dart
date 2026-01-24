@@ -20,15 +20,11 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
       queryParams: {'q': query},
     );
 
-    print('Datasource: API response success=${response.isSuccess}, data=${response.data}');
-
     if (!response.isSuccess || response.data == null) {
       throw Exception(response.errorMessage ?? 'Failed to search users');
     }
 
-    final parsed = SearchUsersResponse.fromJson(response.data as Map<String, dynamic>);
-    print('Datasource: Parsed ${parsed.users.length} users');
-    return parsed;
+    return SearchUsersResponse.fromJson(response.data as Map<String, dynamic>);
   }
 
   @override
@@ -69,26 +65,10 @@ class SearchUsersResponse {
   SearchUsersResponse({required this.users, required this.count});
 
   factory SearchUsersResponse.fromJson(Map<String, dynamic> json) {
-    print('SearchUsersResponse.fromJson: json=$json');
-    print('SearchUsersResponse.fromJson: users raw = ${json['users']}');
-    
     final usersList = json['users'] as List?;
-    print('SearchUsersResponse.fromJson: usersList = $usersList, length = ${usersList?.length}');
-    
-    final parsedUsers = <UserSearchResult>[];
-    if (usersList != null) {
-      for (var i = 0; i < usersList.length; i++) {
-        try {
-          print('Parsing user $i: ${usersList[i]}');
-          parsedUsers.add(UserSearchResult.fromJson(usersList[i] as Map<String, dynamic>));
-        } catch (e) {
-          print('Error parsing user $i: $e');
-        }
-      }
-    }
     
     return SearchUsersResponse(
-      users: parsedUsers,
+      users: usersList?.map((u) => UserSearchResult.fromJson(u as Map<String, dynamic>)).toList() ?? [],
       count: json['count'] as int? ?? 0,
     );
   }

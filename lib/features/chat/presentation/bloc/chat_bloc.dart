@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/datasources/chat_websocket_service.dart';
 import '../../domain/models/conversation_model.dart';

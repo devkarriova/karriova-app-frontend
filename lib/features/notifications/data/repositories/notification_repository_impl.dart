@@ -20,7 +20,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
     } on DioException catch (e) {
       return Left(e.response?.data['message'] ?? 'Failed to fetch notifications');
     } catch (e) {
-      return Left('An unexpected error occurred');
+      return const Left('An unexpected error occurred');
     }
   }
 
@@ -32,7 +32,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
     } on DioException catch (e) {
       return Left(e.response?.data['message'] ?? 'Failed to fetch unread count');
     } catch (e) {
-      return Left('An unexpected error occurred');
+      return const Left('An unexpected error occurred');
     }
   }
 
@@ -44,7 +44,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
     } on DioException catch (e) {
       return Left(e.response?.data['message'] ?? 'Failed to mark as read');
     } catch (e) {
-      return Left('An unexpected error occurred');
+      return const Left('An unexpected error occurred');
     }
   }
 
@@ -56,7 +56,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
     } on DioException catch (e) {
       return Left(e.response?.data['message'] ?? 'Failed to mark all as read');
     } catch (e) {
-      return Left('An unexpected error occurred');
+      return const Left('An unexpected error occurred');
     }
   }
 
@@ -68,7 +68,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
     } on DioException catch (e) {
       return Left(e.response?.data['message'] ?? 'Failed to delete notification');
     } catch (e) {
-      return Left('An unexpected error occurred');
+      return const Left('An unexpected error occurred');
     }
   }
 }

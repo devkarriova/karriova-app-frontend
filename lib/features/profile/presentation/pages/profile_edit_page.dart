@@ -46,21 +46,21 @@ class ProfileEditPage extends StatelessWidget {
                   bottom: BorderSide(color: AppColors.divider, width: 1),
                 ),
               ),
-              child: TabBar(
+              child: const TabBar(
                 isScrollable: true,
                 indicatorColor: AppColors.primary,
                 indicatorWeight: 2,
                 labelColor: AppColors.primary,
                 unselectedLabelColor: AppColors.textSecondary,
-                labelStyle: const TextStyle(
+                labelStyle: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
-                unselectedLabelStyle: const TextStyle(
+                unselectedLabelStyle: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
                 ),
-                tabs: const [
+                tabs: [
                   Tab(text: 'Basic'),
                   Tab(text: 'Experience'),
                   Tab(text: 'Education'),

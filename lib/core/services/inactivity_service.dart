@@ -85,10 +85,10 @@ class InactivityDetector extends StatefulWidget {
   final InactivityService inactivityService;
 
   const InactivityDetector({
-    Key? key,
+    super.key,
     required this.child,
     required this.inactivityService,
-  }) : super(key: key);
+  });
 
   @override
   State<InactivityDetector> createState() => _InactivityDetectorState();

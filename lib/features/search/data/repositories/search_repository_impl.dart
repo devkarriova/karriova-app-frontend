@@ -12,10 +12,8 @@ class SearchRepositoryImpl implements SearchRepository {
   Future<Either<String, List<UserSearchResult>>> searchUsers(String query) async {
     try {
       final response = await remoteDataSource.searchUsers(query);
-      print('Repository: Got ${response.users.length} users from datasource');
       return Right(response.users);
     } catch (e) {
-      print('Repository error: $e');
       return Left(e.toString());
     }
   }

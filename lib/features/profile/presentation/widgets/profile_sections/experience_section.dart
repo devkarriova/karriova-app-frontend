@@ -75,11 +75,11 @@ class ExperienceSection extends StatelessWidget {
   }
 
   Widget _buildSectionHeader(BuildContext context) {
-    return Row(
+    return const Row(
       children: [
         Icon(Icons.work_outline, color: AppColors.primary, size: 24),
-        const SizedBox(width: 12),
-        const Text(
+        SizedBox(width: 12),
+        Text(
           'Work Experience',
           style: TextStyle(
             fontSize: 20,

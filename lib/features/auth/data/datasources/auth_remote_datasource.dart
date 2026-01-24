@@ -143,6 +143,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   /// Request password reset email
+  @override
   Future<void> forgotPassword(String email) async {
     final response = await apiClient.post(
       '/auth/forgot-password',
@@ -155,6 +156,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   /// Reset password with token
+  @override
   Future<void> resetPassword(String token, String newPassword) async {
     final response = await apiClient.post(
       '/auth/reset-password',

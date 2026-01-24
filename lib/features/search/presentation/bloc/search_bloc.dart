@@ -49,14 +49,12 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
 
     result.fold(
       (error) {
-        print('Search error: $error');
         emit(state.copyWith(
           status: SearchStatus.error,
           errorMessage: error,
         ));
       },
       (users) {
-        print('Search success: found ${users.length} users');
         emit(state.copyWith(
           status: SearchStatus.success,
           users: users,

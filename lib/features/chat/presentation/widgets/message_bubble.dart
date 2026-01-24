@@ -167,9 +167,9 @@ class MessageBubble extends StatelessWidget {
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
+                    children: [
                       Icon(
                         Icons.done_all,
                         size: 12,
@@ -362,7 +362,7 @@ class MessageBubble extends StatelessWidget {
         children: [
           Text(
             _formatTime(message.createdAt),
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 11,
               color: AppColors.textTertiary,
               fontWeight: FontWeight.w500,
