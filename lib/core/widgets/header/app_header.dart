@@ -9,6 +9,9 @@ import '../../../../features/auth/presentation/bloc/auth_event.dart';
 import '../../../../features/notifications/presentation/bloc/notification_bloc.dart';
 import '../../../../features/notifications/presentation/bloc/notification_event.dart';
 import '../../../../features/notifications/presentation/bloc/notification_state.dart';
+import '../../../../features/chat/presentation/bloc/chat_unread_bloc.dart';
+import '../../../../features/chat/presentation/bloc/chat_unread_event.dart';
+import '../../../../features/chat/presentation/bloc/chat_unread_state.dart';
 import 'notification_dropdown.dart';
 
 /// Common app header widget used across all pages
@@ -259,16 +262,72 @@ class _NotificationIconState extends State<_NotificationIcon> {
   }
 }
 
-/// Message icon widget - opens chat window when tapped
-class _MessageIcon extends StatelessWidget {
+/// Message icon widget with badge - opens chat window when tapped
+class _MessageIcon extends StatefulWidget {
   const _MessageIcon();
 
   @override
+  State<_MessageIcon> createState() => _MessageIconState();
+}
+
+class _MessageIconState extends State<_MessageIcon> {
+  late final ChatUnreadBloc _chatUnreadBloc;
+
+  @override
+  void initState() {
+    super.initState();
+    _chatUnreadBloc = getIt<ChatUnreadBloc>();
+    // Only request refresh if bloc is in initial state (first time loading)
+    if (_chatUnreadBloc.state.status == ChatUnreadStatus.initial) {
+      _chatUnreadBloc.add(const ChatUnreadCountRefreshRequested());
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return IconButton(
-      icon: const Icon(Icons.message_outlined),
-      onPressed: () {
-        context.go(AppRouter.chat);
+    return BlocBuilder<ChatUnreadBloc, ChatUnreadState>(
+      bloc: _chatUnreadBloc,
+      builder: (context, state) {
+        final unreadCount = state.unreadCount;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.message_outlined),
+              onPressed: () {
+                context.go(AppRouter.chat);
+              },
+            ),
+            // Unread message badge
+            if (unreadCount > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Center(
+                    child: Text(
+                      unreadCount > 99 ? '99+' : unreadCount.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
       },
     );
   }

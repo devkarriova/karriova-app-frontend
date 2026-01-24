@@ -11,6 +11,7 @@ abstract class ChatRepository {
   Future<Either<String, void>> markAsRead(String messageId);
   Future<Either<String, void>> markAsDelivered(String messageId);
   Future<Either<String, void>> deleteMessage(String messageId);
+  Future<Either<String, int>> getTotalUnreadCount();
 
   // Real-time features (will be implemented with WebSocket/FCM)
   Stream<MessageModel>? get messageStream;

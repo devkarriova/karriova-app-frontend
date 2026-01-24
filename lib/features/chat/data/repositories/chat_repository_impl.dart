@@ -118,4 +118,14 @@ class ChatRepositoryImpl implements ChatRepository {
   void disconnectFromRealtime() {
     // TODO: Implement WebSocket disconnection
   }
+
+  @override
+  Future<Either<String, int>> getTotalUnreadCount() async {
+    try {
+      final count = await remoteDataSource.getTotalUnreadCount();
+      return Right(count);
+    } catch (e) {
+      return Left(e.toString());
+    }
+  }
 }

@@ -10,6 +10,7 @@ abstract class ChatRemoteDataSource {
   Future<void> markAsRead(String messageId);
   Future<void> markAsDelivered(String messageId);
   Future<void> deleteMessage(String messageId);
+  Future<int> getTotalUnreadCount();
 }
 
 class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
@@ -120,5 +121,19 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
     if (!response.isSuccess) {
       throw Exception(response.errorMessage ?? 'Failed to delete message');
     }
+  }
+
+  @override
+  Future<int> getTotalUnreadCount() async {
+    final response = await apiClient.get(
+      '/chat/unread-count',
+      requiresAuth: true,
+    );
+
+    if (!response.isSuccess || response.data == null) {
+      throw Exception(response.errorMessage ?? 'Failed to get unread count');
+    }
+
+    return (response.data as Map<String, dynamic>)['unread_count'] as int? ?? 0;
   }
 }

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'core/di/injection.dart';
 import 'core/theme/app_theme.dart';
 import 'core/routes/app_router.dart';
 import 'core/config/app_config.dart';
 import 'core/services/inactivity_service.dart';
+import 'core/services/push_notification_service.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
 import 'features/auth/presentation/bloc/auth_state.dart';
@@ -15,6 +18,11 @@ import 'features/follow/presentation/bloc/follow_event.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase with platform-specific options
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   // Initialize dependency injection
   await configureDependencies();
@@ -32,18 +40,27 @@ class KarriovaApp extends StatefulWidget {
 class _KarriovaAppState extends State<KarriovaApp> {
   late final InactivityService _inactivityService;
   late final AuthBloc _authBloc;
+  late final PushNotificationService _pushNotificationService;
 
   @override
   void initState() {
     super.initState();
     _inactivityService = getIt<InactivityService>();
+    _pushNotificationService = PushNotificationService();
     _authBloc = getIt<AuthBloc>()..add(const AuthCheckStatusRequested());
+
+    // Initialize push notifications
+    _initializePushNotifications();
 
     // Setup token expiration callback
     _setupTokenExpirationCallback();
 
     // Setup inactivity tracking
     _setupInactivityTracking();
+  }
+
+  Future<void> _initializePushNotifications() async {
+    await _pushNotificationService.initialize();
   }
 
   void _setupTokenExpirationCallback() {
@@ -69,6 +86,9 @@ class _KarriovaAppState extends State<KarriovaApp> {
           },
         );
 
+        // Register device token for push notifications
+        _pushNotificationService.registerDeviceToken();
+
         // Load followingIds for the follow button state across the app
         final followBloc = getIt<FollowBloc>();
         if (followBloc.state.followingIds.isEmpty) {
@@ -77,6 +97,11 @@ class _KarriovaAppState extends State<KarriovaApp> {
       } else {
         // User is not logged in, disable tracking
         _inactivityService.disable();
+
+        // Unregister device token when logged out
+        if (state.status == AuthStatus.unauthenticated) {
+          _pushNotificationService.unregisterDeviceToken();
+        }
       }
     });
   }

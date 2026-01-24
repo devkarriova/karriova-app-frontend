@@ -6,6 +6,7 @@ import '../../features/feed/presentation/pages/feed_page.dart';
 import '../../features/chat/presentation/pages/chat_page.dart';
 import '../../features/search/presentation/pages/search_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
+import '../../features/admin/presentation/pages/admin_page.dart';
 
 class AppRouter {
   // Auth routes
@@ -20,6 +21,7 @@ class AppRouter {
   static const String chat = '/chat';
   static const String search = '/search';
   static const String notifications = '/notifications';
+  static const String admin = '/admin';
 
   static final GoRouter router = GoRouter(
     initialLocation: auth, // Default landing page is login
@@ -117,6 +119,17 @@ class AppRouter {
         pageBuilder: (context, state) {
           return const MaterialPage(
             child: NotificationsPage(),
+          );
+        },
+      ),
+
+      // Admin Page
+      GoRoute(
+        path: '/admin',
+        name: 'admin',
+        pageBuilder: (context, state) {
+          return const MaterialPage(
+            child: AdminPage(),
           );
         },
       ),

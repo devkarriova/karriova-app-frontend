@@ -179,8 +179,8 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<String, void>> resetPassword({required String email}) async {
     try {
-      // TODO: Implement reset password in backend and datasource
-      throw UnimplementedError('Reset password not implemented yet');
+      await remoteDataSource.forgotPassword(email);
+      return const Right(null);
     } catch (e) {
       AppLogger.error('Reset password failed: $e');
       return Left(_handleError(e));

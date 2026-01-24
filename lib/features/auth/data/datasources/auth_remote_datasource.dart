@@ -19,6 +19,10 @@ abstract class AuthRemoteDataSource {
   Future<AuthResponse> refreshToken(String refreshToken);
 
   Future<UserModel> loginWithGoogle();
+
+  Future<void> forgotPassword(String email);
+
+  Future<void> resetPassword(String token, String newPassword);
 }
 
 /// Response model for authentication endpoints
@@ -120,8 +124,48 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<UserModel> loginWithGoogle() async {
-    // TODO: Implement Google Sign-In
-    // This requires Google Sign-In package integration
-    throw UnimplementedError('Google Sign-In not implemented yet');
+    // Step 1: Get OAuth URL from backend
+    final urlResponse = await apiClient.get(
+      '/auth/google',
+      requiresAuth: false,
+    );
+
+    if (!urlResponse.isSuccess || urlResponse.data == null) {
+      throw Exception(urlResponse.errorMessage ?? 'Failed to get Google OAuth URL');
+    }
+
+    // For web/mobile, this URL should be opened in a browser/WebView
+    // The callback will be handled by deep linking or redirect
+    // For now, throw with the URL for the UI to handle
+    throw UnimplementedError(
+      'Google Sign-In requires platform-specific implementation. OAuth URL: ${urlResponse.data['url']}',
+    );
+  }
+
+  /// Request password reset email
+  Future<void> forgotPassword(String email) async {
+    final response = await apiClient.post(
+      '/auth/forgot-password',
+      body: {'email': email},
+    );
+
+    if (!response.isSuccess) {
+      throw Exception(response.errorMessage ?? 'Failed to request password reset');
+    }
+  }
+
+  /// Reset password with token
+  Future<void> resetPassword(String token, String newPassword) async {
+    final response = await apiClient.post(
+      '/auth/reset-password',
+      body: {
+        'token': token,
+        'new_password': newPassword,
+      },
+    );
+
+    if (!response.isSuccess) {
+      throw Exception(response.errorMessage ?? 'Failed to reset password');
+    }
   }
 }

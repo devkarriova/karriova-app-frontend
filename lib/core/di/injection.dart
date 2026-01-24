@@ -24,6 +24,7 @@ import '../../features/chat/data/datasources/chat_websocket_service.dart';
 import '../../features/chat/data/repositories/chat_repository_impl.dart';
 import '../../features/chat/domain/repositories/chat_repository.dart';
 import '../../features/chat/presentation/bloc/chat_bloc.dart';
+import '../../features/chat/presentation/bloc/chat_unread_bloc.dart';
 import '../../features/search/data/datasources/search_remote_datasource.dart';
 import '../../features/search/data/repositories/search_repository_impl.dart';
 import '../../features/search/domain/repositories/search_repository.dart';
@@ -36,6 +37,10 @@ import '../../features/follow/data/datasources/follow_remote_datasource.dart';
 import '../../features/follow/data/repositories/follow_repository_impl.dart';
 import '../../features/follow/domain/repositories/follow_repository.dart';
 import '../../features/follow/presentation/bloc/follow_bloc.dart';
+import '../../features/admin/data/datasources/admin_remote_datasource.dart';
+import '../../features/admin/data/repositories/admin_repository_impl.dart';
+import '../../features/admin/domain/repositories/admin_repository.dart';
+import '../../features/admin/presentation/bloc/admin_bloc.dart';
 
 final getIt = GetIt.instance;
 
@@ -199,6 +204,11 @@ Future<void> configureDependencies() async {
     ),
   );
 
+  // ChatUnreadBloc as singleton - shared across the app for unread badge
+  getIt.registerLazySingleton<ChatUnreadBloc>(
+    () => ChatUnreadBloc(chatRepository: getIt()),
+  );
+
   getIt.registerFactory<SearchBloc>(
     () => SearchBloc(searchRepository: getIt()),
   );
@@ -211,5 +221,22 @@ Future<void> configureDependencies() async {
   // FollowBloc as singleton - shared across the app to avoid duplicate API calls
   getIt.registerLazySingleton<FollowBloc>(
     () => FollowBloc(followRepository: getIt()),
+  );
+
+  // Admin Data Sources
+  getIt.registerLazySingleton<AdminRemoteDataSource>(
+    () => AdminRemoteDataSourceImpl(apiClient: getIt()),
+  );
+
+  // Admin Repository
+  getIt.registerLazySingleton<AdminRepository>(
+    () => AdminRepositoryImpl(
+      remoteDataSource: getIt(),
+    ),
+  );
+
+  // Admin BLoC
+  getIt.registerFactory<AdminBloc>(
+    () => AdminBloc(adminRepository: getIt()),
   );
 }
