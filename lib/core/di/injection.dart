@@ -44,6 +44,10 @@ import '../../features/admin/presentation/bloc/admin_bloc.dart';
 import '../../features/assessment/data/datasources/assessment_remote_datasource.dart';
 import '../../features/assessment/data/repositories/assessment_repository_impl.dart';
 import '../../features/assessment/presentation/bloc/assessment_bloc.dart';
+import '../../features/feedback/data/datasources/feedback_remote_datasource.dart';
+import '../../features/feedback/data/repositories/feedback_repository.dart';
+import '../../features/feedback/presentation/bloc/feedback_bloc.dart';
+import '../../features/feedback/presentation/bloc/admin_feedback_bloc.dart';
 
 final getIt = GetIt.instance;
 
@@ -258,5 +262,24 @@ Future<void> configureDependencies() async {
   // Assessment BLoC (as singleton to persist state across app)
   getIt.registerLazySingleton<AssessmentBloc>(
     () => AssessmentBloc(assessmentRepository: getIt()),
+  );
+
+  // Feedback Data Sources
+  getIt.registerLazySingleton<FeedbackRemoteDataSource>(
+    () => FeedbackRemoteDataSourceImpl(apiClient: getIt()),
+  );
+
+  // Feedback Repository
+  getIt.registerLazySingleton<FeedbackRepository>(
+    () => FeedbackRepository(remoteDataSource: getIt()),
+  );
+
+  // Feedback BLoCs
+  getIt.registerFactory<FeedbackBloc>(
+    () => FeedbackBloc(repository: getIt()),
+  );
+
+  getIt.registerFactory<AdminFeedbackBloc>(
+    () => AdminFeedbackBloc(repository: getIt()),
   );
 }

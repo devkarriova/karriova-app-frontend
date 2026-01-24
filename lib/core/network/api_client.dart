@@ -284,6 +284,31 @@ class ApiClient {
     }
   }
 
+  /// Generic PATCH request
+  Future<ApiResponse> patch(
+    String endpoint, {
+    required Map<String, dynamic> body,
+    bool requiresAuth = false,
+  }) async {
+    // Check rate limit
+    final rateLimitResponse = _checkRateLimit(endpoint);
+    if (rateLimitResponse != null) return rateLimitResponse;
+    
+    try {
+      final response = await _client
+          .patch(
+            Uri.parse(_buildUrl(endpoint)),
+            headers: _buildHeaders(requiresAuth: requiresAuth),
+            body: jsonEncode(body),
+          )
+          .timeout(AppConfig.connectionTimeout);
+
+      return await _handleResponseWithRetry(response, () => patch(endpoint, body: body, requiresAuth: requiresAuth));
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
   /// Handle response with automatic token refresh on 401
   Future<ApiResponse> _handleResponseWithRetry(
     http.Response response,
