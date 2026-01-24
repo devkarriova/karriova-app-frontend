@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/pages/auth_page.dart';
+import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/auth/presentation/bloc/auth_event.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/feed/presentation/pages/feed_page.dart';
 import '../../features/chat/presentation/pages/chat_page.dart';
 import '../../features/search/presentation/pages/search_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/admin/presentation/pages/admin_page.dart';
+import '../../features/assessment/presentation/pages/assessment_page.dart';
 
 class AppRouter {
   // Auth routes
@@ -22,6 +26,7 @@ class AppRouter {
   static const String search = '/search';
   static const String notifications = '/notifications';
   static const String admin = '/admin';
+  static const String assessment = '/assessment';
 
   static final GoRouter router = GoRouter(
     initialLocation: auth, // Default landing page is login
@@ -130,6 +135,24 @@ class AppRouter {
         pageBuilder: (context, state) {
           return const MaterialPage(
             child: AdminPage(),
+          );
+        },
+      ),
+
+      // Assessment Page (mandatory for first-time users)
+      GoRoute(
+        path: '/assessment',
+        name: 'assessment',
+        pageBuilder: (context, state) {
+          return MaterialPage(
+            child: AssessmentPage(
+              onComplete: () {
+                // Mark assessment as completed in auth state
+                context.read<AuthBloc>().add(const AuthSetAssessmentCompleted());
+                // Navigate to feed after assessment completion
+                GoRouter.of(context).go(AppRouter.feed);
+              },
+            ),
           );
         },
       ),

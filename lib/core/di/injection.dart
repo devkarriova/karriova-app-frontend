@@ -41,6 +41,9 @@ import '../../features/admin/data/datasources/admin_remote_datasource.dart';
 import '../../features/admin/data/repositories/admin_repository_impl.dart';
 import '../../features/admin/domain/repositories/admin_repository.dart';
 import '../../features/admin/presentation/bloc/admin_bloc.dart';
+import '../../features/assessment/data/datasources/assessment_remote_datasource.dart';
+import '../../features/assessment/data/repositories/assessment_repository_impl.dart';
+import '../../features/assessment/presentation/bloc/assessment_bloc.dart';
 
 final getIt = GetIt.instance;
 
@@ -238,5 +241,22 @@ Future<void> configureDependencies() async {
   // Admin BLoC
   getIt.registerFactory<AdminBloc>(
     () => AdminBloc(adminRepository: getIt()),
+  );
+
+  // Assessment Data Sources
+  getIt.registerLazySingleton<AssessmentRemoteDataSource>(
+    () => AssessmentRemoteDataSourceImpl(apiClient: getIt()),
+  );
+
+  // Assessment Repository
+  getIt.registerLazySingleton<AssessmentRepository>(
+    () => AssessmentRepositoryImpl(
+      remoteDataSource: getIt(),
+    ),
+  );
+
+  // Assessment BLoC (as singleton to persist state across app)
+  getIt.registerLazySingleton<AssessmentBloc>(
+    () => AssessmentBloc(assessmentRepository: getIt()),
   );
 }

@@ -59,3 +59,11 @@ class AuthResetPasswordRequested extends AuthEvent {
 class AuthTokenExpired extends AuthEvent {
   const AuthTokenExpired();
 }
+
+class AuthCheckAssessmentStatus extends AuthEvent {
+  const AuthCheckAssessmentStatus();
+}
+
+class AuthSetAssessmentCompleted extends AuthEvent {
+  const AuthSetAssessmentCompleted();
+}

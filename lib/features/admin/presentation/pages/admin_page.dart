@@ -11,6 +11,7 @@ import '../bloc/admin_bloc.dart';
 import '../bloc/admin_event.dart';
 import '../bloc/admin_state.dart';
 import '../widgets/event_form_dialog.dart';
+import '../widgets/assessment_management_tab.dart';
 
 /// Admin page for managing events and other admin functions
 class AdminPage extends StatefulWidget {
@@ -27,7 +28,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -55,6 +56,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
                   controller: _tabController,
                   children: [
                     _EventManagementTab(searchController: _searchController),
+                    const AssessmentManagementTab(),
                     const _ContentModerationTab(),
                   ],
                 ),
@@ -80,6 +82,10 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
           Tab(
             icon: Icon(Icons.event),
             text: 'Events',
+          ),
+          Tab(
+            icon: Icon(Icons.psychology),
+            text: 'Assessment',
           ),
           Tab(
             icon: Icon(Icons.shield_outlined),

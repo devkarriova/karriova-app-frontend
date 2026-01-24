@@ -100,8 +100,18 @@ class _AuthPageState extends State<AuthPage> {
               backgroundColor: AppColors.success,
             ),
           );
-          // Navigate to feed page after successful authentication
-          context.go(AppRouter.feed);
+          
+          // Check assessment status first
+          if (state.assessmentCompleted == null) {
+            // Need to check assessment status from backend
+            context.read<AuthBloc>().add(const AuthCheckAssessmentStatus());
+          } else if (state.assessmentCompleted == false) {
+            // User hasn't completed assessment - redirect to assessment page
+            context.go(AppRouter.assessment);
+          } else {
+            // User has completed assessment - go to feed
+            context.go(AppRouter.feed);
+          }
         }
       },
       builder: (context, state) {

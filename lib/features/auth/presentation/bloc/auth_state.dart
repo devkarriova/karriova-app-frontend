@@ -14,12 +14,14 @@ class AuthState extends Equatable {
   final UserModel? user;
   final String? errorMessage;
   final String? successMessage;
+  final bool? assessmentCompleted; // null = not yet checked, true/false = status
 
   const AuthState({
     this.status = AuthStatus.initial,
     this.user,
     this.errorMessage,
     this.successMessage,
+    this.assessmentCompleted,
   });
 
   AuthState copyWith({
@@ -27,15 +29,17 @@ class AuthState extends Equatable {
     UserModel? user,
     String? errorMessage,
     String? successMessage,
+    bool? assessmentCompleted,
   }) {
     return AuthState(
       status: status ?? this.status,
       user: user ?? this.user,
       errorMessage: errorMessage,
       successMessage: successMessage,
+      assessmentCompleted: assessmentCompleted ?? this.assessmentCompleted,
     );
   }
 
   @override
-  List<Object?> get props => [status, user, errorMessage, successMessage];
+  List<Object?> get props => [status, user, errorMessage, successMessage, assessmentCompleted];
 }

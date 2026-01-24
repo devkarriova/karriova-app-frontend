@@ -1,4 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../assessment/data/repositories/assessment_repository_impl.dart';
+import '../../../../core/di/injection.dart';
 import '../../domain/repositories/auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -14,6 +16,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthCheckStatusRequested>(_onCheckStatusRequested);
     on<AuthResetPasswordRequested>(_onResetPasswordRequested);
     on<AuthTokenExpired>(_onTokenExpired);
+    on<AuthCheckAssessmentStatus>(_onCheckAssessmentStatus);
+    on<AuthSetAssessmentCompleted>(_onSetAssessmentCompleted);
   }
 
   Future<void> _onLoginRequested(
@@ -36,6 +40,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         status: AuthStatus.authenticated,
         user: user,
         successMessage: 'Login successful!',
+        assessmentCompleted: null, // Reset - will be checked next
       )),
     );
   }
@@ -61,6 +66,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         status: AuthStatus.authenticated,
         user: user,
         successMessage: 'Signup successful!',
+        assessmentCompleted: false, // New users haven't taken assessment
       )),
     );
   }
@@ -155,5 +161,35 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       status: AuthStatus.unauthenticated,
       errorMessage: 'Session expired. Please login again.',
     ));
+  }
+
+  Future<void> _onCheckAssessmentStatus(
+    AuthCheckAssessmentStatus event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      final assessmentRepo = getIt<AssessmentRepository>();
+      final result = await assessmentRepo.getAssessmentStatus();
+      
+      result.fold(
+        (error) {
+          // If error, assume not completed (will prompt assessment)
+          emit(state.copyWith(assessmentCompleted: false));
+        },
+        (completed) {
+          emit(state.copyWith(assessmentCompleted: completed));
+        },
+      );
+    } catch (e) {
+      // On error, assume not completed
+      emit(state.copyWith(assessmentCompleted: false));
+    }
+  }
+
+  Future<void> _onSetAssessmentCompleted(
+    AuthSetAssessmentCompleted event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(state.copyWith(assessmentCompleted: true));
   }
 }
