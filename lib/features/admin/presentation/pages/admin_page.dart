@@ -22,19 +22,12 @@ class AdminPage extends StatefulWidget {
   State<AdminPage> createState() => _AdminPageState();
 }
 
-class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _AdminPageState extends State<AdminPage> {
   final TextEditingController _searchController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-  }
+  String? _expandedSection;
 
   @override
   void dispose() {
-    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -51,19 +44,79 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
           child: Column(
             children: [
               const AppHeader(),
-              _buildTabBar(),
+              const AppNavigationBar(currentRoute: AppRouter.admin),
               Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _EventManagementTab(searchController: _searchController),
-                    const AssessmentManagementTab(),
-                    const FeedbackManagementTab(),
-                    const _ContentModerationTab(),
-                  ],
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Admin Dashboard',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Manage events, assessments, feedback, and content moderation',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      _buildAdminCard(
+                        context,
+                        title: 'Events Management',
+                        subtitle: 'Create and manage events for the community',
+                        icon: Icons.event,
+                        color: Colors.blue,
+                        sectionKey: 'events',
+                        expandedContent: _EventManagementContent(searchController: _searchController),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildAdminCard(
+                        context,
+                        title: 'Assessment Management',
+                        subtitle: 'Manage career assessment questions and scoring',
+                        icon: Icons.psychology,
+                        color: Colors.purple,
+                        sectionKey: 'assessment',
+                        expandedContent: const SizedBox(
+                          height: 500,
+                          child: AssessmentManagementTab(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildAdminCard(
+                        context,
+                        title: 'Feedback Management',
+                        subtitle: 'Review and respond to user feedback',
+                        icon: Icons.support_agent,
+                        color: Colors.green,
+                        sectionKey: 'feedback',
+                        expandedContent: const SizedBox(
+                          height: 400,
+                          child: FeedbackManagementTab(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildAdminCard(
+                        context,
+                        title: 'Content Moderation',
+                        subtitle: 'Review flagged content and manage reports',
+                        icon: Icons.shield_outlined,
+                        color: Colors.orange,
+                        sectionKey: 'moderation',
+                        expandedContent: const _ContentModerationContent(),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const AppNavigationBar(currentRoute: AppRouter.admin),
             ],
           ),
         ),
@@ -71,199 +124,193 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _buildTabBar() {
-    return Container(
+  Widget _buildAdminCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required String sectionKey,
+    required Widget expandedContent,
+  }) {
+    final isExpanded = _expandedSection == sectionKey;
+    
+    return Card(
       color: AppColors.surface,
-      child: TabBar(
-        controller: _tabController,
-        labelColor: AppColors.primary,
-        unselectedLabelColor: AppColors.textSecondary,
-        indicatorColor: AppColors.primary,
-        indicatorWeight: 3,
-        tabs: const [
-          Tab(
-            icon: Icon(Icons.event),
-            text: 'Events',
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () {
+              setState(() {
+                _expandedSection = isExpanded ? null : sectionKey;
+              });
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: color, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
           ),
-          Tab(
-            icon: Icon(Icons.psychology),
-            text: 'Assessment',
-          ),
-          Tab(
-            icon: Icon(Icons.support_agent),
-            text: 'Feedback',
-          ),
-          Tab(
-            icon: Icon(Icons.shield_outlined),
-            text: 'Moderation',
-          ),
+          if (isExpanded) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: expandedContent,
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-/// Event Management Tab
-class _EventManagementTab extends StatelessWidget {
+/// Event Management Content (expanded card content)
+class _EventManagementContent extends StatelessWidget {
   final TextEditingController searchController;
 
-  const _EventManagementTab({required this.searchController});
+  const _EventManagementContent({required this.searchController});
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        _buildToolbar(context),
-        Expanded(
-          child: BlocConsumer<AdminBloc, AdminState>(
-            listener: (context, state) {
-              if (state.formSuccessMessage != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.formSuccessMessage!),
-                    backgroundColor: Colors.green,
+        // Toolbar
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            SizedBox(
+              width: 300,
+              child: TextField(
+                controller: searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search events...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                );
-                context.read<AdminBloc>().add(const ClearFormStateEvent());
-              }
-              if (state.formError != null && state.formStatus == FormStatus.failure) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.formError!),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            builder: (context, state) {
-              if (state.isLoadingEvents && state.events.isEmpty) {
-                return const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                );
-              }
-
-              if (state.eventsError != null && state.events.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        state.eventsError!,
-                        style: const TextStyle(color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          context.read<AdminBloc>().add(const RefreshEventsEvent());
-                        },
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              if (state.events.isEmpty) {
-                return const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.event_busy,
-                        size: 64,
-                        color: AppColors.textSecondary,
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'No events found',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 16,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Create your first event to get started',
-                        style: TextStyle(
-                          color: AppColors.textTertiary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              return RefreshIndicator(
-                onRefresh: () async {
-                  context.read<AdminBloc>().add(const RefreshEventsEvent());
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  filled: true,
+                  fillColor: AppColors.background,
+                ),
+                onSubmitted: (value) {
+                  context.read<AdminBloc>().add(UpdateFilterEvent(search: value));
                 },
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: state.events.length,
-                  itemBuilder: (context, index) {
-                    return _EventCard(event: state.events[index]);
-                  },
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _showCreateEventDialog(context),
+              icon: const Icon(Icons.add),
+              label: const Text('New Event'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Filter chips
+        _buildFilterChips(context),
+        const SizedBox(height: 16),
+        // Events list
+        BlocBuilder<AdminBloc, AdminState>(
+          builder: (context, state) {
+            if (state.isLoadingEvents && state.events.isEmpty) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: CircularProgressIndicator(color: AppColors.primary),
                 ),
               );
-            },
-          ),
+            }
+
+            if (state.eventsError != null && state.events.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: AppColors.textSecondary),
+                    const SizedBox(height: 16),
+                    Text(state.eventsError!, style: const TextStyle(color: AppColors.textSecondary)),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => context.read<AdminBloc>().add(const RefreshEventsEvent()),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            if (state.events.isEmpty) {
+              return const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.event_busy, size: 48, color: AppColors.textSecondary),
+                    SizedBox(height: 16),
+                    Text('No events found', style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+                    SizedBox(height: 8),
+                    Text('Create your first event to get started', style: TextStyle(color: AppColors.textTertiary, fontSize: 14)),
+                  ],
+                ),
+              );
+            }
+
+            return Column(
+              children: state.events.map((event) => _EventCard(event: event)).toList(),
+            );
+          },
         ),
       ],
-    );
-  }
-
-  Widget _buildToolbar(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: AppColors.surface,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search events...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    filled: true,
-                    fillColor: AppColors.background,
-                  ),
-                  onSubmitted: (value) {
-                    context.read<AdminBloc>().add(
-                          UpdateFilterEvent(search: value),
-                        );
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: () => _showCreateEventDialog(context),
-                icon: const Icon(Icons.add),
-                label: const Text('New Event'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildFilterChips(context),
-        ],
-      ),
     );
   }
 
@@ -277,41 +324,25 @@ class _EventManagementTab extends StatelessWidget {
               _FilterChip(
                 label: 'All',
                 isSelected: state.statusFilter == null,
-                onSelected: () {
-                  context.read<AdminBloc>().add(
-                        const UpdateFilterEvent(status: ''),
-                      );
-                },
+                onSelected: () => context.read<AdminBloc>().add(const UpdateFilterEvent(status: '')),
               ),
               const SizedBox(width: 8),
               _FilterChip(
                 label: 'Published',
                 isSelected: state.statusFilter == 'published',
-                onSelected: () {
-                  context.read<AdminBloc>().add(
-                        const UpdateFilterEvent(status: 'published'),
-                      );
-                },
+                onSelected: () => context.read<AdminBloc>().add(const UpdateFilterEvent(status: 'published')),
               ),
               const SizedBox(width: 8),
               _FilterChip(
                 label: 'Draft',
                 isSelected: state.statusFilter == 'draft',
-                onSelected: () {
-                  context.read<AdminBloc>().add(
-                        const UpdateFilterEvent(status: 'draft'),
-                      );
-                },
+                onSelected: () => context.read<AdminBloc>().add(const UpdateFilterEvent(status: 'draft')),
               ),
               const SizedBox(width: 8),
               _FilterChip(
                 label: 'Cancelled',
                 isSelected: state.statusFilter == 'cancelled',
-                onSelected: () {
-                  context.read<AdminBloc>().add(
-                        const UpdateFilterEvent(status: 'cancelled'),
-                      );
-                },
+                onSelected: () => context.read<AdminBloc>().add(const UpdateFilterEvent(status: 'cancelled')),
               ),
             ],
           ),
@@ -327,6 +358,34 @@ class _EventManagementTab extends StatelessWidget {
       builder: (dialogContext) => BlocProvider.value(
         value: bloc,
         child: const EventFormDialog(),
+      ),
+    );
+  }
+}
+
+/// Content Moderation Content (expanded card content)
+class _ContentModerationContent extends StatelessWidget {
+  const _ContentModerationContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.construction, size: 48, color: AppColors.textSecondary),
+          SizedBox(height: 16),
+          Text(
+            'Content Moderation',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'This feature is coming soon. You will be able to review flagged content and manage reports here.',
+            style: TextStyle(color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -693,54 +752,6 @@ class _EventCard extends StatelessWidget {
               backgroundColor: Colors.red,
             ),
             child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Content Moderation Tab (Placeholder for now)
-class _ContentModerationTab extends StatelessWidget {
-  const _ContentModerationTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.shield_outlined,
-            size: 80,
-            color: AppColors.textSecondary.withOpacity(0.5),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Content Moderation',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Coming soon...',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'This section will include:\n• Reported content review\n• User moderation\n• Content flagging',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textTertiary,
-              height: 1.5,
-            ),
           ),
         ],
       ),

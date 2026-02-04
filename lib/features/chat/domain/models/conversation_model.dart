@@ -23,13 +23,21 @@ class ConversationModel extends Equatable {
   });
 
   factory ConversationModel.fromJson(Map<String, dynamic> json) {
+    // Handle null or missing last_message_at - use created_at as fallback
+    DateTime lastMessageAt;
+    if (json['last_message_at'] != null) {
+      lastMessageAt = DateTime.parse(json['last_message_at'] as String);
+    } else {
+      lastMessageAt = DateTime.parse(json['created_at'] as String);
+    }
+    
     return ConversationModel(
       id: json['id'] as String,
       otherUserId: json['other_user_id'] as String,
       otherUserName: json['other_user_name'] as String? ?? 'Unknown User',
       otherUserPhoto: json['other_user_photo'] as String?,
-      lastMessage: json['last_message'] as String,
-      lastMessageAt: DateTime.parse(json['last_message_at'] as String),
+      lastMessage: json['last_message'] as String? ?? '',
+      lastMessageAt: lastMessageAt,
       unreadCount: json['unread_count'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
     );

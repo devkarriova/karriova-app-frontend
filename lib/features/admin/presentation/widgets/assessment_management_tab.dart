@@ -249,6 +249,8 @@ class _SectionsView extends StatelessWidget {
           return _SectionCard(
             section: section,
             onTap: () => onSectionTap(section),
+            onEdit: () => _showEditSectionDialog(context, section),
+            onDelete: () => _showDeleteSectionDialog(context, section),
           );
         },
       ),
@@ -256,9 +258,31 @@ class _SectionsView extends StatelessWidget {
   }
 
   void _showAddSectionDialog(BuildContext context) {
-    // TODO: Implement add section dialog
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Add section coming soon')),
+    showDialog(
+      context: context,
+      builder: (ctx) => _AddSectionDialog(onCreated: onRefresh),
+    );
+  }
+
+  void _showEditSectionDialog(BuildContext context, SectionModel section) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _EditSectionDialog(section: section, onUpdated: onRefresh),
+    );
+  }
+
+  void _showDeleteSectionDialog(BuildContext context, SectionModel section) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _DeleteConfirmDialog(
+        title: 'Delete Section',
+        message: 'Are you sure you want to delete "${section.name}"? This will also delete all dimensions and questions inside it.',
+        onConfirm: () async {
+          final datasource = getIt<AssessmentRemoteDataSource>();
+          await datasource.deleteSection(section.id);
+          onRefresh();
+        },
+      ),
     );
   }
 }
@@ -266,8 +290,10 @@ class _SectionsView extends StatelessWidget {
 class _SectionCard extends StatelessWidget {
   final SectionModel section;
   final VoidCallback onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
-  const _SectionCard({required this.section, required this.onTap});
+  const _SectionCard({required this.section, required this.onTap, this.onEdit, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -325,6 +351,20 @@ class _SectionCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onEdit != null)
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  color: AppColors.textSecondary,
+                  onPressed: onEdit,
+                  tooltip: 'Edit section',
+                ),
+              if (onDelete != null)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  color: Colors.red.shade400,
+                  onPressed: onDelete,
+                  tooltip: 'Delete section',
+                ),
               const Icon(Icons.chevron_right, color: AppColors.textTertiary),
             ],
           ),
@@ -373,6 +413,8 @@ class _DimensionsView extends StatelessWidget {
           return _DimensionCard(
             dimension: dimension,
             onTap: () => onDimensionTap(dimension),
+            onEdit: () => _showEditDimensionDialog(context, dimension),
+            onDelete: () => _showDeleteDimensionDialog(context, dimension),
           );
         },
       ),
@@ -380,8 +422,34 @@ class _DimensionsView extends StatelessWidget {
   }
 
   void _showAddDimensionDialog(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Add dimension coming soon')),
+    showDialog(
+      context: context,
+      builder: (ctx) => _AddDimensionDialog(
+        sectionId: section.id,
+        onCreated: onRefresh,
+      ),
+    );
+  }
+
+  void _showEditDimensionDialog(BuildContext context, DimensionModel dimension) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _EditDimensionDialog(dimension: dimension, onUpdated: onRefresh),
+    );
+  }
+
+  void _showDeleteDimensionDialog(BuildContext context, DimensionModel dimension) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _DeleteConfirmDialog(
+        title: 'Delete Dimension',
+        message: 'Are you sure you want to delete "${dimension.name}"? This will also delete all questions inside it.',
+        onConfirm: () async {
+          final datasource = getIt<AssessmentRemoteDataSource>();
+          await datasource.deleteDimension(dimension.id);
+          onRefresh();
+        },
+      ),
     );
   }
 }
@@ -389,8 +457,10 @@ class _DimensionsView extends StatelessWidget {
 class _DimensionCard extends StatelessWidget {
   final DimensionModel dimension;
   final VoidCallback onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
-  const _DimensionCard({required this.dimension, required this.onTap});
+  const _DimensionCard({required this.dimension, required this.onTap, this.onEdit, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -444,6 +514,20 @@ class _DimensionCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (onEdit != null)
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      color: AppColors.textSecondary,
+                      onPressed: onEdit,
+                      tooltip: 'Edit dimension',
+                    ),
+                  if (onDelete != null)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20),
+                      color: Colors.red.shade400,
+                      onPressed: onDelete,
+                      tooltip: 'Delete dimension',
+                    ),
                   const Icon(Icons.chevron_right, color: AppColors.textTertiary),
                 ],
               ),
@@ -539,6 +623,7 @@ class _QuestionsView extends StatelessWidget {
           return _QuestionCard(
             question: question,
             index: index + 1,
+            onDelete: () => _showDeleteQuestionDialog(context, question),
           );
         },
       ),
@@ -546,8 +631,27 @@ class _QuestionsView extends StatelessWidget {
   }
 
   void _showAddQuestionDialog(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Add question coming soon')),
+    showDialog(
+      context: context,
+      builder: (ctx) => _AddQuestionDialog(
+        dimensionId: dimension.id,
+        onCreated: onRefresh,
+      ),
+    );
+  }
+
+  void _showDeleteQuestionDialog(BuildContext context, QuestionModel question) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _DeleteConfirmDialog(
+        title: 'Delete Question',
+        message: 'Are you sure you want to delete this question?',
+        onConfirm: () async {
+          final datasource = getIt<AssessmentRemoteDataSource>();
+          await datasource.deleteQuestion(question.id);
+          onRefresh();
+        },
+      ),
     );
   }
 }
@@ -555,8 +659,9 @@ class _QuestionsView extends StatelessWidget {
 class _QuestionCard extends StatelessWidget {
   final QuestionModel question;
   final int index;
+  final VoidCallback? onDelete;
 
-  const _QuestionCard({required this.question, required this.index});
+  const _QuestionCard({required this.question, required this.index, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -608,13 +713,12 @@ class _QuestionCard extends StatelessWidget {
                 PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert, size: 20, color: AppColors.textSecondary),
                   itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: Colors.red))),
                   ],
                   onSelected: (value) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('$value coming soon')),
-                    );
+                    if (value == 'delete' && onDelete != null) {
+                      onDelete!();
+                    }
                   },
                 ),
               ],
@@ -793,6 +897,1012 @@ class _AddCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ========================================
+// ADD DIALOGS
+// ========================================
+
+/// Dialog for adding a new section
+class _AddSectionDialog extends StatefulWidget {
+  final VoidCallback onCreated;
+
+  const _AddSectionDialog({required this.onCreated});
+
+  @override
+  State<_AddSectionDialog> createState() => _AddSectionDialogState();
+}
+
+class _AddSectionDialogState extends State<_AddSectionDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _descController = TextEditingController();
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final datasource = getIt<AssessmentRemoteDataSource>();
+      await datasource.createSection(
+        _nameController.text.trim(),
+        _descController.text.trim(),
+      );
+      widget.onCreated();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 400,
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.category, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Add Section',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Section Name',
+                  hintText: 'e.g., Personality Assessment',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _descController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  hintText: 'Brief description of this section',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(100, 40),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Create'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dialog for adding a new dimension
+class _AddDimensionDialog extends StatefulWidget {
+  final String sectionId;
+  final VoidCallback onCreated;
+
+  const _AddDimensionDialog({required this.sectionId, required this.onCreated});
+
+  @override
+  State<_AddDimensionDialog> createState() => _AddDimensionDialogState();
+}
+
+class _AddDimensionDialogState extends State<_AddDimensionDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _descController = TextEditingController();
+  final _poleAController = TextEditingController(text: 'Low');
+  final _poleBController = TextEditingController(text: 'High');
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descController.dispose();
+    _poleAController.dispose();
+    _poleBController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final datasource = getIt<AssessmentRemoteDataSource>();
+      await datasource.createDimension(
+        widget.sectionId,
+        _nameController.text.trim(),
+        _descController.text.trim(),
+        poleALabel: _poleAController.text.trim(),
+        poleBLabel: _poleBController.text.trim(),
+      );
+      widget.onCreated();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 450,
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.swap_horiz, color: Colors.purple),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Add Dimension',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Dimension Name',
+                  hintText: 'e.g., Workstyle, Leadership',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _descController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  hintText: 'What this dimension measures',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Pole Labels (Spectrum Endpoints)',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Define the two opposite ends of this personality trait',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _poleAController,
+                      decoration: InputDecoration(
+                        labelText: 'Pole A (Low end)',
+                        hintText: 'e.g., Structured',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: Container(
+                          margin: const EdgeInsets.all(8),
+                          width: 12, height: 12,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                      validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Icon(Icons.arrow_forward, color: AppColors.textTertiary),
+                  ),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _poleBController,
+                      decoration: InputDecoration(
+                        labelText: 'Pole B (High end)',
+                        hintText: 'e.g., Flexible',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: Container(
+                          margin: const EdgeInsets.all(8),
+                          width: 12, height: 12,
+                          decoration: const BoxDecoration(
+                            color: AppColors.secondary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                      validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
+                    ),
+                  ),
+                ],
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(100, 40),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Create'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dialog for adding a new question with options
+class _AddQuestionDialog extends StatefulWidget {
+  final String dimensionId;
+  final VoidCallback onCreated;
+
+  const _AddQuestionDialog({required this.dimensionId, required this.onCreated});
+
+  @override
+  State<_AddQuestionDialog> createState() => _AddQuestionDialogState();
+}
+
+class _AddQuestionDialogState extends State<_AddQuestionDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _questionController = TextEditingController();
+  final List<_OptionEntry> _options = [
+    _OptionEntry(TextEditingController(), 1),
+    _OptionEntry(TextEditingController(), 2),
+    _OptionEntry(TextEditingController(), 3),
+    _OptionEntry(TextEditingController(), 4),
+  ];
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _questionController.dispose();
+    for (final opt in _options) {
+      opt.controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    // Validate options
+    final validOptions = _options.where((o) => o.controller.text.trim().isNotEmpty).toList();
+    if (validOptions.length < 2) {
+      setState(() => _error = 'At least 2 options are required');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final datasource = getIt<AssessmentRemoteDataSource>();
+      await datasource.createQuestion(
+        widget.dimensionId,
+        _questionController.text.trim(),
+        validOptions.map((o) => OptionInput(text: o.controller.text.trim(), score: o.score)).toList(),
+      );
+      widget.onCreated();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 500,
+        constraints: const BoxConstraints(maxHeight: 600),
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.help_outline, color: Colors.blue),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Add Question',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: _questionController,
+                decoration: const InputDecoration(
+                  labelText: 'Question Text',
+                  hintText: 'Enter the question...',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+                validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
+              ),
+              const SizedBox(height: 20),
+              const Text('Answer Options (with scores)', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: _options.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final opt = entry.value;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 60,
+                              child: DropdownButtonFormField<int>(
+                                value: opt.score,
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                                ),
+                                items: [1, 2, 3, 4, 5].map((s) => DropdownMenuItem(value: s, child: Text('$s'))).toList(),
+                                onChanged: (v) => setState(() => _options[index].score = v ?? 1),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: opt.controller,
+                                decoration: InputDecoration(
+                                  hintText: 'Option ${index + 1}',
+                                  border: const OutlineInputBorder(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(100, 40),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Create'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OptionEntry {
+  final TextEditingController controller;
+  int score;
+
+  _OptionEntry(this.controller, this.score);
+}
+
+// ========================================
+// EDIT DIALOGS
+// ========================================
+
+/// Dialog for editing a section
+class _EditSectionDialog extends StatefulWidget {
+  final SectionModel section;
+  final VoidCallback onUpdated;
+
+  const _EditSectionDialog({required this.section, required this.onUpdated});
+
+  @override
+  State<_EditSectionDialog> createState() => _EditSectionDialogState();
+}
+
+class _EditSectionDialogState extends State<_EditSectionDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _descController;
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.section.name);
+    _descController = TextEditingController(text: widget.section.description);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final datasource = getIt<AssessmentRemoteDataSource>();
+      await datasource.updateSection(
+        widget.section.id,
+        name: _nameController.text.trim(),
+        description: _descController.text.trim(),
+      );
+      widget.onUpdated();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 400,
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.edit, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Edit Section',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Section Name',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _descController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(100, 40),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dialog for editing a dimension (including pole labels)
+class _EditDimensionDialog extends StatefulWidget {
+  final DimensionModel dimension;
+  final VoidCallback onUpdated;
+
+  const _EditDimensionDialog({required this.dimension, required this.onUpdated});
+
+  @override
+  State<_EditDimensionDialog> createState() => _EditDimensionDialogState();
+}
+
+class _EditDimensionDialogState extends State<_EditDimensionDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _descController;
+  late final TextEditingController _poleAController;
+  late final TextEditingController _poleBController;
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.dimension.name);
+    _descController = TextEditingController(text: widget.dimension.description);
+    _poleAController = TextEditingController(text: widget.dimension.poleALabel);
+    _poleBController = TextEditingController(text: widget.dimension.poleBLabel);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descController.dispose();
+    _poleAController.dispose();
+    _poleBController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final datasource = getIt<AssessmentRemoteDataSource>();
+      await datasource.updateDimension(
+        widget.dimension.id,
+        name: _nameController.text.trim(),
+        description: _descController.text.trim(),
+        poleALabel: _poleAController.text.trim(),
+        poleBLabel: _poleBController.text.trim(),
+      );
+      widget.onUpdated();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 450,
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.edit, color: Colors.purple),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Edit Dimension',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Dimension Name',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _descController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Pole Labels (Spectrum Endpoints)',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Define the two opposite ends of this personality trait',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _poleAController,
+                      decoration: InputDecoration(
+                        labelText: 'Pole A (Low end)',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: Container(
+                          margin: const EdgeInsets.all(8),
+                          width: 12, height: 12,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                      validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Icon(Icons.arrow_forward, color: AppColors.textTertiary),
+                  ),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _poleBController,
+                      decoration: InputDecoration(
+                        labelText: 'Pole B (High end)',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: Container(
+                          margin: const EdgeInsets.all(8),
+                          width: 12, height: 12,
+                          decoration: const BoxDecoration(
+                            color: AppColors.secondary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                      validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
+                    ),
+                  ),
+                ],
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(100, 40),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ========================================
+// DELETE CONFIRMATION DIALOG
+// ========================================
+
+class _DeleteConfirmDialog extends StatefulWidget {
+  final String title;
+  final String message;
+  final Future<void> Function() onConfirm;
+
+  const _DeleteConfirmDialog({
+    required this.title,
+    required this.message,
+    required this.onConfirm,
+  });
+
+  @override
+  State<_DeleteConfirmDialog> createState() => _DeleteConfirmDialogState();
+}
+
+class _DeleteConfirmDialogState extends State<_DeleteConfirmDialog> {
+  bool _isLoading = false;
+  String? _error;
+
+  Future<void> _handleDelete() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      await widget.onConfirm();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 400,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.warning_amber_rounded, color: Colors.red),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  widget.title,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              widget.message,
+              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+            ],
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _handleDelete,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(100, 40),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Delete'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

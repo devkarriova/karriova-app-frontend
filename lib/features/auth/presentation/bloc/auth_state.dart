@@ -7,6 +7,7 @@ enum AuthStatus {
   authenticated,
   unauthenticated,
   error,
+  googleOAuthRequired, // User needs to be redirected to Google OAuth
 }
 
 class AuthState extends Equatable {
@@ -15,6 +16,8 @@ class AuthState extends Equatable {
   final String? errorMessage;
   final String? successMessage;
   final bool? assessmentCompleted; // null = not yet checked, true/false = status
+  final String? googleOAuthUrl; // OAuth URL when status is googleOAuthRequired
+  final String? googleOAuthState; // OAuth state for CSRF protection
 
   const AuthState({
     this.status = AuthStatus.initial,
@@ -22,6 +25,8 @@ class AuthState extends Equatable {
     this.errorMessage,
     this.successMessage,
     this.assessmentCompleted,
+    this.googleOAuthUrl,
+    this.googleOAuthState,
   });
 
   AuthState copyWith({
@@ -30,6 +35,8 @@ class AuthState extends Equatable {
     String? errorMessage,
     String? successMessage,
     bool? assessmentCompleted,
+    String? googleOAuthUrl,
+    String? googleOAuthState,
   }) {
     return AuthState(
       status: status ?? this.status,
@@ -37,9 +44,11 @@ class AuthState extends Equatable {
       errorMessage: errorMessage,
       successMessage: successMessage,
       assessmentCompleted: assessmentCompleted ?? this.assessmentCompleted,
+      googleOAuthUrl: googleOAuthUrl,
+      googleOAuthState: googleOAuthState,
     );
   }
 
   @override
-  List<Object?> get props => [status, user, errorMessage, successMessage, assessmentCompleted];
+  List<Object?> get props => [status, user, errorMessage, successMessage, assessmentCompleted, googleOAuthUrl, googleOAuthState];
 }

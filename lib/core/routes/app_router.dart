@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/pages/auth_page.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_event.dart';
+import '../../features/auth/presentation/bloc/auth_state.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/feed/presentation/pages/feed_page.dart';
 import '../../features/chat/presentation/pages/chat_page.dart';
@@ -11,6 +12,8 @@ import '../../features/search/presentation/pages/search_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/admin/presentation/pages/admin_page.dart';
 import '../../features/assessment/presentation/pages/assessment_page.dart';
+import '../../features/assessment/presentation/bloc/assessment_bloc.dart';
+import '../di/injection.dart';
 
 class AppRouter {
   // Auth routes
@@ -27,9 +30,23 @@ class AppRouter {
   static const String notifications = '/notifications';
   static const String admin = '/admin';
   static const String assessment = '/assessment';
+  static const String assessmentResults = '/assessment/results';
 
   static final GoRouter router = GoRouter(
     initialLocation: auth, // Default landing page is login
+    redirect: (context, state) {
+      final authBloc = getIt<AuthBloc>();
+      final isAuthenticated = authBloc.state.status == AuthStatus.authenticated;
+      final isAuthRoute = state.uri.path == '/' || state.uri.path == '';
+      
+      // If authenticated user tries to go to auth page (e.g., browser back button),
+      // redirect them back to feed
+      if (isAuthenticated && isAuthRoute) {
+        return feed;
+      }
+      
+      return null; // No redirect needed
+    },
     routes: [
       // Auth Page (Login/Signup)
       GoRoute(
@@ -150,6 +167,27 @@ class AppRouter {
                 // Mark assessment as completed in auth state
                 context.read<AuthBloc>().add(const AuthSetAssessmentCompleted());
                 // Navigate to feed after assessment completion
+                GoRouter.of(context).go(AppRouter.feed);
+              },
+            ),
+          );
+        },
+      ),
+
+      // Assessment Results Page
+      GoRoute(
+        path: '/assessment/results',
+        name: 'assessment-results',
+        pageBuilder: (context, state) {
+          final bloc = getIt<AssessmentBloc>();
+          final result = bloc.state.result;
+          return MaterialPage(
+            child: AssessmentResultsFullPage(
+              result: result!,
+              onContinue: () {
+                // Mark assessment as completed in auth state
+                context.read<AuthBloc>().add(const AuthSetAssessmentCompleted());
+                // Navigate to feed
                 GoRouter.of(context).go(AppRouter.feed);
               },
             ),

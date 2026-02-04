@@ -111,17 +111,25 @@ class _EventFormDialogState extends State<EventFormDialog> {
         }
       },
       child: Dialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
-          child: Column(
-            children: [
-              _buildHeader(),
-              Expanded(
-                child: Form(
-                  key: _formKey,
+          width: 600,
+          constraints: const BoxConstraints(maxHeight: 700),
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                _buildHeader(),
+                const SizedBox(height: 24),
+                
+                // Scrollable Content
+                Flexible(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -140,9 +148,12 @@ class _EventFormDialogState extends State<EventFormDialog> {
                     ),
                   ),
                 ),
-              ),
-              _buildFooter(),
-            ],
+                const SizedBox(height: 24),
+                
+                // Action Buttons
+                _buildFooter(),
+              ],
+            ),
           ),
         ),
       ),
@@ -150,34 +161,49 @@ class _EventFormDialogState extends State<EventFormDialog> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-      ),
-      child: Row(
-        children: [
-          Icon(
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
             isEditing ? Icons.edit : Icons.add_circle,
-            color: Colors.white,
+            color: AppColors.primary,
           ),
-          const SizedBox(width: 12),
-          Text(
-            isEditing ? 'Edit Event' : 'Create New Event',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isEditing ? 'Edit Event' : 'Create New Event',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                isEditing ? 'Update event details' : 'Fill in the event details below',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
           ),
-          const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+          color: AppColors.textSecondary,
+        ),
+      ],
     );
   }
 
@@ -407,10 +433,12 @@ class _EventFormDialogState extends State<EventFormDialog> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
+                  SizedBox(
+                    width: 80,
                     child: DropdownButtonFormField<String>(
                       value: _currency,
                       decoration: _inputDecoration(''),
+                      isExpanded: true,
                       items: const [
                         DropdownMenuItem(value: 'USD', child: Text('USD')),
                         DropdownMenuItem(value: 'EUR', child: Text('EUR')),
@@ -478,46 +506,59 @@ class _EventFormDialogState extends State<EventFormDialog> {
       builder: (context, state) {
         final isLoading = state.formStatus == FormStatus.loading;
 
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            border: Border(
-              top: BorderSide(color: AppColors.border),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+        return SizedBox(
+          width: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              if (state.formError != null)
-                Expanded(
-                  child: Text(
-                    state.formError!,
-                    style: const TextStyle(color: Colors.red, fontSize: 12),
+              if (state.formError != null) ...[
+                Text(
+                  state.formError!,
+                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+              ],
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
-                ),
-              TextButton(
-                onPressed: isLoading ? null : () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: isLoading ? null : _submitForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                ),
-                child: isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(isEditing ? 'Update Event' : 'Create Event'),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: isLoading ? null : _submitForm,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      minimumSize: const Size(100, 40),
+                    ),
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            isEditing ? 'Update' : 'Create',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                  ),
+                ],
               ),
             ],
           ),

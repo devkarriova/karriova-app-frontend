@@ -14,6 +14,47 @@ abstract class AssessmentRemoteDataSource {
 
   /// Check if user has completed the assessment
   Future<bool> hasCompletedAssessment();
+
+  // Admin methods
+  Future<SectionModel> createSection(String name, String description, {int displayOrder = 0});
+  Future<DimensionModel> createDimension(
+    String sectionId,
+    String name,
+    String description, {
+    String poleALabel = 'Low',
+    String poleBLabel = 'High',
+    int displayOrder = 0,
+  });
+  Future<QuestionModel> createQuestion(
+    String dimensionId,
+    String text,
+    List<OptionInput> options, {
+    String poleDirection = 'A',
+    int displayOrder = 0,
+  });
+  Future<void> deleteSection(String sectionId);
+  Future<void> deleteDimension(String dimensionId);
+  Future<void> deleteQuestion(String questionId);
+
+  // Update methods
+  Future<SectionModel> updateSection(String sectionId, {String? name, String? description});
+  Future<DimensionModel> updateDimension(
+    String dimensionId, {
+    String? name,
+    String? description,
+    String? poleALabel,
+    String? poleBLabel,
+  });
+}
+
+/// Input for creating question options
+class OptionInput {
+  final String text;
+  final int score;
+
+  OptionInput({required this.text, required this.score});
+
+  Map<String, dynamic> toJson() => {'text': text, 'score': score};
 }
 
 /// Implementation of assessment remote data source
@@ -65,5 +106,161 @@ class AssessmentRemoteDataSourceImpl implements AssessmentRemoteDataSource {
     }
     final data = response.data as Map<String, dynamic>?;
     return data?['completed'] as bool? ?? false;
+  }
+
+  // Admin methods
+  @override
+  Future<SectionModel> createSection(String name, String description, {int displayOrder = 0}) async {
+    final response = await _apiClient.post(
+      '/admin/assessments/sections',
+      requiresAuth: true,
+      body: {
+        'name': name,
+        'description': description,
+        'display_order': displayOrder,
+        'is_active': true,
+      },
+    );
+    if (!response.isSuccess) {
+      throw Exception(response.errorMessage ?? 'Failed to create section');
+    }
+    return SectionModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<DimensionModel> createDimension(
+    String sectionId,
+    String name,
+    String description, {
+    String poleALabel = 'Low',
+    String poleBLabel = 'High',
+    int displayOrder = 0,
+  }) async {
+    final response = await _apiClient.post(
+      '/admin/assessments/dimensions',
+      requiresAuth: true,
+      body: {
+        'section_id': sectionId,
+        'name': name,
+        'description': description,
+        'pole_a_label': poleALabel,
+        'pole_b_label': poleBLabel,
+        'display_order': displayOrder,
+      },
+    );
+    if (!response.isSuccess) {
+      throw Exception(response.errorMessage ?? 'Failed to create dimension');
+    }
+    return DimensionModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<QuestionModel> createQuestion(
+    String dimensionId,
+    String text,
+    List<OptionInput> options, {
+    String poleDirection = 'A',
+    int displayOrder = 0,
+  }) async {
+    // Add display_order to options
+    final optionsWithOrder = options.asMap().entries.map((e) {
+      return {
+        'text': e.value.text,
+        'score': e.value.score,
+        'display_order': e.key,
+      };
+    }).toList();
+
+    final response = await _apiClient.post(
+      '/admin/assessments/questions',
+      requiresAuth: true,
+      body: {
+        'dimension_id': dimensionId,
+        'text': text,
+        'pole_direction': poleDirection,
+        'display_order': displayOrder,
+        'is_active': true,
+        'options': optionsWithOrder,
+      },
+    );
+    if (!response.isSuccess) {
+      throw Exception(response.errorMessage ?? 'Failed to create question');
+    }
+    return QuestionModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<void> deleteSection(String sectionId) async {
+    final response = await _apiClient.delete(
+      '/admin/assessments/sections/$sectionId',
+      requiresAuth: true,
+    );
+    if (!response.isSuccess) {
+      throw Exception(response.errorMessage ?? 'Failed to delete section');
+    }
+  }
+
+  @override
+  Future<void> deleteDimension(String dimensionId) async {
+    final response = await _apiClient.delete(
+      '/admin/assessments/dimensions/$dimensionId',
+      requiresAuth: true,
+    );
+    if (!response.isSuccess) {
+      throw Exception(response.errorMessage ?? 'Failed to delete dimension');
+    }
+  }
+
+  @override
+  Future<void> deleteQuestion(String questionId) async {
+    final response = await _apiClient.delete(
+      '/admin/assessments/questions/$questionId',
+      requiresAuth: true,
+    );
+    if (!response.isSuccess) {
+      throw Exception(response.errorMessage ?? 'Failed to delete question');
+    }
+  }
+
+  @override
+  Future<SectionModel> updateSection(String sectionId, {String? name, String? description}) async {
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    if (description != null) body['description'] = description;
+
+    final response = await _apiClient.put(
+      '/admin/assessments/sections/$sectionId',
+      requiresAuth: true,
+      body: body,
+    );
+    if (!response.isSuccess) {
+      throw Exception(response.errorMessage ?? 'Failed to update section');
+    }
+    return SectionModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<DimensionModel> updateDimension(
+    String dimensionId, {
+    String? name,
+    String? description,
+    String? poleALabel,
+    String? poleBLabel,
+  }) async {
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    if (description != null) body['description'] = description;
+    if (poleALabel != null) body['pole_a_label'] = poleALabel;
+    if (poleBLabel != null) body['pole_b_label'] = poleBLabel;
+
+    final response = await _apiClient.put(
+      '/admin/assessments/dimensions/$dimensionId',
+      requiresAuth: true,
+      body: body,
+    );
+    if (!response.isSuccess) {
+      throw Exception(response.errorMessage ?? 'Failed to update dimension');
+    }
+    return DimensionModel.fromJson(response.data as Map<String, dynamic>);
   }
 }

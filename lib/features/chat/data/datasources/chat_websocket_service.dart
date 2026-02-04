@@ -110,7 +110,8 @@ class ChatWebSocketService {
 
       // For WebSocket with authentication, we'll pass token as query parameter
       // and update the backend to accept it from query params
-      final uri = Uri.parse('$wsUrl/api/v1/chat/ws?token=$_authToken');
+      // Note: baseUrl already includes /api/v1, so we only append /chat/ws
+      final uri = Uri.parse('$wsUrl/chat/ws?token=$_authToken');
 
       _logger.i('Connecting to WebSocket: ${uri.replace(queryParameters: {})}'); // Log without token
 

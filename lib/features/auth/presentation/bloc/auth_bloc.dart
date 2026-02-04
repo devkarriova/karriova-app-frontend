@@ -13,6 +13,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthSignupRequested>(_onSignupRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
     on<AuthGoogleLoginRequested>(_onGoogleLoginRequested);
+    on<AuthGoogleLoginCallback>(_onGoogleLoginCallback);
     on<AuthCheckStatusRequested>(_onCheckStatusRequested);
     on<AuthResetPasswordRequested>(_onResetPasswordRequested);
     on<AuthTokenExpired>(_onTokenExpired);
@@ -94,7 +95,31 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(state.copyWith(status: AuthStatus.loading));
 
-    final result = await authRepository.loginWithGoogle();
+    final result = await authRepository.initiateGoogleLogin();
+
+    result.fold(
+      (error) => emit(state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: error,
+      )),
+      (oauthResult) => emit(state.copyWith(
+        status: AuthStatus.googleOAuthRequired,
+        googleOAuthUrl: oauthResult.url,
+        googleOAuthState: oauthResult.state,
+      )),
+    );
+  }
+
+  Future<void> _onGoogleLoginCallback(
+    AuthGoogleLoginCallback event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(state.copyWith(status: AuthStatus.loading));
+
+    final result = await authRepository.completeGoogleLogin(
+      code: event.code,
+      state: event.state,
+    );
 
     result.fold(
       (error) => emit(state.copyWith(
@@ -105,6 +130,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         status: AuthStatus.authenticated,
         user: user,
         successMessage: 'Login successful!',
+        assessmentCompleted: null, // Reset - will be checked next
       )),
     );
   }

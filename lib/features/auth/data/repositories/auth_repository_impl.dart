@@ -56,12 +56,15 @@ class AuthRepositoryImpl implements AuthRepository {
   /// Handle token refresh when access token expires
   Future<bool> _handleTokenRefresh() async {
     try {
+      AppLogger.info('Token refresh: Attempting to refresh access token...');
       final refreshToken = await localDataSource.getRefreshToken();
       if (refreshToken == null) {
+        AppLogger.warning('Token refresh: No refresh token found in storage');
         return false;
       }
 
       final authResponse = await remoteDataSource.refreshToken(refreshToken);
+      AppLogger.info('Token refresh: Successfully obtained new access token');
 
       // Save new tokens
       await localDataSource.saveAccessToken(authResponse.accessToken);
@@ -86,6 +89,9 @@ class AuthRepositoryImpl implements AuthRepository {
   }) async {
     try {
       final authResponse = await remoteDataSource.login(email: email, password: password);
+
+      // Debug: Log user role
+      AppLogger.info('Login successful - User: ${authResponse.user.email}, Role: ${authResponse.user.userRole}, isAdmin: ${authResponse.user.isAdmin}');
 
       // Save user and tokens
       await localDataSource.saveUser(authResponse.user);
@@ -188,11 +194,57 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<String, GoogleOAuthResult>> initiateGoogleLogin() async {
+    try {
+      // This will throw GoogleOAuthRedirectRequired with the OAuth URL
+      await remoteDataSource.loginWithGoogle();
+      // Should never reach here
+      return const Left('Unexpected response from server');
+    } on GoogleOAuthRedirectRequired catch (e) {
+      // This is the expected flow - return the OAuth URL
+      return Right(GoogleOAuthResult(url: e.url, state: e.state));
+    } catch (e) {
+      AppLogger.error('Failed to initiate Google login: $e');
+      return Left(_handleError(e));
+    }
+  }
+
+  @override
+  Future<Either<String, UserModel>> completeGoogleLogin({
+    required String code,
+    required String state,
+  }) async {
+    try {
+      final authResponse = await (remoteDataSource as AuthRemoteDataSourceImpl)
+          .exchangeGoogleCode(code, state);
+
+      // Save tokens and user data
+      await localDataSource.saveAccessToken(authResponse.accessToken);
+      if (authResponse.refreshToken != null) {
+        await localDataSource.saveRefreshToken(authResponse.refreshToken!);
+      }
+      await localDataSource.saveUser(authResponse.user);
+
+      // Update API client with new token
+      apiClient.setAccessToken(authResponse.accessToken);
+
+      return Right(authResponse.user);
+    } catch (e) {
+      AppLogger.error('Google login completion failed: $e');
+      return Left(_handleError(e));
+    }
+  }
+
+  @override
+  @Deprecated('Use initiateGoogleLogin and completeGoogleLogin instead')
   Future<Either<String, UserModel>> loginWithGoogle() async {
     try {
       final user = await remoteDataSource.loginWithGoogle();
       await localDataSource.saveUser(user);
       return Right(user);
+    } on GoogleOAuthRedirectRequired catch (e) {
+      // Return the OAuth URL as an error message for backwards compatibility
+      return Left('OAUTH_REDIRECT:${e.url}');
     } catch (e) {
       AppLogger.error('Google login failed: $e');
       return Left(_handleError(e));

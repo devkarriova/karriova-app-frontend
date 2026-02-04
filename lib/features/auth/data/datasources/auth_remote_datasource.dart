@@ -2,6 +2,17 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/config/app_config.dart';
 import '../../domain/models/user_model.dart';
 
+/// Exception thrown when Google OAuth requires a redirect to the OAuth URL
+class GoogleOAuthRedirectRequired implements Exception {
+  final String url;
+  final String? state;
+
+  GoogleOAuthRedirectRequired({required this.url, this.state});
+
+  @override
+  String toString() => 'GoogleOAuthRedirectRequired: $url';
+}
+
 abstract class AuthRemoteDataSource {
   Future<AuthResponse> login({
     required String email,
@@ -134,12 +145,37 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw Exception(urlResponse.errorMessage ?? 'Failed to get Google OAuth URL');
     }
 
-    // For web/mobile, this URL should be opened in a browser/WebView
-    // The callback will be handled by deep linking or redirect
-    // For now, throw with the URL for the UI to handle
-    throw UnimplementedError(
-      'Google Sign-In requires platform-specific implementation. OAuth URL: ${urlResponse.data['url']}',
+    final oauthUrl = urlResponse.data['url'] as String?;
+    final state = urlResponse.data['state'] as String?;
+
+    if (oauthUrl == null || oauthUrl.isEmpty) {
+      throw Exception('Google OAuth is not configured. Please contact support.');
+    }
+
+    // Check if client_id is missing (empty in URL)
+    if (oauthUrl.contains('client_id=&') || oauthUrl.contains('client_id=http')) {
+      throw Exception(
+        'Google Sign-In is not configured on the server. '
+        'Please set up Google OAuth credentials in the backend configuration.',
+      );
+    }
+
+    // Return a special exception that contains the OAuth URL for the UI to handle
+    throw GoogleOAuthRedirectRequired(url: oauthUrl, state: state);
+  }
+
+  /// Exchange Google OAuth authorization code for user authentication
+  Future<AuthResponse> exchangeGoogleCode(String code, String state) async {
+    final response = await apiClient.get(
+      '${AppConfig.googleCallbackEndpoint}?code=$code&state=$state',
+      requiresAuth: false,
     );
+
+    if (!response.isSuccess || response.data == null) {
+      throw Exception(response.errorMessage ?? 'Google authentication failed');
+    }
+
+    return AuthResponse.fromJson(response.data as Map<String, dynamic>);
   }
 
   /// Request password reset email

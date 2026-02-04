@@ -335,13 +335,16 @@ class TicketListResponse {
   });
 
   factory TicketListResponse.fromJson(Map<String, dynamic> json) {
+    final ticketsList = json['tickets'] as List?;
     return TicketListResponse(
-      tickets: (json['tickets'] as List)
-          .map((t) => SupportTicket.fromJson(t as Map<String, dynamic>))
-          .toList(),
-      totalCount: json['total_count'] as int,
-      page: json['page'] as int,
-      pageSize: json['page_size'] as int,
+      tickets: ticketsList != null
+          ? ticketsList
+              .map((t) => SupportTicket.fromJson(t as Map<String, dynamic>))
+              .toList()
+          : [],
+      totalCount: json['total_count'] as int? ?? 0,
+      page: json['page'] as int? ?? 1,
+      pageSize: json['page_size'] as int? ?? 20,
     );
   }
 

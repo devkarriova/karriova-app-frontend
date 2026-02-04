@@ -9,15 +9,18 @@ typedef TokenRefreshCallback = Future<bool> Function();
 /// Callback type for logout on token expiration
 typedef LogoutCallback = Future<void> Function();
 
+/// Callback type for fetching token from storage
+typedef TokenProviderCallback = Future<String?> Function();
+
 /// Rate limiter to prevent runaway API calls
 class ApiRateLimiter {
   final int maxRequestsPerEndpoint;
   final Duration windowDuration;
   final Duration cooldownDuration;
-  
+
   // Track requests per endpoint: endpoint -> list of timestamps
   final Map<String, List<DateTime>> _requestTimestamps = {};
-  
+
   // Track endpoints in cooldown
   final Map<String, DateTime> _cooldownEndpoints = {};
 
@@ -31,13 +34,14 @@ class ApiRateLimiter {
   /// Returns true if allowed, false if rate limited
   bool shouldAllowRequest(String endpoint) {
     final now = DateTime.now();
-    
+
     // Check if endpoint is in cooldown
     if (_cooldownEndpoints.containsKey(endpoint)) {
       final cooldownEnd = _cooldownEndpoints[endpoint]!;
       if (now.isBefore(cooldownEnd)) {
         if (kDebugMode) {
-          print('🚫 [RateLimiter] Endpoint "$endpoint" is in cooldown until $cooldownEnd');
+          print(
+              '🚫 [RateLimiter] Endpoint "$endpoint" is in cooldown until $cooldownEnd');
         }
         return false;
       } else {
@@ -46,14 +50,14 @@ class ApiRateLimiter {
         _requestTimestamps.remove(endpoint);
       }
     }
-    
+
     // Initialize tracking for this endpoint if needed
     _requestTimestamps[endpoint] ??= [];
-    
+
     // Remove timestamps outside the window
     final windowStart = now.subtract(windowDuration);
     _requestTimestamps[endpoint]!.removeWhere((ts) => ts.isBefore(windowStart));
-    
+
     // Check if we've exceeded the limit
     if (_requestTimestamps[endpoint]!.length >= maxRequestsPerEndpoint) {
       // Put endpoint in cooldown
@@ -65,7 +69,7 @@ class ApiRateLimiter {
       }
       return false;
     }
-    
+
     // Record this request
     _requestTimestamps[endpoint]!.add(now);
     return true;
@@ -91,7 +95,7 @@ class ApiRateLimiter {
     _requestTimestamps.clear();
     _cooldownEndpoints.clear();
   }
-  
+
   /// Force reset a specific endpoint (e.g., after user action)
   void resetEndpoint(String endpoint) {
     _requestTimestamps.remove(endpoint);
@@ -105,16 +109,17 @@ class ApiClient {
   String? _accessToken;
   TokenRefreshCallback? _onTokenExpired;
   LogoutCallback? _onLogoutRequired;
+  TokenProviderCallback? _tokenProvider;
   bool _isRefreshing = false;
-  
+
   /// Rate limiter to prevent runaway API calls
   final ApiRateLimiter _rateLimiter;
 
   ApiClient({
     http.Client? client,
     ApiRateLimiter? rateLimiter,
-  }) : _client = client ?? http.Client(),
-       _rateLimiter = rateLimiter ?? ApiRateLimiter();
+  })  : _client = client ?? http.Client(),
+        _rateLimiter = rateLimiter ?? ApiRateLimiter();
 
   /// Set the access token for authenticated requests
   void setAccessToken(String? token) {
@@ -134,18 +139,52 @@ class ApiClient {
     _onLogoutRequired = callback;
   }
 
-  /// Build headers for requests
-  Map<String, String> _buildHeaders({
+  /// Set callback for fetching token from storage (fallback when in-memory token is null)
+  void setTokenProvider(TokenProviderCallback callback) {
+    _tokenProvider = callback;
+  }
+
+  /// Get the access token, fetching from storage if in-memory is null
+  Future<String?> _getAccessToken() async {
+    if (_accessToken != null && _accessToken!.isNotEmpty) {
+      return _accessToken;
+    }
+    // Fallback to storage if in-memory token is null
+    if (_tokenProvider != null) {
+      if (kDebugMode) {
+        print(
+            '🔑 [ApiClient] In-memory token is null, fetching from storage...');
+      }
+      final token = await _tokenProvider!();
+      if (token != null && token.isNotEmpty) {
+        _accessToken = token; // Cache it in memory
+        if (kDebugMode) {
+          print('🔑 [ApiClient] Token loaded from storage successfully');
+        }
+        return token;
+      }
+      if (kDebugMode) {
+        print('⚠️ [ApiClient] No token found in storage either');
+      }
+    }
+    return null;
+  }
+
+  /// Build headers for requests (async to support token fetching)
+  Future<Map<String, String>> _buildHeadersAsync({
     bool requiresAuth = false,
     Map<String, String>? additionalHeaders,
-  }) {
+  }) async {
     final headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
 
-    if (requiresAuth && _accessToken != null) {
-      headers['Authorization'] = 'Bearer $_accessToken';
+    if (requiresAuth) {
+      final token = await _getAccessToken();
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
     }
 
     if (additionalHeaders != null) {
@@ -191,21 +230,25 @@ class ApiClient {
     // Check rate limit
     final rateLimitResponse = _checkRateLimit(endpoint);
     if (rateLimitResponse != null) return rateLimitResponse;
-    
+
     try {
       var uri = Uri.parse(_buildUrl(endpoint));
       if (queryParams != null && queryParams.isNotEmpty) {
         uri = uri.replace(queryParameters: queryParams);
       }
 
+      final headers = await _buildHeadersAsync(requiresAuth: requiresAuth);
       final response = await _client
           .get(
             uri,
-            headers: _buildHeaders(requiresAuth: requiresAuth),
+            headers: headers,
           )
           .timeout(AppConfig.connectionTimeout);
 
-      return await _handleResponseWithRetry(response, () => get(endpoint, requiresAuth: requiresAuth, queryParams: queryParams));
+      return await _handleResponseWithRetry(
+          response,
+          () => get(endpoint,
+              requiresAuth: requiresAuth, queryParams: queryParams));
     } catch (e) {
       return _handleError(e);
     }
@@ -220,17 +263,19 @@ class ApiClient {
     // Check rate limit
     final rateLimitResponse = _checkRateLimit(endpoint);
     if (rateLimitResponse != null) return rateLimitResponse;
-    
+
     try {
+      final headers = await _buildHeadersAsync(requiresAuth: requiresAuth);
       final response = await _client
           .post(
             Uri.parse(_buildUrl(endpoint)),
-            headers: _buildHeaders(requiresAuth: requiresAuth),
+            headers: headers,
             body: jsonEncode(body),
           )
           .timeout(AppConfig.connectionTimeout);
 
-      return await _handleResponseWithRetry(response, () => post(endpoint, body: body, requiresAuth: requiresAuth));
+      return await _handleResponseWithRetry(response,
+          () => post(endpoint, body: body, requiresAuth: requiresAuth));
     } catch (e) {
       return _handleError(e);
     }
@@ -245,17 +290,19 @@ class ApiClient {
     // Check rate limit
     final rateLimitResponse = _checkRateLimit(endpoint);
     if (rateLimitResponse != null) return rateLimitResponse;
-    
+
     try {
+      final headers = await _buildHeadersAsync(requiresAuth: requiresAuth);
       final response = await _client
           .put(
             Uri.parse(_buildUrl(endpoint)),
-            headers: _buildHeaders(requiresAuth: requiresAuth),
+            headers: headers,
             body: jsonEncode(body),
           )
           .timeout(AppConfig.connectionTimeout);
 
-      return await _handleResponseWithRetry(response, () => put(endpoint, body: body, requiresAuth: requiresAuth));
+      return await _handleResponseWithRetry(response,
+          () => put(endpoint, body: body, requiresAuth: requiresAuth));
     } catch (e) {
       return _handleError(e);
     }
@@ -269,16 +316,18 @@ class ApiClient {
     // Check rate limit
     final rateLimitResponse = _checkRateLimit(endpoint);
     if (rateLimitResponse != null) return rateLimitResponse;
-    
+
     try {
+      final headers = await _buildHeadersAsync(requiresAuth: requiresAuth);
       final response = await _client
           .delete(
             Uri.parse(_buildUrl(endpoint)),
-            headers: _buildHeaders(requiresAuth: requiresAuth),
+            headers: headers,
           )
           .timeout(AppConfig.connectionTimeout);
 
-      return await _handleResponseWithRetry(response, () => delete(endpoint, requiresAuth: requiresAuth));
+      return await _handleResponseWithRetry(
+          response, () => delete(endpoint, requiresAuth: requiresAuth));
     } catch (e) {
       return _handleError(e);
     }
@@ -293,17 +342,19 @@ class ApiClient {
     // Check rate limit
     final rateLimitResponse = _checkRateLimit(endpoint);
     if (rateLimitResponse != null) return rateLimitResponse;
-    
+
     try {
+      final headers = await _buildHeadersAsync(requiresAuth: requiresAuth);
       final response = await _client
           .patch(
             Uri.parse(_buildUrl(endpoint)),
-            headers: _buildHeaders(requiresAuth: requiresAuth),
+            headers: headers,
             body: jsonEncode(body),
           )
           .timeout(AppConfig.connectionTimeout);
 
-      return await _handleResponseWithRetry(response, () => patch(endpoint, body: body, requiresAuth: requiresAuth));
+      return await _handleResponseWithRetry(response,
+          () => patch(endpoint, body: body, requiresAuth: requiresAuth));
     } catch (e) {
       return _handleError(e);
     }
@@ -366,7 +417,8 @@ class ApiClient {
         statusCode: statusCode,
       );
     } else {
-      final errorMessage = body['error']?['message'] ?? 'Unknown error occurred';
+      final errorMessage =
+          body['error']?['message'] ?? 'Unknown error occurred';
       final errorCode = body['error']?['code'] ?? 'UNKNOWN_ERROR';
 
       return ApiResponse.error(

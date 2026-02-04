@@ -43,6 +43,20 @@ class AuthGoogleLoginRequested extends AuthEvent {
   const AuthGoogleLoginRequested();
 }
 
+/// Event to complete Google OAuth login after redirect
+class AuthGoogleLoginCallback extends AuthEvent {
+  final String code;
+  final String state;
+
+  const AuthGoogleLoginCallback({
+    required this.code,
+    required this.state,
+  });
+
+  @override
+  List<Object?> get props => [code, state];
+}
+
 class AuthCheckStatusRequested extends AuthEvent {
   const AuthCheckStatusRequested();
 }

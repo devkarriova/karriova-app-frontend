@@ -61,9 +61,14 @@ Future<void> configureDependencies() async {
   );
 
   // Network
-  getIt.registerLazySingleton<ApiClient>(
-    () => ApiClient(),
-  );
+  getIt.registerLazySingleton<ApiClient>(() {
+    final apiClient = ApiClient();
+    // Set up token provider to read from storage as fallback
+    apiClient.setTokenProvider(() async {
+      return await getIt<FlutterSecureStorage>().read(key: 'access_token');
+    });
+    return apiClient;
+  });
 
   // Dio for Retrofit-based services
   getIt.registerLazySingleton<Dio>(() {
@@ -76,7 +81,8 @@ Future<void> configureDependencies() async {
     // Add auth interceptor
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final token = await getIt<FlutterSecureStorage>().read(key: 'access_token');
+        final token =
+            await getIt<FlutterSecureStorage>().read(key: 'access_token');
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
@@ -134,7 +140,8 @@ Future<void> configureDependencies() async {
   );
 
   getIt.registerLazySingleton<NotificationRemoteDataSource>(
-    () => NotificationRemoteDataSource(getIt<Dio>(), baseUrl: AppConfig.apiBaseUrl),
+    () => NotificationRemoteDataSource(getIt<Dio>(),
+        baseUrl: AppConfig.apiBaseUrl),
   );
 
   // Repositories

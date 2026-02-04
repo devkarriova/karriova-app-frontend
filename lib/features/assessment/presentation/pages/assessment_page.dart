@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/routes/app_router.dart';
 import '../../../../shared/widgets/gradient_button.dart';
 import '../../domain/models/assessment_models.dart';
 import '../bloc/assessment_bloc.dart';
@@ -40,15 +42,8 @@ class _AssessmentPageContent extends StatelessWidget {
     return BlocConsumer<AssessmentBloc, AssessmentState>(
       listener: (context, state) {
         if (state.status == AssessmentStatus.completed && state.result != null) {
-          // Show results page
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (_) => AssessmentResultsFullPage(
-                result: state.result!,
-                onContinue: onComplete,
-              ),
-            ),
-          );
+          // Navigate to results page using go_router
+          context.go(AppRouter.assessmentResults);
         }
       },
       builder: (context, state) {
@@ -79,46 +74,52 @@ class _AssessmentPageContent extends StatelessWidget {
   }
 
   Widget _buildLoadingState() {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircularProgressIndicator(color: AppColors.primary),
-          SizedBox(height: AppDimensions.paddingLG),
-          Text(
-            'Preparing your assessment...',
-            style: TextStyle(
-              fontSize: 16,
-              color: AppColors.textSecondary,
+    return Container(
+      color: const Color(0xFFF5F5F7), // Light grey background
+      child: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: AppColors.primary),
+            SizedBox(height: AppDimensions.paddingLG),
+            Text(
+              'Preparing your assessment...',
+              style: TextStyle(
+                fontSize: 16,
+                color: AppColors.textSecondary,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildErrorState(BuildContext context, AssessmentState state) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppDimensions.paddingXL),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: AppColors.error),
-            const SizedBox(height: AppDimensions.paddingLG),
-            Text(
-              state.errorMessage ?? 'Something went wrong',
-              style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppDimensions.paddingXL),
-            GradientButton(
-              text: 'Try Again',
-              onPressed: () {
-                context.read<AssessmentBloc>().add(const AssessmentLoadRequested());
-              },
-            ),
-          ],
+    return Container(
+      color: const Color(0xFFF5F5F7), // Light grey background
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppDimensions.paddingXL),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+              const SizedBox(height: AppDimensions.paddingLG),
+              Text(
+                state.errorMessage ?? 'Something went wrong',
+                style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppDimensions.paddingXL),
+              GradientButton(
+                text: 'Try Again',
+                onPressed: () {
+                  context.read<AssessmentBloc>().add(const AssessmentLoadRequested());
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -130,179 +131,203 @@ class _AssessmentPageContent extends StatelessWidget {
       return _buildLoadingState();
     }
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: Padding(
-          padding: const EdgeInsets.all(AppDimensions.paddingLG),
-          child: Column(
-            children: [
-              // Header
-              _buildHeader(state),
-              const SizedBox(height: AppDimensions.paddingXL),
+    return Container(
+      color: const Color(0xFFF5F5F7), // Light grey background
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Padding(
+            padding: const EdgeInsets.all(AppDimensions.paddingLG),
+            child: Column(
+              children: [
+                // Simple logo
+                _buildMinimalHeader(),
+                const SizedBox(height: AppDimensions.paddingMD),
 
-              // Progress bar
-              AssessmentProgressBar(
-                progress: state.progress,
-                currentQuestion: state.currentQuestionIndex + 1,
-                totalQuestions: state.totalQuestions,
-              ),
-              const SizedBox(height: AppDimensions.paddingXL),
+                // Progress bar
+                AssessmentProgressBar(
+                  progress: state.progress,
+                  currentQuestion: state.currentQuestionIndex + 1,
+                  totalQuestions: state.totalQuestions,
+                ),
+                const SizedBox(height: AppDimensions.paddingXL),
 
-              // Question card in a container
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(AppDimensions.paddingLG),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                // Question card with animation
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0.05, 0),
+                            end: Offset.zero,
+                          ).animate(CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOut,
+                          )),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      key: ValueKey(currentQuestion.id),
+                      padding: const EdgeInsets.all(AppDimensions.paddingLG),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: SingleChildScrollView(
-                    child: QuestionCard(
-                      question: currentQuestion,
-                      selectedOptionId: state.selectedOptionId,
-                      onOptionSelected: (optionId) {
-                        context.read<AssessmentBloc>().add(
-                              AssessmentOptionSelected(
-                                questionId: currentQuestion.id,
-                                optionId: optionId,
-                              ),
-                            );
-                      },
+                      child: SingleChildScrollView(
+                        child: QuestionCard(
+                          question: currentQuestion,
+                          selectedOptionId: state.selectedOptionId,
+                          onOptionSelected: (optionId) {
+                            context.read<AssessmentBloc>().add(
+                                  AssessmentOptionSelected(
+                                    questionId: currentQuestion.id,
+                                    optionId: optionId,
+                                  ),
+                                );
+                          },
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: AppDimensions.paddingLG),
+                const SizedBox(height: AppDimensions.paddingLG),
 
-              // Navigation buttons
-              _buildNavigationButtons(context, state),
-            ],
+                // Arrow navigation
+                _buildArrowNavigation(context, state),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(AssessmentState state) {
-    final section = state.currentSection;
-    final dimension = state.currentDimension;
-
-    return Column(
-      children: [
-        // Logo/Icon
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.gradientStart, AppColors.gradientEnd],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(32),
-          ),
-          child: const Icon(
-            Icons.psychology,
-            color: AppColors.white,
-            size: 32,
-          ),
+  Widget _buildMinimalHeader() {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.gradientStart, AppColors.gradientEnd],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(height: AppDimensions.paddingMD),
-        // Title
-        const Text(
-          'Personality Assessment',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: AppDimensions.paddingXS),
-        // Section & dimension info
-        if (section != null)
-          Text(
-            section.name,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        if (dimension != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '${dimension.poleALabel} ↔ ${dimension.poleBLabel}',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ),
-      ],
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: const Icon(
+        Icons.psychology,
+        color: AppColors.white,
+        size: 24,
+      ),
     );
   }
 
-  Widget _buildNavigationButtons(BuildContext context, AssessmentState state) {
+  Widget _buildArrowNavigation(BuildContext context, AssessmentState state) {
     final bloc = context.read<AssessmentBloc>();
     final isLastQuestion = state.isLastQuestion;
     final isAnswered = state.isCurrentQuestionAnswered;
 
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Back button
-        if (!state.isFirstQuestion)
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => bloc.add(const AssessmentPreviousQuestion()),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                side: const BorderSide(color: AppColors.border),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+        // Left arrow (Back)
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: state.isFirstQuestion ? 0.3 : 1.0,
+          child: MouseRegion(
+            cursor: state.isFirstQuestion
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: state.isFirstQuestion
+                  ? null
+                  : () => bloc.add(const AssessmentPreviousQuestion()),
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-              ),
-              child: const Text(
-                'Back',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                child: const Icon(
+                  Icons.arrow_back_rounded,
                   color: AppColors.textSecondary,
+                  size: 24,
                 ),
               ),
             ),
           ),
-        if (!state.isFirstQuestion) const SizedBox(width: AppDimensions.paddingMD),
+        ),
 
-        // Continue/Submit button
-        Expanded(
-          child: GradientButton(
-            text: isLastQuestion ? 'Submit' : 'Continue',
-            onPressed: isAnswered
-                ? () {
-                    if (isLastQuestion) {
-                      bloc.add(const AssessmentSubmitRequested());
-                    } else {
-                      bloc.add(const AssessmentNextQuestion());
+        // Right arrow (Next/Submit)
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: isAnswered ? 1.0 : 0.3,
+          child: MouseRegion(
+            cursor: isAnswered
+                ? SystemMouseCursors.click
+                : SystemMouseCursors.basic,
+            child: GestureDetector(
+              onTap: isAnswered
+                  ? () {
+                      if (isLastQuestion) {
+                        bloc.add(const AssessmentSubmitRequested());
+                      } else {
+                        bloc.add(const AssessmentNextQuestion());
+                      }
                     }
-                  }
-                : null,
+                  : null,
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  gradient: isAnswered
+                      ? const LinearGradient(
+                          colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  color: isAnswered ? null : AppColors.surface,
+                  shape: BoxShape.circle,
+                  border: isAnswered ? null : Border.all(color: AppColors.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isAnswered
+                          ? AppColors.primary.withOpacity(0.3)
+                          : Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  isLastQuestion ? Icons.check_rounded : Icons.arrow_forward_rounded,
+                  color: isAnswered ? AppColors.white : AppColors.textSecondary,
+                  size: 24,
+                ),
+              ),
+            ),
           ),
         ),
       ],
@@ -310,17 +335,20 @@ class _AssessmentPageContent extends StatelessWidget {
   }
 
   Widget _buildSubmittingState() {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircularProgressIndicator(color: AppColors.primary),
-          SizedBox(height: AppDimensions.paddingLG),
-          Text(
-            'Analyzing your responses...',
-            style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
-          ),
-        ],
+    return Container(
+      color: const Color(0xFFF5F5F7), // Light grey background
+      child: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: AppColors.primary),
+            SizedBox(height: AppDimensions.paddingLG),
+            Text(
+              'Analyzing your responses...',
+              style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
       ),
     );
   }

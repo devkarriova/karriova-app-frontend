@@ -4,7 +4,7 @@ import '../../../../core/constants/app_dimensions.dart';
 import '../../domain/models/assessment_models.dart';
 
 /// Question option card widget - displays a single selectable option
-class QuestionOptionCard extends StatelessWidget {
+class QuestionOptionCard extends StatefulWidget {
   final OptionModel option;
   final bool isSelected;
   final VoidCallback onTap;
@@ -17,68 +17,99 @@ class QuestionOptionCard extends StatelessWidget {
   });
 
   @override
+  State<QuestionOptionCard> createState() => _QuestionOptionCardState();
+}
+
+class _QuestionOptionCardState extends State<QuestionOptionCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(AppDimensions.paddingMD),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withOpacity(0.08)
-              : AppColors.surface,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.border,
-            width: isSelected ? 2 : 1,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(AppDimensions.paddingMD),
+          decoration: BoxDecoration(
+            color: widget.isSelected
+                ? AppColors.primary.withOpacity(0.08)
+                : _isHovered
+                    ? AppColors.primary.withOpacity(0.04)
+                    : AppColors.surface,
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+            border: Border.all(
+              color: widget.isSelected
+                  ? AppColors.primary
+                  : _isHovered
+                      ? AppColors.primary.withOpacity(0.5)
+                      : AppColors.border,
+              width: widget.isSelected ? 2 : 1,
+            ),
+            boxShadow: widget.isSelected
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : _isHovered
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+          child: Row(
+            children: [
+              // Selection indicator
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.isSelected ? AppColors.primary : Colors.transparent,
+                  border: Border.all(
+                    color: widget.isSelected
+                        ? AppColors.primary
+                        : _isHovered
+                            ? AppColors.primary.withOpacity(0.5)
+                            : AppColors.border,
+                    width: 2,
                   ),
-                ]
-              : null,
-        ),
-        child: Row(
-          children: [
-            // Selection indicator
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected ? AppColors.primary : Colors.transparent,
-                border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.border,
-                  width: 2,
+                ),
+                child: widget.isSelected
+                    ? const Icon(
+                        Icons.check,
+                        size: 14,
+                        color: AppColors.white,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: AppDimensions.paddingMD),
+              // Option text
+              Expanded(
+                child: Text(
+                  widget.option.text,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: widget.isSelected
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary,
+                  ),
                 ),
               ),
-              child: isSelected
-                  ? const Icon(
-                      Icons.check,
-                      size: 14,
-                      color: AppColors.white,
-                    )
-                  : null,
-            ),
-            const SizedBox(width: AppDimensions.paddingMD),
-            // Option text
-            Expanded(
-              child: Text(
-                option.text,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color:
-                      isSelected ? AppColors.textPrimary : AppColors.textSecondary,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

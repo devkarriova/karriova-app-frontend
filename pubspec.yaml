@@ -83,6 +83,9 @@ dependencies:
   device_info_plus: ^11.2.0
   package_info_plus: ^9.0.0
 
+  # URL Launcher (for OAuth)
+  url_launcher: ^6.2.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/routes/app_router.dart';
@@ -25,6 +26,7 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _hasNavigated = false;
 
   @override
   void dispose() {
@@ -48,9 +50,33 @@ class _LoginPageState extends State<LoginPage> {
     context.read<AuthBloc>().add(const AuthGoogleLoginRequested());
   }
 
+  Future<void> _launchGoogleOAuth(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open Google Sign-In. Please try again.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
+      listenWhen: (previous, current) {
+        // Listen for status changes OR assessment status changes
+        return previous.status != current.status ||
+            previous.assessmentCompleted != current.assessmentCompleted;
+      },
       listener: (context, state) {
         if (state.status == AuthStatus.error) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -59,15 +85,38 @@ class _LoginPageState extends State<LoginPage> {
               backgroundColor: AppColors.error,
             ),
           );
+        } else if (state.status == AuthStatus.googleOAuthRequired) {
+          // Open Google OAuth URL in browser
+          if (state.googleOAuthUrl != null) {
+            _launchGoogleOAuth(state.googleOAuthUrl!);
+          }
         } else if (state.status == AuthStatus.authenticated) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.successMessage ?? 'Login successful!'),
-              backgroundColor: AppColors.success,
-            ),
-          );
-          // Navigate to feed page after successful authentication
-          context.go(AppRouter.feed);
+          // Show success message only once
+          if (!_hasNavigated) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.successMessage ?? 'Login successful!'),
+                backgroundColor: AppColors.success,
+              ),
+            );
+          }
+          
+          // Check assessment status and navigate
+          if (state.assessmentCompleted == null) {
+            // Need to check assessment status from backend
+            context.read<AuthBloc>().add(const AuthCheckAssessmentStatus());
+          } else if (!_hasNavigated) {
+            _hasNavigated = true;
+            if (state.assessmentCompleted == false) {
+              // User hasn't completed assessment - redirect to assessment page
+              // Use replace to prevent browser back navigation to login
+              GoRouter.of(context).replace(AppRouter.assessment);
+            } else {
+              // User has completed assessment - go to feed
+              // Use replace to prevent browser back navigation to login
+              GoRouter.of(context).replace(AppRouter.feed);
+            }
+          }
         }
       },
       builder: (context, state) {
