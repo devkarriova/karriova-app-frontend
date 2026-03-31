@@ -1,12 +1,19 @@
+import 'dart:async';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/di/injection.dart';
 import '../../../assessment/data/datasources/assessment_remote_datasource.dart';
 import '../../../assessment/domain/models/assessment_models.dart';
 
-/// Admin tab for managing assessment configuration
-/// Uses drill-down navigation: Sections → Dimensions → Questions
+/// Admin tab for KIT Assessment Management
+/// Sections are read-only, only questions can be managed
 class AssessmentManagementTab extends StatefulWidget {
   const AssessmentManagementTab({super.key});
 
@@ -17,7 +24,6 @@ class AssessmentManagementTab extends StatefulWidget {
 class _AssessmentManagementTabState extends State<AssessmentManagementTab> {
   // Navigation state
   SectionModel? _selectedSection;
-  DimensionModel? _selectedDimension;
 
   // Data
   List<SectionModel> _sections = [];
@@ -27,10 +33,10 @@ class _AssessmentManagementTabState extends State<AssessmentManagementTab> {
   @override
   void initState() {
     super.initState();
-    _loadAssessment();
+    _loadSections();
   }
 
-  Future<void> _loadAssessment() async {
+  Future<void> _loadSections() async {
     setState(() {
       _isLoading = true;
       _error = null;
@@ -53,11 +59,7 @@ class _AssessmentManagementTabState extends State<AssessmentManagementTab> {
 
   void _navigateBack() {
     setState(() {
-      if (_selectedDimension != null) {
-        _selectedDimension = null;
-      } else if (_selectedSection != null) {
-        _selectedSection = null;
-      }
+      _selectedSection = null;
     });
   }
 
@@ -76,7 +78,7 @@ class _AssessmentManagementTabState extends State<AssessmentManagementTab> {
     return Column(
       children: [
         _buildBreadcrumb(),
-        Expanded(child: _buildContent()),
+        _buildContent(),
       ],
     );
   }
@@ -97,7 +99,7 @@ class _AssessmentManagementTabState extends State<AssessmentManagementTab> {
             ),
             const SizedBox(height: 16),
             TextButton.icon(
-              onPressed: _loadAssessment,
+              onPressed: _loadSections,
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
             ),
@@ -108,23 +110,6 @@ class _AssessmentManagementTabState extends State<AssessmentManagementTab> {
   }
 
   Widget _buildBreadcrumb() {
-    final items = <_BreadcrumbItem>[
-      _BreadcrumbItem('Sections', () => setState(() {
-        _selectedSection = null;
-        _selectedDimension = null;
-      })),
-    ];
-
-    if (_selectedSection != null) {
-      items.add(_BreadcrumbItem(_selectedSection!.name, () => setState(() {
-        _selectedDimension = null;
-      })));
-    }
-
-    if (_selectedDimension != null) {
-      items.add(_BreadcrumbItem(_selectedDimension!.name, null));
-    }
-
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppDimensions.paddingMD,
@@ -144,34 +129,12 @@ class _AssessmentManagementTabState extends State<AssessmentManagementTab> {
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             ),
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: items.asMap().entries.map((entry) {
-                  final isLast = entry.key == items.length - 1;
-                  final item = entry.value;
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (entry.key > 0)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: Icon(Icons.chevron_right, size: 16, color: AppColors.textTertiary),
-                        ),
-                      GestureDetector(
-                        onTap: item.onTap,
-                        child: Text(
-                          item.label,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: isLast ? FontWeight.w600 : FontWeight.w400,
-                            color: isLast ? AppColors.textPrimary : AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
+            child: Text(
+              _selectedSection == null ? 'Assessment Sections' : _selectedSection!.name,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
             ),
           ),
@@ -181,42 +144,28 @@ class _AssessmentManagementTabState extends State<AssessmentManagementTab> {
   }
 
   Widget _buildContent() {
-    if (_selectedDimension != null) {
-      return _QuestionsView(
-        dimension: _selectedDimension!,
-        onRefresh: _loadAssessment,
-      );
-    }
-
     if (_selectedSection != null) {
-      return _DimensionsView(
+      return _SectionDetailView(
         section: _selectedSection!,
-        onDimensionTap: (dim) => setState(() => _selectedDimension = dim),
-        onRefresh: _loadAssessment,
+        onRefresh: _loadSections,
       );
     }
 
-    return _SectionsView(
+    return _SectionsListView(
       sections: _sections,
       onSectionTap: (section) => setState(() => _selectedSection = section),
-      onRefresh: _loadAssessment,
+      onRefresh: _loadSections,
     );
   }
 }
 
-class _BreadcrumbItem {
-  final String label;
-  final VoidCallback? onTap;
-  _BreadcrumbItem(this.label, this.onTap);
-}
-
-/// Sections list view
-class _SectionsView extends StatelessWidget {
+/// Sections list view (read-only)
+class _SectionsListView extends StatelessWidget {
   final List<SectionModel> sections;
   final Function(SectionModel) onSectionTap;
   final VoidCallback onRefresh;
 
-  const _SectionsView({
+  const _SectionsListView({
     required this.sections,
     required this.onSectionTap,
     required this.onRefresh,
@@ -225,1685 +174,979 @@ class _SectionsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (sections.isEmpty) {
-      return _EmptyState(
-        icon: Icons.folder_outlined,
-        title: 'No sections yet',
-        subtitle: 'Create your first assessment section',
-        onAdd: () => _showAddSectionDialog(context),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppDimensions.paddingXL),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.folder_outlined, size: 56, color: AppColors.textTertiary),
+              SizedBox(height: 16),
+              Text(
+                'No sections found',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Assessment sections will appear here',
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
       );
     }
 
     return RefreshIndicator(
       onRefresh: () async => onRefresh(),
       child: ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(AppDimensions.paddingMD),
-        itemCount: sections.length + 1, // +1 for add button
+        itemCount: sections.length,
         itemBuilder: (context, index) {
-          if (index == sections.length) {
-            return _AddCard(
-              label: 'Add Section',
-              onTap: () => _showAddSectionDialog(context),
-            );
-          }
           final section = sections[index];
-          return _SectionCard(
-            section: section,
-            onTap: () => onSectionTap(section),
-            onEdit: () => _showEditSectionDialog(context, section),
-            onDelete: () => _showDeleteSectionDialog(context, section),
+          // Handle both dimensions (old) and parameters (new KIT)
+          final dimensionCount = section.parameters != null
+              ? section.parameters!.length
+              : section.dimensions.length;
+          final questionCount = section.parameters != null
+              ? section.parameters!.fold<int>(0, (sum, p) => sum + p.questions.length)
+              : section.dimensions.fold<int>(0, (sum, d) => sum + d.questions.length);
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: AppDimensions.paddingSM),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+              side: BorderSide(color: AppColors.border.withOpacity(0.5)),
+            ),
+            child: InkWell(
+              onTap: () => onSectionTap(section),
+              borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+              child: Padding(
+                padding: const EdgeInsets.all(AppDimensions.paddingMD),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.psychology, color: Colors.white, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            section.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          if (section.description.isNotEmpty)
+                            Text(
+                              section.description,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$dimensionCount parameters • $questionCount questions',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: AppColors.textTertiary),
+                  ],
+                ),
+              ),
+            ),
           );
         },
       ),
     );
   }
-
-  void _showAddSectionDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _AddSectionDialog(onCreated: onRefresh),
-    );
-  }
-
-  void _showEditSectionDialog(BuildContext context, SectionModel section) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _EditSectionDialog(section: section, onUpdated: onRefresh),
-    );
-  }
-
-  void _showDeleteSectionDialog(BuildContext context, SectionModel section) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _DeleteConfirmDialog(
-        title: 'Delete Section',
-        message: 'Are you sure you want to delete "${section.name}"? This will also delete all dimensions and questions inside it.',
-        onConfirm: () async {
-          final datasource = getIt<AssessmentRemoteDataSource>();
-          await datasource.deleteSection(section.id);
-          onRefresh();
-        },
-      ),
-    );
-  }
 }
 
-class _SectionCard extends StatelessWidget {
+/// Section detail view with parameters and question management
+class _SectionDetailView extends StatelessWidget {
   final SectionModel section;
-  final VoidCallback onTap;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
-
-  const _SectionCard({required this.section, required this.onTap, this.onEdit, this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    final dimensionCount = section.dimensions.length;
-    final questionCount = section.dimensions.fold<int>(
-      0, (sum, d) => sum + d.questions.length,
-    );
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppDimensions.paddingSM),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-        side: BorderSide(color: AppColors.border.withOpacity(0.5)),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-        child: Padding(
-          padding: const EdgeInsets.all(AppDimensions.paddingMD),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.gradientStart, AppColors.gradientEnd],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.category, color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      section.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '$dimensionCount dimensions • $questionCount questions',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (onEdit != null)
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 20),
-                  color: AppColors.textSecondary,
-                  onPressed: onEdit,
-                  tooltip: 'Edit section',
-                ),
-              if (onDelete != null)
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 20),
-                  color: Colors.red.shade400,
-                  onPressed: onDelete,
-                  tooltip: 'Delete section',
-                ),
-              const Icon(Icons.chevron_right, color: AppColors.textTertiary),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Dimensions list view
-class _DimensionsView extends StatelessWidget {
-  final SectionModel section;
-  final Function(DimensionModel) onDimensionTap;
   final VoidCallback onRefresh;
 
-  const _DimensionsView({
+  const _SectionDetailView({
     required this.section,
-    required this.onDimensionTap,
     required this.onRefresh,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (section.dimensions.isEmpty) {
-      return _EmptyState(
-        icon: Icons.swap_horiz,
-        title: 'No dimensions yet',
-        subtitle: 'Add dimensions to measure personality traits',
-        onAdd: () => _showAddDimensionDialog(context),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppDimensions.paddingMD),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Info Card
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+              side: BorderSide(color: AppColors.border.withOpacity(0.5)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppDimensions.paddingMD),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Section Information',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (section.description.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      section.description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Parameters Section
+          const Text(
+            'Parameters',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildParametersList(),
+          const SizedBox(height: 24),
+
+          // Question Management Actions
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _downloadTemplate(context),
+                  icon: const Icon(Icons.download, size: 20),
+                  label: const Text('Download Template'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _uploadQuestions(context),
+                  icon: const Icon(Icons.upload_file, size: 20),
+                  label: const Text('Bulk Upload'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Questions List
+          const Text(
+            'Questions',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Total: ${_getTotalQuestions()} questions',
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildQuestionsList(),
+        ],
+      ),
+    );
+  }
+
+  int _getTotalQuestions() {
+    if (section.parameters != null && section.parameters!.isNotEmpty) {
+      return section.parameters!.fold<int>(0, (sum, p) => sum + p.questions.length);
+    }
+    return section.dimensions.fold<int>(0, (sum, d) => sum + d.questions.length);
+  }
+
+  Widget _buildParametersList() {
+    // Handle both parameters (new KIT) and dimensions (old)
+    final hasParameters = section.parameters != null && section.parameters!.isNotEmpty;
+    final hasDimensions = section.dimensions.isNotEmpty;
+
+    if (!hasParameters && !hasDimensions) {
+      return const Text(
+        'No parameters defined for this section',
+        style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: () async => onRefresh(),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(AppDimensions.paddingMD),
-        itemCount: section.dimensions.length + 1,
-        itemBuilder: (context, index) {
-          if (index == section.dimensions.length) {
-            return _AddCard(
-              label: 'Add Dimension',
-              onTap: () => _showAddDimensionDialog(context),
-            );
-          }
-          final dimension = section.dimensions[index];
-          return _DimensionCard(
-            dimension: dimension,
-            onTap: () => onDimensionTap(dimension),
-            onEdit: () => _showEditDimensionDialog(context, dimension),
-            onDelete: () => _showDeleteDimensionDialog(context, dimension),
-          );
-        },
-      ),
-    );
-  }
-
-  void _showAddDimensionDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _AddDimensionDialog(
-        sectionId: section.id,
-        onCreated: onRefresh,
-      ),
-    );
-  }
-
-  void _showEditDimensionDialog(BuildContext context, DimensionModel dimension) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _EditDimensionDialog(dimension: dimension, onUpdated: onRefresh),
-    );
-  }
-
-  void _showDeleteDimensionDialog(BuildContext context, DimensionModel dimension) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _DeleteConfirmDialog(
-        title: 'Delete Dimension',
-        message: 'Are you sure you want to delete "${dimension.name}"? This will also delete all questions inside it.',
-        onConfirm: () async {
-          final datasource = getIt<AssessmentRemoteDataSource>();
-          await datasource.deleteDimension(dimension.id);
-          onRefresh();
-        },
-      ),
-    );
-  }
-}
-
-class _DimensionCard extends StatelessWidget {
-  final DimensionModel dimension;
-  final VoidCallback onTap;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
-
-  const _DimensionCard({required this.dimension, required this.onTap, this.onEdit, this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppDimensions.paddingSM),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-        side: BorderSide(color: AppColors.border.withOpacity(0.5)),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-        child: Padding(
-          padding: const EdgeInsets.all(AppDimensions.paddingMD),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+    if (hasParameters) {
+      // New KIT structure: display parameters
+      return Column(
+        children: section.parameters!.map((parameter) {
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: AppColors.border.withOpacity(0.3)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
                 children: [
                   Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.swap_horiz, color: AppColors.secondary, size: 22),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          dimension.name,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${dimension.questions.length} questions',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (onEdit != null)
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 20),
-                      color: AppColors.textSecondary,
-                      onPressed: onEdit,
-                      tooltip: 'Edit dimension',
-                    ),
-                  if (onDelete != null)
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 20),
-                      color: Colors.red.shade400,
-                      onPressed: onDelete,
-                      tooltip: 'Delete dimension',
-                    ),
-                  const Icon(Icons.chevron_right, color: AppColors.textTertiary),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Pole labels
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceVariant,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 8, height: 8,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          dimension.poleALabel,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                        ),
-                      ],
-                    ),
-                    const Icon(Icons.arrow_forward, size: 14, color: AppColors.textTertiary),
-                    Row(
-                      children: [
-                        Text(
-                          dimension.poleBLabel,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          width: 8, height: 8,
-                          decoration: const BoxDecoration(
-                            color: AppColors.secondary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Questions list view
-class _QuestionsView extends StatelessWidget {
-  final DimensionModel dimension;
-  final VoidCallback onRefresh;
-
-  const _QuestionsView({
-    required this.dimension,
-    required this.onRefresh,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (dimension.questions.isEmpty) {
-      return _EmptyState(
-        icon: Icons.help_outline,
-        title: 'No questions yet',
-        subtitle: 'Add questions for this dimension',
-        onAdd: () => _showAddQuestionDialog(context),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () async => onRefresh(),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(AppDimensions.paddingMD),
-        itemCount: dimension.questions.length + 1,
-        itemBuilder: (context, index) {
-          if (index == dimension.questions.length) {
-            return _AddCard(
-              label: 'Add Question',
-              onTap: () => _showAddQuestionDialog(context),
-            );
-          }
-          final question = dimension.questions[index];
-          return _QuestionCard(
-            question: question,
-            index: index + 1,
-            onDelete: () => _showDeleteQuestionDialog(context, question),
-          );
-        },
-      ),
-    );
-  }
-
-  void _showAddQuestionDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _AddQuestionDialog(
-        dimensionId: dimension.id,
-        onCreated: onRefresh,
-      ),
-    );
-  }
-
-  void _showDeleteQuestionDialog(BuildContext context, QuestionModel question) {
-    showDialog(
-      context: context,
-      builder: (ctx) => _DeleteConfirmDialog(
-        title: 'Delete Question',
-        message: 'Are you sure you want to delete this question?',
-        onConfirm: () async {
-          final datasource = getIt<AssessmentRemoteDataSource>();
-          await datasource.deleteQuestion(question.id);
-          onRefresh();
-        },
-      ),
-    );
-  }
-}
-
-class _QuestionCard extends StatelessWidget {
-  final QuestionModel question;
-  final int index;
-  final VoidCallback? onDelete;
-
-  const _QuestionCard({required this.question, required this.index, this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppDimensions.paddingSM),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-        side: BorderSide(color: AppColors.border.withOpacity(0.5)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppDimensions.paddingMD),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$index',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    question.text,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, size: 20, color: AppColors.textSecondary),
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: Colors.red))),
-                  ],
-                  onSelected: (value) {
-                    if (value == 'delete' && onDelete != null) {
-                      onDelete!();
-                    }
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Options
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: question.options.map((opt) => _OptionChip(option: opt)).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _OptionChip extends StatelessWidget {
-  final OptionModel option;
-
-  const _OptionChip({required this.option});
-
-  @override
-  Widget build(BuildContext context) {
-    final isLowScore = option.score <= 2;
-    final isHighScore = option.score >= 4;
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: isLowScore
-            ? AppColors.primary.withOpacity(0.08)
-            : isHighScore
-                ? AppColors.secondary.withOpacity(0.08)
-                : AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: isLowScore
-              ? AppColors.primary.withOpacity(0.3)
-              : isHighScore
-                  ? AppColors.secondary.withOpacity(0.3)
-                  : AppColors.border.withOpacity(0.5),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            option.text,
-            style: TextStyle(
-              fontSize: 12,
-              color: isLowScore
-                  ? AppColors.primary
-                  : isHighScore
-                      ? AppColors.secondary
-                      : AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              '${option.score}',
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textTertiary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Empty state widget
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onAdd;
-
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onAdd,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppDimensions.paddingXL),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 56, color: AppColors.textTertiary),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            TextButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add),
-              label: const Text('Add'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Add card widget
-class _AddCard extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _AddCard({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppDimensions.paddingSM),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-        side: BorderSide(
-          color: AppColors.primary.withOpacity(0.3),
-          style: BorderStyle.solid,
-        ),
-      ),
-      color: AppColors.primary.withOpacity(0.02),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-        child: Padding(
-          padding: const EdgeInsets.all(AppDimensions.paddingMD),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.add_circle_outline, color: AppColors.primary.withOpacity(0.7), size: 20),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.primary.withOpacity(0.8),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ========================================
-// ADD DIALOGS
-// ========================================
-
-/// Dialog for adding a new section
-class _AddSectionDialog extends StatefulWidget {
-  final VoidCallback onCreated;
-
-  const _AddSectionDialog({required this.onCreated});
-
-  @override
-  State<_AddSectionDialog> createState() => _AddSectionDialogState();
-}
-
-class _AddSectionDialogState extends State<_AddSectionDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _descController = TextEditingController();
-  bool _isLoading = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final datasource = getIt<AssessmentRemoteDataSource>();
-      await datasource.createSection(
-        _nameController.text.trim(),
-        _descController.text.trim(),
-      );
-      widget.onCreated();
-      if (mounted) Navigator.of(context).pop();
-    } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: 400,
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.category, color: AppColors.primary),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Add Section',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Section Name',
-                  hintText: 'e.g., Personality Assessment',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descController,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  hintText: 'Brief description of this section',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
-              ],
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(100, 40),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Create'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Dialog for adding a new dimension
-class _AddDimensionDialog extends StatefulWidget {
-  final String sectionId;
-  final VoidCallback onCreated;
-
-  const _AddDimensionDialog({required this.sectionId, required this.onCreated});
-
-  @override
-  State<_AddDimensionDialog> createState() => _AddDimensionDialogState();
-}
-
-class _AddDimensionDialogState extends State<_AddDimensionDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _descController = TextEditingController();
-  final _poleAController = TextEditingController(text: 'Low');
-  final _poleBController = TextEditingController(text: 'High');
-  bool _isLoading = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descController.dispose();
-    _poleAController.dispose();
-    _poleBController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final datasource = getIt<AssessmentRemoteDataSource>();
-      await datasource.createDimension(
-        widget.sectionId,
-        _nameController.text.trim(),
-        _descController.text.trim(),
-        poleALabel: _poleAController.text.trim(),
-        poleBLabel: _poleBController.text.trim(),
-      );
-      widget.onCreated();
-      if (mounted) Navigator.of(context).pop();
-    } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: 450,
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.swap_horiz, color: Colors.purple),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Add Dimension',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Dimension Name',
-                  hintText: 'e.g., Workstyle, Leadership',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descController,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  hintText: 'What this dimension measures',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Pole Labels (Spectrum Endpoints)',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Define the two opposite ends of this personality trait',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _poleAController,
-                      decoration: InputDecoration(
-                        labelText: 'Pole A (Low end)',
-                        hintText: 'e.g., Structured',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: Container(
-                          margin: const EdgeInsets.all(8),
-                          width: 12, height: 12,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                      validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Icon(Icons.arrow_forward, color: AppColors.textTertiary),
-                  ),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _poleBController,
-                      decoration: InputDecoration(
-                        labelText: 'Pole B (High end)',
-                        hintText: 'e.g., Flexible',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: Container(
-                          margin: const EdgeInsets.all(8),
-                          width: 12, height: 12,
-                          decoration: const BoxDecoration(
-                            color: AppColors.secondary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                      validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
-                    ),
-                  ),
-                ],
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
-              ],
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(100, 40),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Create'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Dialog for adding a new question with options
-class _AddQuestionDialog extends StatefulWidget {
-  final String dimensionId;
-  final VoidCallback onCreated;
-
-  const _AddQuestionDialog({required this.dimensionId, required this.onCreated});
-
-  @override
-  State<_AddQuestionDialog> createState() => _AddQuestionDialogState();
-}
-
-class _AddQuestionDialogState extends State<_AddQuestionDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _questionController = TextEditingController();
-  final List<_OptionEntry> _options = [
-    _OptionEntry(TextEditingController(), 1),
-    _OptionEntry(TextEditingController(), 2),
-    _OptionEntry(TextEditingController(), 3),
-    _OptionEntry(TextEditingController(), 4),
-  ];
-  bool _isLoading = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _questionController.dispose();
-    for (final opt in _options) {
-      opt.controller.dispose();
-    }
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    // Validate options
-    final validOptions = _options.where((o) => o.controller.text.trim().isNotEmpty).toList();
-    if (validOptions.length < 2) {
-      setState(() => _error = 'At least 2 options are required');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final datasource = getIt<AssessmentRemoteDataSource>();
-      await datasource.createQuestion(
-        widget.dimensionId,
-        _questionController.text.trim(),
-        validOptions.map((o) => OptionInput(text: o.controller.text.trim(), score: o.score)).toList(),
-      );
-      widget.onCreated();
-      if (mounted) Navigator.of(context).pop();
-    } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: 500,
-        constraints: const BoxConstraints(maxHeight: 600),
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.help_outline, color: Colors.blue),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Add Question',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _questionController,
-                decoration: const InputDecoration(
-                  labelText: 'Question Text',
-                  hintText: 'Enter the question...',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-                validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
-              ),
-              const SizedBox(height: 20),
-              const Text('Answer Options (with scores)', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 12),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: _options.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final opt = entry.value;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
+                        Row(
                           children: [
-                            SizedBox(
-                              width: 60,
-                              child: DropdownButtonFormField<int>(
-                                value: opt.score,
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                                ),
-                                items: [1, 2, 3, 4, 5].map((s) => DropdownMenuItem(value: s, child: Text('$s'))).toList(),
-                                onChanged: (v) => setState(() => _options[index].score = v ?? 1),
+                            Text(
+                              parameter.name,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textPrimary,
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: TextFormField(
-                                controller: opt.controller,
-                                decoration: InputDecoration(
-                                  hintText: 'Option ${index + 1}',
-                                  border: const OutlineInputBorder(),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                parameter.code,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      );
-                    }).toList(),
+                        if (parameter.description.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            parameter.description,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 4),
+                        if (parameter.poleALabel != null && parameter.poleBLabel != null)
+                          Row(
+                            children: [
+                              Text(
+                                parameter.poleALabel!,
+                                style: const TextStyle(fontSize: 11, color: AppColors.primary),
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 8),
+                                child: Icon(Icons.arrow_forward, size: 12, color: AppColors.textTertiary),
+                              ),
+                              Text(
+                                parameter.poleBLabel!,
+                                style: const TextStyle(fontSize: 11, color: AppColors.secondary),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '${parameter.questions.length} questions',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      );
+    }
+
+    // Old structure: display dimensions
+    return Column(
+      children: section.dimensions.map((dimension) {
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: AppColors.border.withOpacity(0.3)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
                   ),
                 ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
-              ],
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(100, 40),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        dimension.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
-                      child: _isLoading
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Create'),
-                    ),
-                  ],
+                      if (dimension.description.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          dimension.description,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            dimension.poleALabel,
+                            style: const TextStyle(fontSize: 11, color: AppColors.primary),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: Icon(Icons.arrow_forward, size: 12, color: AppColors.textTertiary),
+                          ),
+                          Text(
+                            dimension.poleBLabel,
+                            style: const TextStyle(fontSize: 11, color: AppColors.secondary),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
+                Text(
+                  '${dimension.questions.length} questions',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildQuestionsList() {
+    final allQuestions = <QuestionModel>[];
+
+    // Collect questions from parameters or dimensions
+    if (section.parameters != null && section.parameters!.isNotEmpty) {
+      for (final parameter in section.parameters!) {
+        allQuestions.addAll(parameter.questions);
+      }
+    } else {
+      for (final dimension in section.dimensions) {
+        allQuestions.addAll(dimension.questions);
+      }
+    }
+
+    if (allQuestions.isEmpty) {
+      return Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: AppColors.border.withOpacity(0.3)),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.all(24),
+          child: Center(
+            child: Text(
+              'No questions yet. Upload questions using bulk upload.',
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final questionWidgets = <Widget>[];
+
+    questionWidgets.addAll(allQuestions.take(5).map((question) {
+      return Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: AppColors.border.withOpacity(0.3)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                question.text,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: question.options.map((option) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: AppColors.border.withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      '${option.text} (${option.score})',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
             ],
           ),
         ),
+      );
+    }));
+
+    if (allQuestions.length > 5) {
+      questionWidgets.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            '... and ${allQuestions.length - 5} more questions',
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textTertiary,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(children: questionWidgets);
+  }
+
+  Future<void> _downloadTemplate(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Preparing template download...'),
+        backgroundColor: AppColors.primary,
+      ),
+    );
+
+    try {
+      final datasource = getIt<AssessmentRemoteDataSource>();
+      final template = await datasource.downloadQuestionTemplate(section.id);
+
+      String? savedPath;
+      if (kIsWeb) {
+        _downloadTemplateOnWeb(
+          Uint8List.fromList(template.bytes),
+          template.fileName,
+        );
+        savedPath = 'browser-download';
+      } else {
+        savedPath = _resolveTemplateOutputPath(template.fileName);
+        await File(savedPath).writeAsBytes(template.bytes, flush: true);
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Template saved: $savedPath'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to download template: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  String _resolveTemplateOutputPath(String requestedFileName) {
+    final sanitizedName = requestedFileName.trim().isEmpty
+        ? 'KIT_Question_Template.xlsx'
+        : requestedFileName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+
+    final normalizedFileName = sanitizedName.toLowerCase().endsWith('.xlsx')
+        ? sanitizedName
+        : '$sanitizedName.xlsx';
+
+    final outputDirectory = _resolvePreferredDownloadDirectory();
+    return '${outputDirectory.path}${Platform.pathSeparator}$normalizedFileName';
+  }
+
+  Directory _resolvePreferredDownloadDirectory() {
+    final candidates = <String>[];
+
+    if (Platform.isWindows) {
+      final userProfile = Platform.environment['USERPROFILE'];
+      if (userProfile != null && userProfile.isNotEmpty) {
+        candidates.add('$userProfile${Platform.pathSeparator}Downloads');
+        candidates.add('$userProfile${Platform.pathSeparator}Documents');
+      }
+    } else {
+      final home = Platform.environment['HOME'];
+      if (home != null && home.isNotEmpty) {
+        candidates.add('$home${Platform.pathSeparator}Downloads');
+      }
+    }
+
+    for (final path in candidates) {
+      final dir = Directory(path);
+      if (dir.existsSync()) {
+        return dir;
+      }
+    }
+
+    return Directory.current;
+  }
+
+  void _downloadTemplateOnWeb(Uint8List bytes, String fileName) {
+    final safeFileName = fileName.trim().isEmpty ? 'KIT_Question_Template.xlsx' : fileName;
+    final blob = html.Blob(
+      [bytes],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final anchor = html.AnchorElement(href: url)
+      ..setAttribute('download', safeFileName)
+      ..style.display = 'none';
+
+    html.document.body?.append(anchor);
+    anchor.click();
+    anchor.remove();
+    html.Url.revokeObjectUrl(url);
+  }
+
+  void _uploadQuestions(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _BulkUploadDialog(
+        section: section,
+        onUploadComplete: onRefresh,
       ),
     );
   }
 }
 
-class _OptionEntry {
-  final TextEditingController controller;
-  int score;
 
-  _OptionEntry(this.controller, this.score);
-}
-
-// ========================================
-// EDIT DIALOGS
-// ========================================
-
-/// Dialog for editing a section
-class _EditSectionDialog extends StatefulWidget {
+class _BulkUploadDialog extends StatefulWidget {
   final SectionModel section;
-  final VoidCallback onUpdated;
+  final VoidCallback onUploadComplete;
 
-  const _EditSectionDialog({required this.section, required this.onUpdated});
-
-  @override
-  State<_EditSectionDialog> createState() => _EditSectionDialogState();
-}
-
-class _EditSectionDialogState extends State<_EditSectionDialog> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _nameController;
-  late final TextEditingController _descController;
-  bool _isLoading = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.section.name);
-    _descController = TextEditingController(text: widget.section.description);
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final datasource = getIt<AssessmentRemoteDataSource>();
-      await datasource.updateSection(
-        widget.section.id,
-        name: _nameController.text.trim(),
-        description: _descController.text.trim(),
-      );
-      widget.onUpdated();
-      if (mounted) Navigator.of(context).pop();
-    } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: 400,
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.edit, color: AppColors.primary),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Edit Section',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Section Name',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descController,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
-              ],
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(100, 40),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('Save'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Dialog for editing a dimension (including pole labels)
-class _EditDimensionDialog extends StatefulWidget {
-  final DimensionModel dimension;
-  final VoidCallback onUpdated;
-
-  const _EditDimensionDialog({required this.dimension, required this.onUpdated});
-
-  @override
-  State<_EditDimensionDialog> createState() => _EditDimensionDialogState();
-}
-
-class _EditDimensionDialogState extends State<_EditDimensionDialog> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _nameController;
-  late final TextEditingController _descController;
-  late final TextEditingController _poleAController;
-  late final TextEditingController _poleBController;
-  bool _isLoading = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.dimension.name);
-    _descController = TextEditingController(text: widget.dimension.description);
-    _poleAController = TextEditingController(text: widget.dimension.poleALabel);
-    _poleBController = TextEditingController(text: widget.dimension.poleBLabel);
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descController.dispose();
-    _poleAController.dispose();
-    _poleBController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final datasource = getIt<AssessmentRemoteDataSource>();
-      await datasource.updateDimension(
-        widget.dimension.id,
-        name: _nameController.text.trim(),
-        description: _descController.text.trim(),
-        poleALabel: _poleAController.text.trim(),
-        poleBLabel: _poleBController.text.trim(),
-      );
-      widget.onUpdated();
-      if (mounted) Navigator.of(context).pop();
-    } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: 450,
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.edit, color: Colors.purple),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Edit Dimension',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Dimension Name',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descController,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Pole Labels (Spectrum Endpoints)',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Define the two opposite ends of this personality trait',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _poleAController,
-                      decoration: InputDecoration(
-                        labelText: 'Pole A (Low end)',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: Container(
-                          margin: const EdgeInsets.all(8),
-                          width: 12, height: 12,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                      validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Icon(Icons.arrow_forward, color: AppColors.textTertiary),
-                  ),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _poleBController,
-                      decoration: InputDecoration(
-                        labelText: 'Pole B (High end)',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: Container(
-                          margin: const EdgeInsets.all(8),
-                          width: 12, height: 12,
-                          decoration: const BoxDecoration(
-                            color: AppColors.secondary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                      validator: (v) => v?.trim().isEmpty ?? true ? 'Required' : null,
-                    ),
-                  ),
-                ],
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
-              ],
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(100, 40),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('Save'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ========================================
-// DELETE CONFIRMATION DIALOG
-// ========================================
-
-class _DeleteConfirmDialog extends StatefulWidget {
-  final String title;
-  final String message;
-  final Future<void> Function() onConfirm;
-
-  const _DeleteConfirmDialog({
-    required this.title,
-    required this.message,
-    required this.onConfirm,
+  const _BulkUploadDialog({
+    required this.section,
+    required this.onUploadComplete,
   });
 
   @override
-  State<_DeleteConfirmDialog> createState() => _DeleteConfirmDialogState();
+  State<_BulkUploadDialog> createState() => _BulkUploadDialogState();
 }
 
-class _DeleteConfirmDialogState extends State<_DeleteConfirmDialog> {
-  bool _isLoading = false;
-  String? _error;
+class _BulkUploadDialogState extends State<_BulkUploadDialog> {
+  PlatformFile? _selectedFile;
+  BulkValidationResponseModel? _validationResult;
+  bool _isValidating = false;
+  bool _isUploading = false;
 
-  Future<void> _handleDelete() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      await widget.onConfirm();
-      if (mounted) Navigator.of(context).pop();
-    } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
+  AssessmentRemoteDataSource get _datasource => getIt<AssessmentRemoteDataSource>();
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: 400,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.warning_amber_rounded, color: Colors.red),
+    return AlertDialog(
+      title: const Text('Bulk Upload Questions'),
+      content: SizedBox(
+        width: 540,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Section: ${widget.section.name}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  widget.title,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(
-              widget.message,
-              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
-            ),
-            if (_error != null) ...[
+              ),
               const SizedBox(height: 12),
-              Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
-            ],
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _handleDelete,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(100, 40),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Delete'),
+              OutlinedButton.icon(
+                onPressed: _isValidating || _isUploading ? null : _pickExcelFile,
+                icon: const Icon(Icons.attach_file),
+                label: Text(_selectedFile?.name ?? 'Choose Excel File (.xlsx)'),
+              ),
+              if (_selectedFile != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Selected: ${_selectedFile!.name} (${(_selectedFile!.size / 1024).toStringAsFixed(1)} KB)',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
               ],
-            ),
-          ],
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _selectedFile == null || _isValidating || _isUploading
+                          ? null
+                          : _validateFile,
+                      icon: _isValidating
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.fact_check),
+                      label: const Text('Validate'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _canUpload ? _uploadFile : null,
+                      icon: _isUploading
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.cloud_upload),
+                      label: const Text('Upload'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildValidationPreview(),
+            ],
+          ),
         ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isValidating || _isUploading
+              ? null
+              : () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    );
+  }
+
+  bool get _canUpload {
+    return _selectedFile != null &&
+        _validationResult != null &&
+        _validationResult!.valid &&
+        !_isUploading &&
+        !_isValidating;
+  }
+
+  Future<void> _pickExcelFile() async {
+    if (kIsWeb) {
+      await _pickExcelFileWeb();
+      return;
+    }
+
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      type: FileType.custom,
+      allowedExtensions: const ['xlsx'],
+      withData: true,
+    );
+
+    if (result == null || result.files.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _selectedFile = result.files.first;
+      _validationResult = null;
+    });
+  }
+
+  Future<void> _pickExcelFileWeb() async {
+    final input = html.FileUploadInputElement()
+      ..accept = '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    input.click();
+
+    await input.onChange.first;
+    final file = input.files?.isNotEmpty == true ? input.files!.first : null;
+    if (file == null) {
+      return;
+    }
+
+    final reader = html.FileReader();
+    final completer = Completer<Uint8List>();
+
+    reader.onError.listen((_) {
+      if (!completer.isCompleted) {
+        completer.completeError(Exception('Failed to read file in browser'));
+      }
+    });
+
+    reader.onLoadEnd.listen((_) {
+      if (completer.isCompleted) {
+        return;
+      }
+      final result = reader.result;
+      if (result is ByteBuffer) {
+        completer.complete(Uint8List.view(result));
+      } else {
+        completer.completeError(Exception('Unexpected browser file payload'));
+      }
+    });
+
+    reader.readAsArrayBuffer(file);
+    final bytes = await completer.future;
+
+    setState(() {
+      _selectedFile = PlatformFile(
+        name: file.name,
+        size: bytes.length,
+        bytes: bytes,
+      );
+      _validationResult = null;
+    });
+  }
+
+  Future<void> _validateFile() async {
+    final file = _selectedFile;
+    if (file == null || file.bytes == null) {
+      _showError('Please select a valid file');
+      return;
+    }
+
+    setState(() => _isValidating = true);
+    try {
+      final validation = await _datasource.validateBulkQuestions(
+        widget.section.id,
+        fileBytes: file.bytes!,
+        fileName: file.name,
+      );
+      setState(() {
+        _validationResult = validation;
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(validation.valid
+              ? 'Validation passed. Ready to upload.'
+              : 'Validation failed with ${validation.errors.length} error(s).'),
+          backgroundColor: validation.valid ? AppColors.success : AppColors.warning,
+        ),
+      );
+    } catch (e) {
+      _showError('Validation failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isValidating = false);
+      }
+    }
+  }
+
+  Future<void> _uploadFile() async {
+    final file = _selectedFile;
+    if (file == null || file.bytes == null) {
+      _showError('Please choose an Excel file first');
+      return;
+    }
+
+    setState(() => _isUploading = true);
+    try {
+      final result = await _datasource.bulkUploadQuestions(
+        widget.section.id,
+        fileBytes: file.bytes!,
+        fileName: file.name,
+      );
+
+      if (!mounted) return;
+      if (!result.success) {
+        _showError(result.errorMessage ?? 'Upload failed');
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Uploaded ${result.questionIds.length} questions successfully'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      widget.onUploadComplete();
+      Navigator.of(context).pop();
+    } catch (e) {
+      _showError('Upload failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  Widget _buildValidationPreview() {
+    final result = _validationResult;
+    if (result == null) {
+      return const Text(
+        'Upload process: Choose file -> Validate -> Upload',
+        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      );
+    }
+
+    final summary = result.summary;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border.withOpacity(0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            result.valid ? 'Validation Passed' : 'Validation Failed',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: result.valid ? AppColors.success : AppColors.error,
+            ),
+          ),
+          if (summary != null) ...[
+            const SizedBox(height: 6),
+            Text('Total questions: ${summary.totalQuestions}'),
+            Text('Warnings: ${result.warnings.length}'),
+            Text('Errors: ${result.errors.length}'),
+          ],
+          if (result.errors.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            const Text('Top errors:', style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            ...result.errors.take(5).map(
+                  (e) => Text(
+                    'Row ${e.rowNumber} - ${e.field}: ${e.message}',
+                    style: const TextStyle(fontSize: 12, color: AppColors.error),
+                  ),
+                ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.error,
       ),
     );
   }

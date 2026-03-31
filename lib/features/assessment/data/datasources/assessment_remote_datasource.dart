@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../../../../core/config/app_config.dart';
 import '../../../../core/network/api_client.dart';
 import '../../domain/models/assessment_models.dart';
 
@@ -44,6 +47,19 @@ abstract class AssessmentRemoteDataSource {
     String? description,
     String? poleALabel,
     String? poleBLabel,
+  });
+
+  // KIT bulk upload methods
+  Future<QuestionTemplateModel> downloadQuestionTemplate(String sectionId);
+  Future<BulkValidationResponseModel> validateBulkQuestions(
+    String sectionId, {
+    required List<int> fileBytes,
+    required String fileName,
+  });
+  Future<BulkUploadResponseModel> bulkUploadQuestions(
+    String sectionId, {
+    required List<int> fileBytes,
+    required String fileName,
   });
 }
 
@@ -262,5 +278,126 @@ class AssessmentRemoteDataSourceImpl implements AssessmentRemoteDataSource {
       throw Exception(response.errorMessage ?? 'Failed to update dimension');
     }
     return DimensionModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<QuestionTemplateModel> downloadQuestionTemplate(String sectionId) async {
+    final token = _apiClient.accessToken;
+    if (token == null || token.isEmpty) {
+      throw Exception('Unauthorized. Please login again.');
+    }
+
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/admin/assessments/sections/$sectionId/questions/template');
+
+    http.Response response;
+    try {
+      response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        },
+      );
+    } catch (e) {
+      rethrow;
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final disposition = response.headers['content-disposition'] ?? '';
+      final fileName = _extractFilename(disposition) ?? 'KIT_Question_Template.xlsx';
+      return QuestionTemplateModel(bytes: response.bodyBytes, fileName: fileName);
+    }
+
+    throw Exception(_extractApiError(response.body) ?? 'Failed to download template');
+  }
+
+  @override
+  Future<BulkValidationResponseModel> validateBulkQuestions(
+    String sectionId, {
+    required List<int> fileBytes,
+    required String fileName,
+  }) async {
+    final response = await _sendBulkMultipart(
+      sectionId: sectionId,
+      endpoint: 'validate',
+      fileBytes: fileBytes,
+      fileName: fileName,
+    );
+
+    return BulkValidationResponseModel.fromJson(response);
+  }
+
+  @override
+  Future<BulkUploadResponseModel> bulkUploadQuestions(
+    String sectionId, {
+    required List<int> fileBytes,
+    required String fileName,
+  }) async {
+    final response = await _sendBulkMultipart(
+      sectionId: sectionId,
+      endpoint: 'bulk',
+      fileBytes: fileBytes,
+      fileName: fileName,
+    );
+
+    return BulkUploadResponseModel.fromJson(response);
+  }
+
+  Future<Map<String, dynamic>> _sendBulkMultipart({
+    required String sectionId,
+    required String endpoint,
+    required List<int> fileBytes,
+    required String fileName,
+  }) async {
+    final token = _apiClient.accessToken;
+    if (token == null || token.isEmpty) {
+      throw Exception('Unauthorized. Please login again.');
+    }
+
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/admin/assessments/sections/$sectionId/questions/$endpoint');
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        fileBytes,
+        filename: fileName,
+      ),
+    );
+
+    http.StreamedResponse streamed;
+    try {
+      streamed = await request.send();
+    } catch (e) {
+      rethrow;
+    }
+
+    final response = await http.Response.fromStream(streamed);
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return body['data'] as Map<String, dynamic>;
+    }
+
+    final message = (body['error']?['message'] as String?) ?? 'Bulk request failed';
+    throw Exception(message);
+  }
+
+  String? _extractFilename(String contentDisposition) {
+    if (contentDisposition.isEmpty) return null;
+
+    final match = RegExp(r'filename="?([^";]+)"?').firstMatch(contentDisposition);
+    return match?.group(1);
+  }
+
+  String? _extractApiError(String body) {
+    if (body.isEmpty) return null;
+    try {
+      final parsed = jsonDecode(body) as Map<String, dynamic>;
+      return parsed['error']?['message'] as String?;
+    } catch (_) {
+      return null;
+    }
   }
 }
