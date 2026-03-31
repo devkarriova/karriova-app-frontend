@@ -19,6 +19,23 @@ abstract class AuthRepository {
     required String email,
     required String password,
     required String name,
+    String? dateOfBirth,
+    String? phone,
+    String? parentPhone,
+    String? otpCode,
+  });
+
+  /// Send OTP to a phone number
+  Future<Either<String, DateTime>> sendOTP({
+    required String phone,
+    required String purpose,
+  });
+
+  /// Verify OTP code
+  Future<Either<String, bool>> verifyOTP({
+    required String phone,
+    required String otpCode,
+    required String purpose,
   });
 
   Future<Either<String, void>> logout();
@@ -36,9 +53,6 @@ abstract class AuthRepository {
     required String code,
     required String state,
   });
-
-  /// @deprecated Use initiateGoogleLogin instead
-  Future<Either<String, UserModel>> loginWithGoogle();
 
   Future<bool> isLoggedIn();
 }

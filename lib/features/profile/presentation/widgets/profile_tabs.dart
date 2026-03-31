@@ -16,14 +16,26 @@ class ProfileTabs extends StatefulWidget {
 class _ProfileTabsState extends State<ProfileTabs> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  // Track which tabs are locked
+  static const int experienceTabIndex = 4;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+    _tabController.addListener(_handleTabChange);
+  }
+
+  void _handleTabChange() {
+    // Prevent switching to locked tabs
+    if (_tabController.index == experienceTabIndex) {
+      _tabController.animateTo(_tabController.previousIndex);
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
   }
@@ -61,12 +73,31 @@ class _ProfileTabsState extends State<ProfileTabs> with SingleTickerProviderStat
               fontSize: 16,
               fontWeight: FontWeight.normal,
             ),
-            tabs: const [
-              Tab(text: 'About'),
-              Tab(text: 'Experience'),
-              Tab(text: 'Education'),
-              Tab(text: 'Skills'),
-              Tab(text: 'Achievements'),
+            tabs: [
+              const Tab(text: 'About'),
+              const Tab(text: 'Education'),
+              const Tab(text: 'Achievements'),
+              const Tab(text: 'Skills'),
+              Tooltip(
+                message: 'Coming Soon',
+                child: Tab(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Experience',
+                        style: TextStyle(color: Colors.grey.shade400),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.lock_outline,
+                        size: 14,
+                        color: Colors.grey.shade400,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -80,10 +111,10 @@ class _ProfileTabsState extends State<ProfileTabs> with SingleTickerProviderStat
             controller: _tabController,
             children: const [
               AboutSection(),
-              ExperienceSection(),
               EducationSection(),
-              SkillsSection(),
               AchievementsSection(),
+              SkillsSection(),
+              ExperienceSection(), // Locked - users can't navigate here
             ],
           ),
         ),

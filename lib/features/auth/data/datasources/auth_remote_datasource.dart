@@ -23,6 +23,23 @@ abstract class AuthRemoteDataSource {
     required String email,
     required String password,
     required String name,
+    String? dateOfBirth,
+    String? phone,
+    String? parentPhone,
+    String? otpCode,
+  });
+
+  /// Send OTP to a phone number
+  Future<DateTime> sendOTP({
+    required String phone,
+    required String purpose,
+  });
+
+  /// Verify OTP code
+  Future<bool> verifyOTP({
+    required String phone,
+    required String otpCode,
+    required String purpose,
   });
 
   Future<void> logout(String refreshToken);
@@ -90,14 +107,25 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String email,
     required String password,
     required String name,
+    String? dateOfBirth,
+    String? phone,
+    String? parentPhone,
+    String? otpCode,
   }) async {
+    final body = <String, dynamic>{
+      'email': email,
+      'password': password,
+      'name': name,
+    };
+    
+    if (dateOfBirth != null) body['date_of_birth'] = dateOfBirth;
+    if (phone != null) body['phone'] = phone;
+    if (parentPhone != null) body['parent_phone'] = parentPhone;
+    if (otpCode != null) body['otp_code'] = otpCode;
+    
     final response = await apiClient.post(
       AppConfig.signupEndpoint,
-      body: {
-        'email': email,
-        'password': password,
-        'name': name,
-      },
+      body: body,
     );
 
     if (!response.isSuccess || response.data == null) {
@@ -105,6 +133,50 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     }
 
     return AuthResponse.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<DateTime> sendOTP({
+    required String phone,
+    required String purpose,
+  }) async {
+    final response = await apiClient.post(
+      '/otp/send',
+      body: {
+        'phone': phone,
+        'purpose': purpose,
+      },
+    );
+
+    if (!response.isSuccess || response.data == null) {
+      throw Exception(response.errorMessage ?? 'Failed to send OTP');
+    }
+
+    final data = response.data as Map<String, dynamic>;
+    return DateTime.parse(data['expires_at'] as String);
+  }
+
+  @override
+  Future<bool> verifyOTP({
+    required String phone,
+    required String otpCode,
+    required String purpose,
+  }) async {
+    final response = await apiClient.post(
+      '/otp/verify',
+      body: {
+        'phone': phone,
+        'otp_code': otpCode,
+        'purpose': purpose,
+      },
+    );
+
+    if (!response.isSuccess || response.data == null) {
+      throw Exception(response.errorMessage ?? 'OTP verification failed');
+    }
+
+    final data = response.data as Map<String, dynamic>;
+    return data['verified'] as bool;
   }
 
   @override

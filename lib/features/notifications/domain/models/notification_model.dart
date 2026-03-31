@@ -3,16 +3,9 @@ import 'package:equatable/equatable.dart';
 enum NotificationType {
   like,
   comment,
+  share,
   follow,
   mention,
-  message,
-  connectionRequest,
-}
-
-enum EntityType {
-  post,
-  comment,
-  user,
   message,
 }
 
@@ -21,8 +14,8 @@ class NotificationModel extends Equatable {
   final String userId;
   final String actorId;
   final NotificationType type;
-  final String entityId;
-  final EntityType entityType;
+  final String? postId;
+  final String? commentId;
   final String message;
   final bool isRead;
   final DateTime? readAt;
@@ -36,8 +29,8 @@ class NotificationModel extends Equatable {
     required this.userId,
     required this.actorId,
     required this.type,
-    required this.entityId,
-    required this.entityType,
+    this.postId,
+    this.commentId,
     required this.message,
     required this.isRead,
     this.readAt,
@@ -53,8 +46,8 @@ class NotificationModel extends Equatable {
       userId: json['user_id'] as String,
       actorId: json['actor_id'] as String,
       type: _parseNotificationType(json['type'] as String),
-      entityId: json['entity_id'] as String,
-      entityType: _parseEntityType(json['entity_type'] as String),
+      postId: json['post_id'] as String?,
+      commentId: json['comment_id'] as String?,
       message: json['message'] as String,
       isRead: json['is_read'] as bool,
       readAt: json['read_at'] != null
@@ -73,31 +66,16 @@ class NotificationModel extends Equatable {
         return NotificationType.like;
       case 'comment':
         return NotificationType.comment;
+      case 'share':
+        return NotificationType.share;
       case 'follow':
         return NotificationType.follow;
       case 'mention':
         return NotificationType.mention;
       case 'message':
         return NotificationType.message;
-      case 'connection_request':
-        return NotificationType.connectionRequest;
       default:
         return NotificationType.like;
-    }
-  }
-
-  static EntityType _parseEntityType(String type) {
-    switch (type) {
-      case 'post':
-        return EntityType.post;
-      case 'comment':
-        return EntityType.comment;
-      case 'user':
-        return EntityType.user;
-      case 'message':
-        return EntityType.message;
-      default:
-        return EntityType.post;
     }
   }
 
@@ -107,8 +85,8 @@ class NotificationModel extends Equatable {
       'user_id': userId,
       'actor_id': actorId,
       'type': type.name,
-      'entity_id': entityId,
-      'entity_type': entityType.name,
+      'post_id': postId,
+      'comment_id': commentId,
       'message': message,
       'is_read': isRead,
       'read_at': readAt?.toIso8601String(),
@@ -157,8 +135,8 @@ class NotificationModel extends Equatable {
         userId,
         actorId,
         type,
-        entityId,
-        entityType,
+        postId,
+        commentId,
         message,
         isRead,
         readAt,

@@ -93,6 +93,7 @@ class _LoginPageState extends State<LoginPage> {
         } else if (state.status == AuthStatus.authenticated) {
           // Show success message only once
           if (!_hasNavigated) {
+            _hasNavigated = true;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.successMessage ?? 'Login successful!'),
@@ -101,22 +102,12 @@ class _LoginPageState extends State<LoginPage> {
             );
           }
           
-          // Check assessment status and navigate
+          // Trigger assessment status check if not yet known
+          // Router will handle navigation once assessment status is set
           if (state.assessmentCompleted == null) {
-            // Need to check assessment status from backend
             context.read<AuthBloc>().add(const AuthCheckAssessmentStatus());
-          } else if (!_hasNavigated) {
-            _hasNavigated = true;
-            if (state.assessmentCompleted == false) {
-              // User hasn't completed assessment - redirect to assessment page
-              // Use replace to prevent browser back navigation to login
-              GoRouter.of(context).replace(AppRouter.assessment);
-            } else {
-              // User has completed assessment - go to feed
-              // Use replace to prevent browser back navigation to login
-              GoRouter.of(context).replace(AppRouter.feed);
-            }
           }
+          // Navigation is handled by GoRouter's redirect based on auth state
         }
       },
       builder: (context, state) {
@@ -186,6 +177,11 @@ class _LoginPageState extends State<LoginPage> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
                     decoration: InputDecoration(
                       hintText: '[email protected] or +91-9876543210',
                       hintStyle: const TextStyle(
@@ -243,6 +239,11 @@ class _LoginPageState extends State<LoginPage> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Enter your password',
                       hintStyle: const TextStyle(

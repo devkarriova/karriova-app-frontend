@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:karriova_app/core/constants/app_colors.dart';
+import 'package:karriova_app/core/routes/app_router.dart';
+import 'package:karriova_app/core/services/feedback_service.dart';
+import 'package:karriova_app/core/network/api_client.dart';
 import 'package:karriova_app/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:karriova_app/features/auth/presentation/bloc/auth_event.dart';
-import 'package:karriova_app/features/settings/presentation/pages/account_settings_page.dart';
-import 'package:karriova_app/features/settings/presentation/pages/notification_settings_page.dart';
-import 'package:karriova_app/features/settings/presentation/pages/privacy_settings_page.dart';
-import 'package:karriova_app/features/settings/presentation/pages/appearance_settings_page.dart';
-import 'package:karriova_app/features/settings/presentation/pages/about_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -19,111 +18,86 @@ class SettingsPage extends StatelessWidget {
         title: const Text('Settings'),
         elevation: 0,
       ),
-      body: ListView(
-        children: [
-          const SizedBox(height: 16),
-          _buildSection(
-            context,
-            title: 'Account',
-            items: [
-              _SettingsItem(
-                icon: Icons.person_outline,
-                title: 'Account Settings',
-                subtitle: 'Manage your account details',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AccountSettingsPage()),
-                ),
-              ),
-              _SettingsItem(
-                icon: Icons.lock_outline,
-                title: 'Privacy',
-                subtitle: 'Control your privacy settings',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PrivacySettingsPage()),
-                ),
-              ),
-              _SettingsItem(
-                icon: Icons.security_outlined,
-                title: 'Security',
-                subtitle: 'Password and authentication',
-                onTap: () => _showSecurityOptions(context),
-              ),
-            ],
-          ),
-          _buildSection(
-            context,
-            title: 'Preferences',
-            items: [
-              _SettingsItem(
-                icon: Icons.notifications_outlined,
-                title: 'Notifications',
-                subtitle: 'Manage notification preferences',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const NotificationSettingsPage()),
-                ),
-              ),
-              _SettingsItem(
-                icon: Icons.palette_outlined,
-                title: 'Appearance',
-                subtitle: 'Theme and display settings',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AppearanceSettingsPage()),
-                ),
-              ),
-              _SettingsItem(
-                icon: Icons.language_outlined,
-                title: 'Language',
-                subtitle: 'English',
-                onTap: () => _showLanguageOptions(context),
-              ),
-            ],
-          ),
-          _buildSection(
-            context,
-            title: 'Support',
-            items: [
-              _SettingsItem(
-                icon: Icons.help_outline,
-                title: 'Help Center',
-                subtitle: 'Get help and support',
-                onTap: () => _showHelpCenter(context),
-              ),
-              _SettingsItem(
-                icon: Icons.feedback_outlined,
-                title: 'Send Feedback',
-                subtitle: 'Help us improve Karriova',
-                onTap: () => _showFeedbackDialog(context),
-              ),
-              _SettingsItem(
-                icon: Icons.info_outline,
-                title: 'About',
-                subtitle: 'App version and legal',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AboutPage()),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Padding(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: OutlinedButton(
-              onPressed: () => _showLogoutConfirmation(context),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.error,
-                side: const BorderSide(color: AppColors.error),
-                padding: const EdgeInsets.symmetric(vertical: 16),
+            children: [
+              const SizedBox(height: 16),
+              _buildSection(
+                context,
+                title: 'Account',
+                items: [
+                  _SettingsItem(
+                    icon: Icons.lock_outline,
+                    title: 'Privacy',
+                    subtitle: 'Control your privacy settings',
+                    onTap: () => context.push(AppRouter.settingsPrivacy),
+                  ),
+                ],
               ),
-              child: const Text('Log Out'),
-            ),
+              _buildSection(
+                context,
+                title: 'Preferences',
+                items: [
+                  _SettingsItem(
+                    icon: Icons.notifications_outlined,
+                    title: 'Notifications',
+                    subtitle: 'Manage notification preferences',
+                    onTap: () => context.push(AppRouter.settingsNotifications),
+                  ),
+                  _SettingsItem(
+                    icon: Icons.palette_outlined,
+                    title: 'Appearance',
+                    subtitle: 'Theme settings',
+                    onTap: () => context.push(AppRouter.settingsAppearance),
+                  ),
+                ],
+              ),
+              _buildSection(
+                context,
+                title: 'Support',
+                items: [
+                  _SettingsItem(
+                    icon: Icons.help_outline,
+                    title: 'Help Center',
+                    subtitle: 'Get help and support',
+                    onTap: () => context.push(AppRouter.settingsHelp),
+                  ),
+                  _SettingsItem(
+                    icon: Icons.feedback_outlined,
+                    title: 'Send Feedback',
+                    subtitle: 'Help us improve Karriova',
+                    onTap: () => _showFeedbackDialog(context),
+                  ),
+                  _SettingsItem(
+                    icon: Icons.info_outline,
+                    title: 'About',
+                    subtitle: 'App version and legal',
+                    onTap: () => context.push(AppRouter.settingsAbout),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Center(
+                child: SizedBox(
+                  width: 200,
+                  child: OutlinedButton(
+                    onPressed: () => _showLogoutConfirmation(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.error,
+                      side: const BorderSide(color: AppColors.error),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text('Log Out'),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
           ),
-          const SizedBox(height: 32),
-        ],
+        ),
       ),
     );
   }
@@ -137,7 +111,7 @@ class SettingsPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           child: Text(
             title,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -147,11 +121,11 @@ class SettingsPage extends StatelessWidget {
           ),
         ),
         Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
+          margin: EdgeInsets.zero,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: Colors.grey.shade200),
+            side: BorderSide(color: Theme.of(context).dividerColor),
           ),
           child: Column(
             children: items.asMap().entries.map((entry) {
@@ -165,15 +139,15 @@ class SettingsPage extends StatelessWidget {
                     subtitle: Text(
                       item.subtitle,
                       style: TextStyle(
-                        color: Colors.grey.shade600,
+                        color: Theme.of(context).textTheme.bodySmall?.color,
                         fontSize: 12,
                       ),
                     ),
-                    trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                    trailing: Icon(Icons.chevron_right, color: Theme.of(context).disabledColor),
                     onTap: item.onTap,
                   ),
                   if (index < items.length - 1)
-                    Divider(height: 1, indent: 56, color: Colors.grey.shade200),
+                    Divider(height: 1, indent: 56, color: Theme.of(context).dividerColor),
                 ],
               );
             }).toList(),
@@ -184,159 +158,137 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  void _showSecurityOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.password_outlined),
-              title: const Text('Change Password'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Navigate to change password
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.phonelink_lock_outlined),
-              title: const Text('Two-Factor Authentication'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Navigate to 2FA settings
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.devices_outlined),
-              title: const Text('Active Sessions'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Navigate to active sessions
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showLanguageOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'Select Language',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              title: const Text('English'),
-              trailing: const Icon(Icons.check, color: AppColors.primary),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              title: const Text('Spanish'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Change language
-              },
-            ),
-            ListTile(
-              title: const Text('French'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Change language
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showHelpCenter(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Help Center coming soon'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   void _showFeedbackDialog(BuildContext context) {
+    final feedbackController = TextEditingController();
+    final subjectController = TextEditingController();
+    String selectedCategory = 'other';
+    bool isSubmitting = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Send Feedback'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('How can we improve Karriova?'),
-            const SizedBox(height: 16),
-            TextField(
-              maxLines: 4,
-              decoration: InputDecoration(
-                hintText: 'Your feedback...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Send Feedback'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Help us improve Karriova!'),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedCategory,
+                  decoration: InputDecoration(
+                    labelText: 'Category',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'bug', child: Text('Bug Report')),
+                    DropdownMenuItem(value: 'feature_request', child: Text('Feature Request')),
+                    DropdownMenuItem(value: 'complaint', child: Text('Complaint')),
+                    DropdownMenuItem(value: 'question', child: Text('Question')),
+                    DropdownMenuItem(value: 'other', child: Text('Other')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => selectedCategory = value);
+                    }
+                  },
                 ),
-              ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: subjectController,
+                  decoration: InputDecoration(
+                    labelText: 'Subject',
+                    hintText: 'Brief summary...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: feedbackController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    labelText: 'Description',
+                    hintText: 'Please provide details...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSubmitting ? null : () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      final subject = subjectController.text.trim();
+                      final description = feedbackController.text.trim();
+
+                      if (subject.isEmpty || description.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please fill in all fields'),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                        return;
+                      }
+
+                      setState(() => isSubmitting = true);
+
+                      try {
+                        final feedbackService = FeedbackService(ApiClient());
+                        await feedbackService.submitFeedback(
+                          subject: subject,
+                          description: description,
+                          category: selectedCategory,
+                        );
+
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Thank you for your feedback! We\'ll review it soon.'),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setState(() => isSubmitting = false);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to submit feedback: ${e.toString()}'),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                        }
+                      }
+                    },
+              child: isSubmitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Send'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Thank you for your feedback!'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            child: const Text('Send'),
-          ),
-        ],
       ),
     );
   }

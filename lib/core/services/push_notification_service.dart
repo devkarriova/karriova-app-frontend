@@ -4,8 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../network/api_client.dart';
 import '../di/injection.dart';
+import '../routes/app_router.dart';
 
-/// Global navigator key for navigation from outside widget tree
+/// Global navigator key for navigation from outside widget tree (legacy support)
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 /// Service to handle Firebase Cloud Messaging (FCM) for push notifications
@@ -28,13 +29,10 @@ class PushNotificationService {
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional) {
-        debugPrint('Push notifications authorized');
-
         // Get FCM token
         _fcmToken = await _messaging.getToken(
           vapidKey: kIsWeb ? _getWebVapidKey() : null,
         );
-        debugPrint('FCM Token: $_fcmToken');
 
         // Listen for token refresh
         _messaging.onTokenRefresh.listen((newToken) {
@@ -53,11 +51,8 @@ class PushNotificationService {
         if (initialMessage != null) {
           _handleMessageOpenedApp(initialMessage);
         }
-      } else {
-        debugPrint('Push notifications not authorized');
       }
-    } catch (e) {
-      debugPrint('Error initializing push notifications: $e');
+    } catch (_) {
     }
   }
 
@@ -79,9 +74,7 @@ class PushNotificationService {
           'device_info': _getDeviceInfo(),
         },
       );
-      debugPrint('Device token registered with backend');
-    } catch (e) {
-      debugPrint('Error registering device token: $e');
+    } catch (_) {
     }
   }
 
@@ -95,15 +88,11 @@ class PushNotificationService {
         '/notifications/device-token/$_fcmToken',
         requiresAuth: true,
       );
-      debugPrint('Device token unregistered from backend');
-    } catch (e) {
-      debugPrint('Error unregistering device token: $e');
+    } catch (_) {
     }
   }
 
   void _handleForegroundMessage(RemoteMessage message) {
-    debugPrint('Foreground message received: ${message.notification?.title}');
-
     // The notification will be handled by the system on mobile
     // For web, we may need to show a custom notification
     if (kIsWeb) {
@@ -115,8 +104,6 @@ class PushNotificationService {
   }
 
   void _handleMessageOpenedApp(RemoteMessage message) {
-    debugPrint('Message opened app: ${message.notification?.title}');
-
     // Navigate to the appropriate screen based on notification data
     final data = message.data;
     final type = data['type'];
@@ -129,27 +116,24 @@ class PushNotificationService {
   void _navigateBasedOnType(String? type, String? resourceId) {
     if (type == null) return;
 
-    final navigator = navigatorKey.currentState;
-    if (navigator == null) {
-      debugPrint('Navigator not available for push notification navigation');
-      return;
-    }
+    final router = AppRouter.router;
 
     switch (type) {
       case 'like':
       case 'comment':
       case 'post':
-        // Navigate to post detail
-        if (resourceId != null) {
-          navigator.pushNamed('/post/$resourceId');
-        }
+        // Navigate to feed (post detail not implemented yet)
+        // TODO: Add post detail route when implemented
+        router.push(AppRouter.feed);
         break;
 
       case 'follow':
       case 'connection':
         // Navigate to user profile
         if (resourceId != null) {
-          navigator.pushNamed('/profile/$resourceId');
+          router.push('${AppRouter.profile}/$resourceId');
+        } else {
+          router.push(AppRouter.profile);
         }
         break;
 
@@ -157,43 +141,37 @@ class PushNotificationService {
       case 'chat':
         // Navigate to chat conversation
         if (resourceId != null) {
-          navigator.pushNamed('/chat/$resourceId');
+          router.push('${AppRouter.chatConversation}?conversationId=$resourceId&otherUserId=');
         } else {
-          navigator.pushNamed('/chat');
+          router.push(AppRouter.chat);
         }
         break;
 
       case 'job':
       case 'job_alert':
-        // Navigate to job detail
-        if (resourceId != null) {
-          navigator.pushNamed('/job/$resourceId');
-        } else {
-          navigator.pushNamed('/jobs');
-        }
+        // Navigate to search (jobs page not implemented yet)
+        // TODO: Add jobs route when implemented
+        router.push(AppRouter.search);
         break;
 
       case 'company':
-        // Navigate to company profile
-        if (resourceId != null) {
-          navigator.pushNamed('/company/$resourceId');
-        }
+        // Navigate to search (company page not implemented yet)
+        // TODO: Add company profile route when implemented
+        router.push(AppRouter.search);
         break;
 
       case 'notification':
       default:
         // Navigate to notifications list
-        navigator.pushNamed('/notifications');
+        router.push(AppRouter.notifications);
         break;
     }
-
-    debugPrint('Navigated based on notification type: $type, resource_id: $resourceId');
   }
 
   void _showWebNotification(RemoteMessage message) {
     // Web notifications are handled automatically by the service worker
     // This is a fallback for custom notification display
-    debugPrint('Web notification: ${message.notification?.title}');
+    // No-op for now.
   }
 
   String _getPlatform() {

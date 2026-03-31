@@ -21,6 +21,20 @@ class AssessmentState extends Equatable {
   final String? errorMessage;
   final bool hasCompletedAssessment;
 
+  // NEW - Section tracking
+  final int currentSectionIndex;
+
+  // NEW - Question attempt tracking
+  final Set<String> attemptedQuestionIds;
+
+  // NEW - Timer state
+  final DateTime? assessmentStartTime;
+  final DateTime? sectionStartTime;
+  final int totalTestDurationMinutes;
+
+  // NEW - Section completion status
+  final Map<String, bool> sectionCompletionStatus; // sectionId -> isComplete
+
   const AssessmentState({
     this.status = AssessmentStatus.initial,
     this.assessment,
@@ -29,6 +43,12 @@ class AssessmentState extends Equatable {
     this.responses = const {},
     this.errorMessage,
     this.hasCompletedAssessment = false,
+    this.currentSectionIndex = 0,
+    this.attemptedQuestionIds = const {},
+    this.assessmentStartTime,
+    this.sectionStartTime,
+    this.totalTestDurationMinutes = 60, // Default 60 minutes
+    this.sectionCompletionStatus = const {},
   });
 
   /// Get total number of questions
@@ -98,6 +118,87 @@ class AssessmentState extends Equatable {
     return null;
   }
 
+  // ========================================
+  // NEW SECTION MANAGEMENT METHODS
+  // ========================================
+
+  /// Get list of all sections
+  List<SectionModel> get sections => assessment?.sections ?? [];
+
+  /// Get questions for the current section
+  List<QuestionModel> get currentSectionQuestions {
+    if (currentSection == null) return [];
+    return currentSection!.allQuestions;
+  }
+
+  /// Check if a specific section is complete (all questions answered)
+  bool isSectionComplete(String sectionId) {
+    final section = sections.firstWhere((s) => s.id == sectionId, orElse: () => throw Exception('Section not found'));
+    final sectionQuestions = section.allQuestions;
+    return sectionQuestions.every((q) => attemptedQuestionIds.contains(q.id));
+  }
+
+  /// Check if current section is complete
+  bool get isCurrentSectionComplete {
+    if (currentSection == null) return false;
+    return isSectionComplete(currentSection!.id);
+  }
+
+  /// Check if user can proceed to next section
+  bool get canProceedToNextSection {
+    if (currentSectionIndex >= sections.length - 1) return false; // Already on last section
+    return isCurrentSectionComplete;
+  }
+
+  /// Check if a question has been attempted
+  bool isQuestionAttempted(String questionId) {
+    return attemptedQuestionIds.contains(questionId);
+  }
+
+  /// Get count of answered questions in current section
+  int get currentSectionAnsweredCount {
+    if (currentSection == null) return 0;
+    final sectionQuestions = currentSectionQuestions;
+    return sectionQuestions.where((q) => attemptedQuestionIds.contains(q.id)).length;
+  }
+
+  /// Get total questions in current section
+  int get currentSectionTotalQuestions => currentSectionQuestions.length;
+
+  // ========================================
+  // TIMER MANAGEMENT METHODS
+  // ========================================
+
+  /// Get remaining time for overall test (in seconds)
+  Duration? get remainingTestTime {
+    if (assessmentStartTime == null) return null;
+    final elapsed = DateTime.now().difference(assessmentStartTime!);
+    final total = Duration(minutes: totalTestDurationMinutes);
+    final remaining = total - elapsed;
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
+  /// Get remaining time for current section (in seconds)
+  Duration? get remainingSectionTime {
+    if (sectionStartTime == null || currentSection == null) return null;
+    final elapsed = DateTime.now().difference(sectionStartTime!);
+    final total = Duration(minutes: currentSection!.durationMinutes);
+    final remaining = total - elapsed;
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
+  /// Check if overall test time has expired
+  bool get isTestTimeExpired {
+    final remaining = remainingTestTime;
+    return remaining != null && remaining.inSeconds <= 0;
+  }
+
+  /// Check if section time has expired
+  bool get isSectionTimeExpired {
+    final remaining = remainingSectionTime;
+    return remaining != null && remaining.inSeconds <= 0;
+  }
+
   AssessmentState copyWith({
     AssessmentStatus? status,
     AssessmentModel? assessment,
@@ -106,6 +207,12 @@ class AssessmentState extends Equatable {
     Map<String, String>? responses,
     String? errorMessage,
     bool? hasCompletedAssessment,
+    int? currentSectionIndex,
+    Set<String>? attemptedQuestionIds,
+    DateTime? assessmentStartTime,
+    DateTime? sectionStartTime,
+    int? totalTestDurationMinutes,
+    Map<String, bool>? sectionCompletionStatus,
   }) {
     return AssessmentState(
       status: status ?? this.status,
@@ -116,6 +223,14 @@ class AssessmentState extends Equatable {
       errorMessage: errorMessage ?? this.errorMessage,
       hasCompletedAssessment:
           hasCompletedAssessment ?? this.hasCompletedAssessment,
+      currentSectionIndex: currentSectionIndex ?? this.currentSectionIndex,
+      attemptedQuestionIds: attemptedQuestionIds ?? this.attemptedQuestionIds,
+      assessmentStartTime: assessmentStartTime ?? this.assessmentStartTime,
+      sectionStartTime: sectionStartTime ?? this.sectionStartTime,
+      totalTestDurationMinutes:
+          totalTestDurationMinutes ?? this.totalTestDurationMinutes,
+      sectionCompletionStatus:
+          sectionCompletionStatus ?? this.sectionCompletionStatus,
     );
   }
 
@@ -128,5 +243,11 @@ class AssessmentState extends Equatable {
         responses,
         errorMessage,
         hasCompletedAssessment,
+        currentSectionIndex,
+        attemptedQuestionIds,
+        assessmentStartTime,
+        sectionStartTime,
+        totalTestDurationMinutes,
+        sectionCompletionStatus,
       ];
 }

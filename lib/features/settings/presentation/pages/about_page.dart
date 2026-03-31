@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:karriova_app/core/constants/app_colors.dart';
+import 'package:karriova_app/core/routes/app_router.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
@@ -42,10 +44,12 @@ class AboutPage extends StatelessWidget {
                       ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'Version $_appVersion ($_buildNumber)',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
+                Builder(
+                  builder: (context) => Text(
+                    'Version $_appVersion ($_buildNumber)',
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodySmall?.color,
+                    ),
                   ),
                 ),
               ],
@@ -73,14 +77,14 @@ class AboutPage extends StatelessWidget {
                 leading: const Icon(Icons.description_outlined),
                 title: const Text('Terms of Service'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => _launchUrl('https://karriova.com/terms'),
+                onTap: () => context.push(AppRouter.termsOfService),
               ),
               const Divider(indent: 56),
               ListTile(
                 leading: const Icon(Icons.privacy_tip_outlined),
                 title: const Text('Privacy Policy'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => _launchUrl('https://karriova.com/privacy'),
+                onTap: () => context.push(AppRouter.privacyPolicy),
               ),
               const Divider(indent: 56),
               ListTile(
@@ -136,12 +140,14 @@ class AboutPage extends StatelessWidget {
           const SizedBox(height: 32),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              '© ${DateTime.now().year} Karriova. All rights reserved.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey.shade500,
-                fontSize: 12,
+            child: Builder(
+              builder: (context) => Text(
+                '© ${DateTime.now().year} Karriova. All rights reserved.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6),
+                  fontSize: 12,
+                ),
               ),
             ),
           ),
@@ -174,7 +180,7 @@ class AboutPage extends StatelessWidget {
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: Colors.grey.shade200),
+            side: BorderSide(color: Theme.of(context).dividerColor),
           ),
           child: Column(children: children),
         ),
@@ -185,6 +191,6 @@ class AboutPage extends StatelessWidget {
 
   void _launchUrl(String urlString) {
     // TODO: Add url_launcher package and implement
-    debugPrint('Opening URL: $urlString');
+    // Placeholder until url_launcher is integrated.
   }
 }

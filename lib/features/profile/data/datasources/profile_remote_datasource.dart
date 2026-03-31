@@ -98,6 +98,20 @@ abstract class ProfileRemoteDataSource {
   Future<AwardModel> addAward(AwardModel award);
   Future<AwardModel> updateAward(AwardModel award);
   Future<void> deleteAward(String awardId);
+
+  /// Update onboarding profile (all student fields collected during setup)
+  Future<void> updateOnboardingProfile({
+    String? board,
+    String? classGrade,
+    String? schoolName,
+    String? stream,
+    String? gender,
+    String? location,
+    String? careerGoalStatus,
+    String? careerGoalText,
+    List<String>? generalInterests,
+    List<String>? skills,
+  });
 }
 
 /// Profile remote data source implementation
@@ -755,6 +769,46 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       }
     } catch (e) {
       throw Exception('Failed to delete award: $e');
+    }
+  }
+
+  @override
+  Future<void> updateOnboardingProfile({
+    String? board,
+    String? classGrade,
+    String? schoolName,
+    String? stream,
+    String? gender,
+    String? location,
+    String? careerGoalStatus,
+    String? careerGoalText,
+    List<String>? generalInterests,
+    List<String>? skills,
+  }) async {
+    try {
+      final Map<String, dynamic> body = {};
+      if (board != null && board.isNotEmpty) body['board'] = board;
+      if (classGrade != null && classGrade.isNotEmpty) body['class_grade'] = classGrade;
+      if (schoolName != null && schoolName.isNotEmpty) body['school_name'] = schoolName;
+      if (stream != null && stream.isNotEmpty) body['stream'] = stream;
+      if (gender != null && gender.isNotEmpty) body['gender'] = gender;
+      if (location != null && location.isNotEmpty) body['location'] = location;
+      if (careerGoalStatus != null && careerGoalStatus.isNotEmpty) body['career_goal_status'] = careerGoalStatus;
+      if (careerGoalText != null && careerGoalText.isNotEmpty) body['career_goal_text'] = careerGoalText;
+      if (generalInterests != null) body['general_interests'] = generalInterests;
+      if (skills != null) body['skills'] = skills;
+
+      final response = await apiClient.put(
+        AppConfig.updateOnboardingProfileEndpoint,
+        body: body,
+        requiresAuth: true,
+      );
+
+      if (!response.isSuccess) {
+        throw Exception(response.errorMessage ?? 'Failed to update onboarding profile');
+      }
+    } catch (e) {
+      throw Exception('Failed to update onboarding profile: $e');
     }
   }
 }

@@ -4,10 +4,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'core/di/injection.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_cubit.dart';
 import 'core/routes/app_router.dart';
 import 'core/config/app_config.dart';
 import 'core/services/inactivity_service.dart';
-import 'core/services/push_notification_service.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
 import 'features/auth/presentation/bloc/auth_state.dart';
@@ -15,6 +15,8 @@ import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/follow/presentation/bloc/follow_bloc.dart';
 import 'features/follow/presentation/bloc/follow_event.dart';
+import 'features/notifications/presentation/bloc/notification_bloc.dart';
+import 'features/notifications/presentation/bloc/notification_event.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,27 +42,23 @@ class KarriovaApp extends StatefulWidget {
 class _KarriovaAppState extends State<KarriovaApp> {
   late final InactivityService _inactivityService;
   late final AuthBloc _authBloc;
-  late final PushNotificationService _pushNotificationService;
+  late final ThemeCubit _themeCubit;
 
   @override
   void initState() {
     super.initState();
     _inactivityService = getIt<InactivityService>();
-    _pushNotificationService = PushNotificationService();
     _authBloc = getIt<AuthBloc>()..add(const AuthCheckStatusRequested());
+    _themeCubit = getIt<ThemeCubit>();
 
-    // Initialize push notifications
-    _initializePushNotifications();
+    // Load theme preference
+    _themeCubit.loadThemePreference();
 
     // Setup token expiration callback
     _setupTokenExpirationCallback();
 
     // Setup inactivity tracking
     _setupInactivityTracking();
-  }
-
-  Future<void> _initializePushNotifications() async {
-    await _pushNotificationService.initialize();
   }
 
   void _setupTokenExpirationCallback() {
@@ -86,8 +84,12 @@ class _KarriovaAppState extends State<KarriovaApp> {
           },
         );
 
-        // Register device token for push notifications
-        _pushNotificationService.registerDeviceToken();
+        // Register device token for push notifications (disabled - using WebSocket)
+        // _pushNotificationService.registerDeviceToken();
+
+        // Connect to notification WebSocket for real-time updates
+        final notificationBloc = getIt<NotificationBloc>();
+        notificationBloc.add(const NotificationWebSocketConnectRequested());
 
         // Load followingIds for the follow button state across the app
         final followBloc = getIt<FollowBloc>();
@@ -98,9 +100,12 @@ class _KarriovaAppState extends State<KarriovaApp> {
         // User is not logged in, disable tracking
         _inactivityService.disable();
 
-        // Unregister device token when logged out
+        // Disconnect notification WebSocket and unregister device token when logged out
         if (state.status == AuthStatus.unauthenticated) {
-          _pushNotificationService.unregisterDeviceToken();
+          // _pushNotificationService.unregisterDeviceToken();
+          
+          final notificationBloc = getIt<NotificationBloc>();
+          notificationBloc.add(const NotificationWebSocketDisconnectRequested());
         }
       }
     });
@@ -119,17 +124,24 @@ class _KarriovaAppState extends State<KarriovaApp> {
         BlocProvider<AuthBloc>.value(
           value: _authBloc,
         ),
-      ],
-      child: InactivityDetector(
-        inactivityService: _inactivityService,
-        child: MaterialApp.router(
-          title: AppConfig.appName,
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: ThemeMode.system,
-          routerConfig: AppRouter.router,
+        BlocProvider<ThemeCubit>.value(
+          value: _themeCubit,
         ),
+      ],
+      child: BlocBuilder<ThemeCubit, ThemeMode>(
+        builder: (context, themeMode) {
+          return InactivityDetector(
+            inactivityService: _inactivityService,
+            child: MaterialApp.router(
+              title: AppConfig.appName,
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: themeMode,
+              routerConfig: AppRouter.router,
+            ),
+          );
+        },
       ),
     );
   }

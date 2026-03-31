@@ -45,49 +45,50 @@ class DefaultFirebaseOptions {
     }
   }
 
-  // TODO: Replace with your Firebase project credentials
-  // Run `flutterfire configure` to generate these values
+  // Firebase project credentials for karriova-9d610
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'YOUR_WEB_API_KEY',
-    appId: 'YOUR_WEB_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    authDomain: 'YOUR_AUTH_DOMAIN',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
-    measurementId: 'YOUR_MEASUREMENT_ID',
+    apiKey: 'AIzaSyBvdCEgXFjNjYqMSFfh6hRYKNDdPjafZd0',
+    appId: '1:39908931621:web:6ea02752105073b8c4a7cc',
+    messagingSenderId: '39908931621',
+    projectId: 'karriova-9d610',
+    authDomain: 'karriova-9d610.firebaseapp.com',
+    storageBucket: 'karriova-9d610.firebasestorage.app',
+    measurementId: 'G-JZ6EN2H0KM',
   );
 
+  // TODO: Register Android app in Firebase Console and add google-services.json
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'YOUR_ANDROID_API_KEY',
-    appId: 'YOUR_ANDROID_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
+    apiKey: 'AIzaSyBvdCEgXFjNjYqMSFfh6hRYKNDdPjafZd0',
+    appId: '1:39908931621:web:6ea02752105073b8c4a7cc',
+    messagingSenderId: '39908931621',
+    projectId: 'karriova-9d610',
+    storageBucket: 'karriova-9d610.firebasestorage.app',
   );
 
+  // TODO: Register iOS app in Firebase Console and add GoogleService-Info.plist
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'YOUR_IOS_API_KEY',
-    appId: 'YOUR_IOS_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
+    apiKey: 'AIzaSyBvdCEgXFjNjYqMSFfh6hRYKNDdPjafZd0',
+    appId: '1:39908931621:web:6ea02752105073b8c4a7cc',
+    messagingSenderId: '39908931621',
+    projectId: 'karriova-9d610',
+    storageBucket: 'karriova-9d610.firebasestorage.app',
     iosBundleId: 'com.karriova.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'YOUR_MACOS_API_KEY',
-    appId: 'YOUR_MACOS_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
+    apiKey: 'AIzaSyBvdCEgXFjNjYqMSFfh6hRYKNDdPjafZd0',
+    appId: '1:39908931621:web:6ea02752105073b8c4a7cc',
+    messagingSenderId: '39908931621',
+    projectId: 'karriova-9d610',
+    storageBucket: 'karriova-9d610.firebasestorage.app',
     iosBundleId: 'com.karriova.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'YOUR_WINDOWS_API_KEY',
-    appId: 'YOUR_WINDOWS_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
+    apiKey: 'AIzaSyBvdCEgXFjNjYqMSFfh6hRYKNDdPjafZd0',
+    appId: '1:39908931621:web:6ea02752105073b8c4a7cc',
+    messagingSenderId: '39908931621',
+    projectId: 'karriova-9d610',
+    storageBucket: 'karriova-9d610.firebasestorage.app',
   );
 }

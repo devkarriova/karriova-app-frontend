@@ -267,6 +267,15 @@ class ProfileModel extends Equatable {
   final List<Language> languages;
   final DateTime createdAt;
   final DateTime updatedAt;
+  // Student onboarding fields
+  final String board;
+  final String classGrade;
+  final String schoolName;
+  final String stream;
+  final String gender;
+  final String careerGoalStatus;
+  final String careerGoalText;
+  final List<String> generalInterests;
 
   const ProfileModel({
     required this.userId,
@@ -286,6 +295,14 @@ class ProfileModel extends Equatable {
     required this.languages,
     required this.createdAt,
     required this.updatedAt,
+    this.board = '',
+    this.classGrade = '',
+    this.schoolName = '',
+    this.stream = '',
+    this.gender = '',
+    this.careerGoalStatus = '',
+    this.careerGoalText = '',
+    this.generalInterests = const [],
   });
 
   /// Get user initials from name
@@ -332,6 +349,15 @@ class ProfileModel extends Equatable {
           .toList(),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      // Student onboarding fields
+      board: json['board'] as String? ?? '',
+      classGrade: json['class_grade'] as String? ?? '',
+      schoolName: json['school_name'] as String? ?? '',
+      stream: json['stream'] as String? ?? '',
+      gender: json['gender'] as String? ?? '',
+      careerGoalStatus: json['career_goal_status'] as String? ?? '',
+      careerGoalText: json['career_goal_text'] as String? ?? '',
+      generalInterests: (json['general_interests'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
     );
   }
 
@@ -354,6 +380,14 @@ class ProfileModel extends Equatable {
       'languages': languages.map((e) => e.toJson()).toList(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'board': board,
+      'class_grade': classGrade,
+      'school_name': schoolName,
+      'stream': stream,
+      'gender': gender,
+      'career_goal_status': careerGoalStatus,
+      'career_goal_text': careerGoalText,
+      'general_interests': generalInterests,
     };
   }
 
@@ -375,6 +409,14 @@ class ProfileModel extends Equatable {
     List<Language>? languages,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? board,
+    String? classGrade,
+    String? schoolName,
+    String? stream,
+    String? gender,
+    String? careerGoalStatus,
+    String? careerGoalText,
+    List<String>? generalInterests,
   }) {
     return ProfileModel(
       userId: userId ?? this.userId,
@@ -394,6 +436,14 @@ class ProfileModel extends Equatable {
       languages: languages ?? this.languages,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      board: board ?? this.board,
+      classGrade: classGrade ?? this.classGrade,
+      schoolName: schoolName ?? this.schoolName,
+      stream: stream ?? this.stream,
+      gender: gender ?? this.gender,
+      careerGoalStatus: careerGoalStatus ?? this.careerGoalStatus,
+      careerGoalText: careerGoalText ?? this.careerGoalText,
+      generalInterests: generalInterests ?? this.generalInterests,
     );
   }
 
@@ -416,5 +466,13 @@ class ProfileModel extends Equatable {
         languages,
         createdAt,
         updatedAt,
+        board,
+        classGrade,
+        schoolName,
+        stream,
+        gender,
+        careerGoalStatus,
+        careerGoalText,
+        generalInterests,
       ];
 }

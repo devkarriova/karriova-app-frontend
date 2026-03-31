@@ -98,4 +98,18 @@ abstract class ProfileRepository {
   Future<Either<String, AwardModel>> addAward(AwardModel award);
   Future<Either<String, AwardModel>> updateAward(AwardModel award);
   Future<Either<String, void>> deleteAward(String awardId);
+
+  /// Update onboarding profile (all student fields collected during setup)
+  Future<Either<String, void>> updateOnboardingProfile({
+    String? board,
+    String? classGrade,
+    String? schoolName,
+    String? stream,
+    String? gender,
+    String? location,
+    String? careerGoalStatus,
+    String? careerGoalText,
+    List<String>? generalInterests,
+    List<String>? skills,
+  });
 }

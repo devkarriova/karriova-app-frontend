@@ -92,6 +92,85 @@ class QuestionModel extends Equatable {
       [id, dimensionId, text, poleDirection, displayOrder, isActive, options];
 }
 
+/// Parameter model for KIT assessments (generalizes dimensions)
+class ParameterModel extends Equatable {
+  final String id;
+  final String sectionId;
+  final String name;
+  final String description;
+  final String code; // e.g., "thinking_style", "realistic"
+  final String parameterType; // "bipolar", "unipolar", "riasec"
+  final String? poleALabel; // For bipolar only
+  final String? poleBLabel; // For bipolar only
+  final String category; // "Personality", "RIASEC", "Aptitude", "Orientation"
+  final int displayOrder;
+  final List<QuestionModel> questions;
+
+  const ParameterModel({
+    required this.id,
+    required this.sectionId,
+    required this.name,
+    required this.description,
+    required this.code,
+    required this.parameterType,
+    this.poleALabel,
+    this.poleBLabel,
+    required this.category,
+    required this.displayOrder,
+    required this.questions,
+  });
+
+  factory ParameterModel.fromJson(Map<String, dynamic> json) {
+    return ParameterModel(
+      id: json['id'] as String,
+      sectionId: json['section_id'] as String? ?? '',
+      name: json['name'] as String,
+      description: json['description'] as String? ?? '',
+      code: json['code'] as String,
+      parameterType: json['parameter_type'] as String,
+      poleALabel: json['pole_a_label'] as String?,
+      poleBLabel: json['pole_b_label'] as String?,
+      category: json['category'] as String,
+      displayOrder: json['display_order'] as int? ?? 0,
+      questions: (json['questions'] as List<dynamic>?)
+              ?.map((e) => QuestionModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'section_id': sectionId,
+      'name': name,
+      'description': description,
+      'code': code,
+      'parameter_type': parameterType,
+      'pole_a_label': poleALabel,
+      'pole_b_label': poleBLabel,
+      'category': category,
+      'display_order': displayOrder,
+      'questions': questions.map((e) => e.toJson()).toList(),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+        id,
+        sectionId,
+        name,
+        description,
+        code,
+        parameterType,
+        poleALabel,
+        poleBLabel,
+        category,
+        displayOrder,
+        questions
+      ];
+}
+
 /// Dimension model representing a measurable trait (e.g., "Workstyle")
 class DimensionModel extends Equatable {
   final String id;
@@ -163,7 +242,14 @@ class SectionModel extends Equatable {
   final String description;
   final int displayOrder;
   final bool isActive;
-  final List<DimensionModel> dimensions;
+  final int durationMinutes; // Duration for this section in minutes
+  final List<DimensionModel> dimensions; // For old structure (backward compatibility)
+  final List<ParameterModel>? parameters; // For new KIT structure
+  final String? sectionType; // "personality", "riasec", "aptitude_mcq", etc.
+  final String? scoringMethod; // "bipolar", "selection", "mcq", "weighted"
+  final int? totalQuestions;
+  final double? categoryWeight;
+  final String? instructions;
 
   const SectionModel({
     required this.id,
@@ -171,7 +257,14 @@ class SectionModel extends Equatable {
     required this.description,
     required this.displayOrder,
     required this.isActive,
-    required this.dimensions,
+    required this.durationMinutes,
+    this.dimensions = const [],
+    this.parameters,
+    this.sectionType,
+    this.scoringMethod,
+    this.totalQuestions,
+    this.categoryWeight,
+    this.instructions,
   });
 
   factory SectionModel.fromJson(Map<String, dynamic> json) {
@@ -181,10 +274,19 @@ class SectionModel extends Equatable {
       description: json['description'] as String? ?? '',
       displayOrder: json['display_order'] as int? ?? 0,
       isActive: json['is_active'] as bool? ?? true,
+      durationMinutes: json['duration_minutes'] as int? ?? 15, // Default 15 minutes
       dimensions: (json['dimensions'] as List<dynamic>?)
               ?.map((e) => DimensionModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      parameters: (json['parameters'] as List<dynamic>?)
+          ?.map((e) => ParameterModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      sectionType: json['section_type'] as String?,
+      scoringMethod: json['scoring_method'] as String?,
+      totalQuestions: json['total_questions'] as int?,
+      categoryWeight: (json['category_weight'] as num?)?.toDouble(),
+      instructions: json['instructions'] as String?,
     );
   }
 
@@ -195,18 +297,41 @@ class SectionModel extends Equatable {
       'description': description,
       'display_order': displayOrder,
       'is_active': isActive,
+      'duration_minutes': durationMinutes,
       'dimensions': dimensions.map((e) => e.toJson()).toList(),
+      'parameters': parameters?.map((e) => e.toJson()).toList(),
+      'section_type': sectionType,
+      'scoring_method': scoringMethod,
+      'total_questions': totalQuestions,
+      'category_weight': categoryWeight,
+      'instructions': instructions,
     };
   }
 
-  /// Get all questions from all dimensions in this section
+  /// Get all questions from dimensions or parameters in this section
   List<QuestionModel> get allQuestions {
+    if (parameters != null && parameters!.isNotEmpty) {
+      return parameters!.expand((p) => p.questions).toList();
+    }
     return dimensions.expand((d) => d.questions).toList();
   }
 
   @override
-  List<Object?> get props =>
-      [id, name, description, displayOrder, isActive, dimensions];
+  List<Object?> get props => [
+        id,
+        name,
+        description,
+        displayOrder,
+        isActive,
+        durationMinutes,
+        dimensions,
+        parameters,
+        sectionType,
+        scoringMethod,
+        totalQuestions,
+        categoryWeight,
+        instructions
+      ];
 }
 
 /// Full assessment model containing all sections
@@ -240,6 +365,158 @@ class AssessmentModel extends Equatable {
 
   @override
   List<Object?> get props => [sections];
+}
+
+/// Validation issue returned from bulk upload validation.
+class BulkValidationIssueModel extends Equatable {
+  final int rowNumber;
+  final String field;
+  final String message;
+
+  const BulkValidationIssueModel({
+    required this.rowNumber,
+    required this.field,
+    required this.message,
+  });
+
+  factory BulkValidationIssueModel.fromJson(Map<String, dynamic> json) {
+    return BulkValidationIssueModel(
+      rowNumber: (json['RowNumber'] ?? json['row_number'] ?? 0) as int,
+      field: (json['Field'] ?? json['field'] ?? '') as String,
+      message: (json['Message'] ?? json['message'] ?? '') as String,
+    );
+  }
+
+  @override
+  List<Object?> get props => [rowNumber, field, message];
+}
+
+class BulkSummaryStatsModel extends Equatable {
+  final int totalQuestions;
+  final Map<String, int> questionsByType;
+  final List<String> uniqueParameters;
+  final int validationErrors;
+  final int validationWarnings;
+
+  const BulkSummaryStatsModel({
+    required this.totalQuestions,
+    required this.questionsByType,
+    required this.uniqueParameters,
+    required this.validationErrors,
+    required this.validationWarnings,
+  });
+
+  factory BulkSummaryStatsModel.fromJson(Map<String, dynamic> json) {
+    final rawByType = (json['questions_by_type'] as Map<String, dynamic>?) ?? {};
+    return BulkSummaryStatsModel(
+      totalQuestions: (json['total_questions'] ?? 0) as int,
+      questionsByType: rawByType.map(
+        (key, value) => MapEntry(key, (value as num).toInt()),
+      ),
+      uniqueParameters: (json['unique_parameters'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+      validationErrors: (json['validation_errors'] ?? 0) as int,
+      validationWarnings: (json['validation_warnings'] ?? 0) as int,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        totalQuestions,
+        questionsByType,
+        uniqueParameters,
+        validationErrors,
+        validationWarnings,
+      ];
+}
+
+class BulkValidationResponseModel extends Equatable {
+  final bool valid;
+  final List<BulkValidationIssueModel> errors;
+  final List<BulkValidationIssueModel> warnings;
+  final BulkSummaryStatsModel? summary;
+
+  const BulkValidationResponseModel({
+    required this.valid,
+    required this.errors,
+    required this.warnings,
+    this.summary,
+  });
+
+  factory BulkValidationResponseModel.fromJson(Map<String, dynamic> json) {
+    return BulkValidationResponseModel(
+      valid: json['valid'] as bool? ?? false,
+      errors: (json['errors'] as List<dynamic>?)
+              ?.map((e) => BulkValidationIssueModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      warnings: (json['warnings'] as List<dynamic>?)
+              ?.map((e) => BulkValidationIssueModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      summary: json['summary'] != null
+          ? BulkSummaryStatsModel.fromJson(json['summary'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+
+  @override
+  List<Object?> get props => [valid, errors, warnings, summary];
+}
+
+class BulkUploadResponseModel extends Equatable {
+  final bool success;
+  final List<String> questionIds;
+  final BulkSummaryStatsModel? summary;
+  final List<BulkValidationIssueModel> errors;
+  final List<BulkValidationIssueModel> warnings;
+  final String? errorMessage;
+
+  const BulkUploadResponseModel({
+    required this.success,
+    required this.questionIds,
+    this.summary,
+    required this.errors,
+    required this.warnings,
+    this.errorMessage,
+  });
+
+  factory BulkUploadResponseModel.fromJson(Map<String, dynamic> json) {
+    return BulkUploadResponseModel(
+      success: json['success'] as bool? ?? false,
+      questionIds: (json['question_ids'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+      summary: json['summary'] != null
+          ? BulkSummaryStatsModel.fromJson(json['summary'] as Map<String, dynamic>)
+          : null,
+      errors: (json['errors'] as List<dynamic>?)
+              ?.map((e) => BulkValidationIssueModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      warnings: (json['warnings'] as List<dynamic>?)
+              ?.map((e) => BulkValidationIssueModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      errorMessage: json['error_message'] as String?,
+    );
+  }
+
+  @override
+  List<Object?> get props => [success, questionIds, summary, errors, warnings, errorMessage];
+}
+
+class QuestionTemplateModel extends Equatable {
+  final List<int> bytes;
+  final String fileName;
+
+  const QuestionTemplateModel({required this.bytes, required this.fileName});
+
+  @override
+  List<Object?> get props => [bytes, fileName];
 }
 
 /// User response input for submission

@@ -19,6 +19,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthTokenExpired>(_onTokenExpired);
     on<AuthCheckAssessmentStatus>(_onCheckAssessmentStatus);
     on<AuthSetAssessmentCompleted>(_onSetAssessmentCompleted);
+    on<AuthSendOTPRequested>(_onSendOTPRequested);
+    on<AuthVerifyOTPRequested>(_onVerifyOTPRequested);
   }
 
   Future<void> _onLoginRequested(
@@ -56,6 +58,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       email: event.email,
       password: event.password,
       name: event.name,
+      dateOfBirth: event.dateOfBirth,
+      phone: event.phone,
+      parentPhone: event.parentPhone,
+      otpCode: event.otpCode,
     );
 
     result.fold(
@@ -69,6 +75,64 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         successMessage: 'Signup successful!',
         assessmentCompleted: false, // New users haven't taken assessment
       )),
+    );
+  }
+
+  Future<void> _onSendOTPRequested(
+    AuthSendOTPRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(state.copyWith(status: AuthStatus.loading));
+
+    final result = await authRepository.sendOTP(
+      phone: event.phone,
+      purpose: event.purpose,
+    );
+
+    result.fold(
+      (error) => emit(state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: error,
+      )),
+      (expiresAt) => emit(state.copyWith(
+        status: AuthStatus.otpSent,
+        otpPhone: event.phone,
+        otpExpiresAt: expiresAt,
+        successMessage: 'OTP sent successfully!',
+      )),
+    );
+  }
+
+  Future<void> _onVerifyOTPRequested(
+    AuthVerifyOTPRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(state.copyWith(status: AuthStatus.loading));
+
+    final result = await authRepository.verifyOTP(
+      phone: event.phone,
+      otpCode: event.otpCode,
+      purpose: event.purpose,
+    );
+
+    result.fold(
+      (error) => emit(state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: error,
+      )),
+      (verified) {
+        if (verified) {
+          emit(state.copyWith(
+            status: AuthStatus.otpVerified,
+            successMessage: 'Phone verified successfully!',
+          ));
+        } else {
+          emit(state.copyWith(
+            status: AuthStatus.error,
+            errorMessage: 'Invalid OTP code',
+          ));
+        }
+      },
     );
   }
 
@@ -196,19 +260,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final assessmentRepo = getIt<AssessmentRepository>();
       final result = await assessmentRepo.getAssessmentStatus();
-      
+
       result.fold(
         (error) {
           // If error, assume not completed (will prompt assessment)
-          emit(state.copyWith(assessmentCompleted: false));
+          emit(state.copyWith(
+            assessmentCompleted: false,
+            updateAssessmentCompleted: true,
+          ));
         },
         (completed) {
-          emit(state.copyWith(assessmentCompleted: completed));
+          emit(state.copyWith(
+            assessmentCompleted: completed,
+            updateAssessmentCompleted: true,
+          ));
         },
       );
     } catch (e) {
       // On error, assume not completed
-      emit(state.copyWith(assessmentCompleted: false));
+      emit(state.copyWith(
+        assessmentCompleted: false,
+        updateAssessmentCompleted: true,
+      ));
     }
   }
 
@@ -216,6 +289,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthSetAssessmentCompleted event,
     Emitter<AuthState> emit,
   ) async {
-    emit(state.copyWith(assessmentCompleted: true));
+    emit(state.copyWith(
+      assessmentCompleted: true,
+      updateAssessmentCompleted: true,
+    ));
   }
 }

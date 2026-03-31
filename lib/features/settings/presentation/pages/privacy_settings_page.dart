@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
 import 'package:karriova_app/core/constants/app_colors.dart';
+import 'package:karriova_app/core/routes/app_router.dart';
+import 'package:karriova_app/core/services/user_data_service.dart';
+import 'package:karriova_app/core/services/user_settings_service.dart';
+import 'package:karriova_app/core/network/api_client.dart';
 
 class PrivacySettingsPage extends StatefulWidget {
   const PrivacySettingsPage({super.key});
@@ -9,6 +15,15 @@ class PrivacySettingsPage extends StatefulWidget {
 }
 
 class _PrivacySettingsPageState extends State<PrivacySettingsPage> {
+  final _settingsService = GetIt.instance<UserSettingsService>();
+  late final UserDataService _userDataService;
+  
+  // Loading state
+  bool _isLoading = true;
+  bool _isSaving = false;
+  bool _isExporting = false;
+  String? _error;
+
   // Profile visibility
   String _profileVisibility = 'public'; // public, connections, private
 
@@ -17,15 +32,77 @@ class _PrivacySettingsPageState extends State<PrivacySettingsPage> {
   bool _showPhone = false;
   bool _showLocation = true;
   bool _allowMessagesFromAnyone = true;
-  bool _showOnlineStatus = true;
   bool _allowProfileInSearch = true;
 
-  // Activity settings
-  bool _showActivityStatus = true;
-  bool _shareProfileViews = false;
+  @override
+  void initState() {
+    super.initState();
+    _userDataService = UserDataService(ApiClient());
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final settings = await _settingsService.getPrivacySettings();
+      
+      setState(() {
+        _profileVisibility = settings.profileVisibility;
+        _showEmail = settings.showEmail;
+        _showPhone = settings.showPhone;
+        _showLocation = settings.showLocation;
+        _allowMessagesFromAnyone = settings.allowMessagesFromAnyone;
+        _allowProfileInSearch = settings.allowProfileInSearch;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Privacy'),
+          elevation: 0,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Privacy'),
+          elevation: 0,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+              const SizedBox(height: 16),
+              Text('Failed to load settings', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _loadSettings,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Privacy'),
@@ -117,40 +194,6 @@ class _PrivacySettingsPageState extends State<PrivacySettingsPage> {
           ),
           _buildSection(
             context,
-            title: 'Activity',
-            children: [
-              SwitchListTile(
-                title: const Text('Show Online Status'),
-                subtitle: const Text('Let others see when you\'re active'),
-                value: _showOnlineStatus,
-                onChanged: (value) {
-                  setState(() => _showOnlineStatus = value);
-                },
-              ),
-              const Divider(indent: 16, endIndent: 16),
-              SwitchListTile(
-                title: const Text('Show Activity Status'),
-                subtitle: const Text('Show your recent activity to connections'),
-                value: _showActivityStatus,
-                onChanged: (value) {
-                  setState(() => _showActivityStatus = value);
-                },
-              ),
-              const Divider(indent: 16, endIndent: 16),
-              SwitchListTile(
-                title: const Text('Share Profile Views'),
-                subtitle: const Text(
-                  'Let others know when you view their profile',
-                ),
-                value: _shareProfileViews,
-                onChanged: (value) {
-                  setState(() => _shareProfileViews = value);
-                },
-              ),
-            ],
-          ),
-          _buildSection(
-            context,
             title: 'Discoverability',
             children: [
               SwitchListTile(
@@ -169,22 +212,49 @@ class _PrivacySettingsPageState extends State<PrivacySettingsPage> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: ElevatedButton(
-              onPressed: _saveSettings,
+              onPressed: _isSaving ? null : _saveSettings,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              child: const Text('Save Settings'),
+              child: _isSaving 
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Save Settings'),
             ),
           ),
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: OutlinedButton(
-              onPressed: _downloadData,
+            child: OutlinedButton.icon(
+              onPressed: _isExporting ? null : _downloadData,
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              child: const Text('Download My Data'),
+              icon: _isExporting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.download),
+              label: Text(_isExporting ? 'Exporting...' : 'Download My Data'),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: OutlinedButton.icon(
+              onPressed: () {
+                context.push(AppRouter.privacyPolicy);
+              },
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              icon: const Icon(Icons.description_outlined),
+              label: const Text('View Privacy Policy'),
             ),
           ),
           const SizedBox(height: 32),
@@ -216,7 +286,7 @@ class _PrivacySettingsPageState extends State<PrivacySettingsPage> {
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: Colors.grey.shade200),
+            side: BorderSide(color: Theme.of(context).dividerColor),
           ),
           child: Column(children: children),
         ),
@@ -225,23 +295,73 @@ class _PrivacySettingsPageState extends State<PrivacySettingsPage> {
     );
   }
 
-  void _saveSettings() {
-    // TODO: Save privacy settings to backend
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Privacy settings saved'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  Future<void> _saveSettings() async {
+    setState(() => _isSaving = true);
+
+    try {
+      await _settingsService.updatePrivacySettings(
+        PrivacySettings(
+          profileVisibility: _profileVisibility,
+          showEmail: _showEmail,
+          showPhone: _showPhone,
+          showLocation: _showLocation,
+          allowMessagesFromAnyone: _allowMessagesFromAnyone,
+          allowProfileInSearch: _allowProfileInSearch,
+        ),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Privacy settings saved'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save settings: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
-  void _downloadData() {
-    // TODO: Request data download
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Data export request submitted. You will receive an email when ready.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  Future<void> _downloadData() async {
+    setState(() => _isExporting = true);
+    
+    try {
+      await _userDataService.exportUserDataToFile();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data export ready! Check your downloads.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export data: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
   }
 }

@@ -439,3 +439,44 @@ class ProfileLanguageDeleted extends ProfileEvent {
   @override
   List<Object?> get props => [index];
 }
+
+/// Event to update onboarding profile (all student fields collected during setup)
+class ProfileOnboardingUpdated extends ProfileEvent {
+  final String? board;
+  final String? classGrade;
+  final String? schoolName;
+  final String? stream;
+  final String? gender;
+  final String? location;
+  final String? careerGoalStatus;
+  final String? careerGoalText;
+  final List<String>? generalInterests;
+  final List<String>? skills;
+
+  const ProfileOnboardingUpdated({
+    this.board,
+    this.classGrade,
+    this.schoolName,
+    this.stream,
+    this.gender,
+    this.location,
+    this.careerGoalStatus,
+    this.careerGoalText,
+    this.generalInterests,
+    this.skills,
+  });
+
+  @override
+  List<Object?> get props => [
+        board,
+        classGrade,
+        schoolName,
+        stream,
+        gender,
+        location,
+        careerGoalStatus,
+        careerGoalText,
+        generalInterests,
+        skills,
+      ];
+}

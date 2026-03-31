@@ -10,11 +10,23 @@ abstract class SearchEvent extends Equatable {
 /// Event when search query changes
 class SearchQueryChanged extends SearchEvent {
   final String query;
+  final String? schoolName;
+  final String? classGrade;
+  final String? stream;
+  final String? location;
+  final List<String>? interests;
 
-  const SearchQueryChanged({required this.query});
+  const SearchQueryChanged({
+    required this.query,
+    this.schoolName,
+    this.classGrade,
+    this.stream,
+    this.location,
+    this.interests,
+  });
 
   @override
-  List<Object?> get props => [query];
+  List<Object?> get props => [query, schoolName, classGrade, stream, location, interests];
 }
 
 /// Event to search users
@@ -25,6 +37,28 @@ class SearchUsersRequested extends SearchEvent {
 
   @override
   List<Object?> get props => [query];
+}
+
+/// Event to search users with filters
+class SearchUsersRequestedWithFilters extends SearchEvent {
+  final String query;
+  final String? schoolName;
+  final String? classGrade;
+  final String? stream;
+  final String? location;
+  final List<String>? interests;
+
+  const SearchUsersRequestedWithFilters({
+    required this.query,
+    this.schoolName,
+    this.classGrade,
+    this.stream,
+    this.location,
+    this.interests,
+  });
+
+  @override
+  List<Object?> get props => [query, schoolName, classGrade, stream, location, interests];
 }
 
 /// Event to search posts

@@ -9,9 +9,23 @@ class SearchRepositoryImpl implements SearchRepository {
   SearchRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<String, List<UserSearchResult>>> searchUsers(String query) async {
+  Future<Either<String, List<UserSearchResult>>> searchUsers(
+    String query, {
+    String? schoolName,
+    String? classGrade,
+    String? stream,
+    String? location,
+    List<String>? interests,
+  }) async {
     try {
-      final response = await remoteDataSource.searchUsers(query);
+      final response = await remoteDataSource.searchUsers(
+        query,
+        schoolName: schoolName,
+        classGrade: classGrade,
+        stream: stream,
+        location: location,
+        interests: interests,
+      );
       return Right(response.users);
     } catch (e) {
       return Left(e.toString());

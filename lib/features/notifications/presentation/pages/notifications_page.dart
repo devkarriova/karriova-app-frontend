@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/widgets/header/app_header.dart';
@@ -275,8 +276,8 @@ class _NotificationsPageContent extends StatelessWidget {
         icon = Icons.mail;
         iconColor = AppColors.primary;
         break;
-      case NotificationType.connectionRequest:
-        icon = Icons.person_add_alt;
+      case NotificationType.share:
+        icon = Icons.share;
         iconColor = AppColors.secondary;
         break;
     }
@@ -477,15 +478,56 @@ class _NotificationsPageContent extends StatelessWidget {
 
   void _handleNotificationTap(
       BuildContext context, NotificationModel notification) {
-    // TODO: Navigate to relevant screen based on notification type
-    // For now, just show a snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Tapped: ${notification.type.name}'),
-        backgroundColor: AppColors.info,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    // Mark notification as read first
+    if (!notification.isRead) {
+      context
+          .read<NotificationBloc>()
+          .add(NotificationMarkAsReadRequested(notificationId: notification.id));
+    }
+
+    // Navigate based on notification type
+    switch (notification.type) {
+      case NotificationType.like:
+      case NotificationType.comment:
+      case NotificationType.mention:
+      case NotificationType.share:
+        // Navigate to feed to view the post
+        // Since there's no dedicated post detail page, navigate to feed
+        // The feed will show all posts including the relevant one
+        if (notification.postId != null) {
+          context.go('/feed');
+          // Optional: Show a snackbar indicating which post was referenced
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('View post in feed'),
+              backgroundColor: AppColors.info,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        break;
+
+      case NotificationType.follow:
+        // Navigate to the actor's profile
+        if (notification.actorId.isNotEmpty) {
+          context.go('/profile/${notification.actorId}');
+        }
+        break;
+
+      case NotificationType.message:
+        // Navigate to chat conversation
+        if (notification.actorId.isNotEmpty) {
+          context.go(
+            '/chat/conversation?otherUserId=${notification.actorId}',
+          );
+        }
+        break;
+
+      default:
+        // For unknown types, just navigate to feed
+        context.go('/feed');
+    }
   }
 
   void _handleNotificationDelete(

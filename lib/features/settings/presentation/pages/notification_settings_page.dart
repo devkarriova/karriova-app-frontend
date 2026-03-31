@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:karriova_app/core/constants/app_colors.dart';
+import 'package:karriova_app/core/services/user_settings_service.dart';
 
 class NotificationSettingsPage extends StatefulWidget {
   const NotificationSettingsPage({super.key});
@@ -9,6 +11,13 @@ class NotificationSettingsPage extends StatefulWidget {
 }
 
 class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
+  final _settingsService = GetIt.instance<UserSettingsService>();
+  
+  // Loading state
+  bool _isLoading = true;
+  bool _isSaving = false;
+  String? _error;
+
   // Push notification settings
   bool _pushEnabled = true;
   bool _pushLikes = true;
@@ -24,7 +33,77 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   bool _emailPromotions = false;
 
   @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final settings = await _settingsService.getNotificationSettings();
+      
+      setState(() {
+        _pushEnabled = settings.pushEnabled;
+        _pushLikes = settings.pushLikes;
+        _pushComments = settings.pushComments;
+        _pushFollows = settings.pushFollows;
+        _pushMessages = settings.pushMessages;
+        _pushJobAlerts = settings.pushJobAlerts;
+        _emailEnabled = settings.emailEnabled;
+        _emailWeeklyDigest = settings.emailWeeklyDigest;
+        _emailJobMatches = settings.emailJobMatches;
+        _emailPromotions = settings.emailPromotions;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Notifications'),
+          elevation: 0,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Notifications'),
+          elevation: 0,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+              const SizedBox(height: 16),
+              Text('Failed to load settings', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _loadSettings,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notifications'),
@@ -119,11 +198,17 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: ElevatedButton(
-              onPressed: _saveSettings,
+              onPressed: _isSaving ? null : _saveSettings,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              child: const Text('Save Settings'),
+              child: _isSaving 
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Save Settings'),
             ),
           ),
           const SizedBox(height: 32),
@@ -155,7 +240,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: Colors.grey.shade200),
+            side: BorderSide(color: Theme.of(context).dividerColor),
           ),
           child: Column(children: children),
         ),
@@ -170,25 +255,61 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
-    return SwitchListTile(
-      title: Text(title, style: const TextStyle(fontSize: 14)),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+    return Builder(
+      builder: (context) => SwitchListTile(
+        title: Text(title, style: const TextStyle(fontSize: 14)),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
+        ),
+        value: value,
+        onChanged: onChanged,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       ),
-      value: value,
-      onChanged: onChanged,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
     );
   }
 
-  void _saveSettings() {
-    // TODO: Save notification settings to backend
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Notification settings saved'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  Future<void> _saveSettings() async {
+    setState(() => _isSaving = true);
+
+    try {
+      await _settingsService.updateNotificationSettings(
+        NotificationSettings(
+          pushEnabled: _pushEnabled,
+          pushLikes: _pushLikes,
+          pushComments: _pushComments,
+          pushFollows: _pushFollows,
+          pushMessages: _pushMessages,
+          pushJobAlerts: _pushJobAlerts,
+          emailEnabled: _emailEnabled,
+          emailWeeklyDigest: _emailWeeklyDigest,
+          emailJobMatches: _emailJobMatches,
+          emailPromotions: _emailPromotions,
+        ),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Notification settings saved'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save settings: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 }

@@ -56,3 +56,23 @@ class NotificationDeleteRequested extends NotificationEvent {
 class NotificationFilterToggled extends NotificationEvent {
   const NotificationFilterToggled();
 }
+
+/// Connect to WebSocket for real-time notifications
+class NotificationWebSocketConnectRequested extends NotificationEvent {
+  const NotificationWebSocketConnectRequested();
+}
+
+/// Disconnect from WebSocket
+class NotificationWebSocketDisconnectRequested extends NotificationEvent {
+  const NotificationWebSocketDisconnectRequested();
+}
+
+/// Notification received via WebSocket
+class NotificationReceivedViaWebSocket extends NotificationEvent {
+  final dynamic notification;
+
+  const NotificationReceivedViaWebSocket({required this.notification});
+
+  @override
+  List<Object?> get props => [notification];
+}

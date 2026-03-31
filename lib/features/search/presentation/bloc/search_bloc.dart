@@ -18,6 +18,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       transformer: debounce(const Duration(milliseconds: 400)),
     );
     on<SearchUsersRequested>(_onSearchUsers);
+    on<SearchUsersRequestedWithFilters>(_onSearchUsersWithFilters);
     on<SearchPostsRequested>(_onSearchPosts);
     on<SearchAllRequested>(_onSearchAll);
     on<SearchCleared>(_onSearchCleared);
@@ -31,7 +32,14 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
 
     // Auto-search when query has at least 2 characters
     if (event.query.trim().length >= 2) {
-      add(SearchUsersRequested(query: event.query.trim()));
+      add(SearchUsersRequestedWithFilters(
+        query: event.query.trim(),
+        schoolName: event.schoolName,
+        classGrade: event.classGrade,
+        stream: event.stream,
+        location: event.location,
+        interests: event.interests,
+      ));
     } else if (event.query.trim().isEmpty) {
       add(const SearchCleared());
     }
@@ -46,6 +54,40 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     emit(state.copyWith(status: SearchStatus.loading));
 
     final result = await searchRepository.searchUsers(event.query);
+
+    result.fold(
+      (error) {
+        emit(state.copyWith(
+          status: SearchStatus.error,
+          errorMessage: error,
+        ));
+      },
+      (users) {
+        emit(state.copyWith(
+          status: SearchStatus.success,
+          users: users,
+          usersCount: users.length,
+        ));
+      },
+    );
+  }
+
+  Future<void> _onSearchUsersWithFilters(
+    SearchUsersRequestedWithFilters event,
+    Emitter<SearchState> emit,
+  ) async {
+    if (event.query.trim().isEmpty) return;
+
+    emit(state.copyWith(status: SearchStatus.loading));
+
+    final result = await searchRepository.searchUsers(
+      event.query,
+      schoolName: event.schoolName,
+      classGrade: event.classGrade,
+      stream: event.stream,
+      location: event.location,
+      interests: event.interests,
+    );
 
     result.fold(
       (error) {

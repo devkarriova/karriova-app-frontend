@@ -15,6 +15,7 @@ import '../bloc/feed_event.dart';
 import '../bloc/feed_state.dart';
 import '../widgets/create_post_card.dart';
 import '../widgets/post_card_with_comments.dart';
+import '../widgets/kit_card.dart';
 
 /// Activity feed page - Enterprise-level implementation with BLoC pattern
 class FeedPage extends StatelessWidget {
@@ -78,12 +79,28 @@ class _FeedPageContentState extends State<_FeedPageContent> {
           children: [
             const AppNavigationBar(currentRoute: AppRouter.feed),
             Expanded(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.55,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Left Sidebar (empty for future widgets)
+                  SizedBox(
+                    width: 280,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          // Add left sidebar widgets here in the future
+                        ],
+                      ),
+                    ),
                   ),
-                  child: BlocConsumer<FeedBloc, FeedState>(
+                  
+                  // Main Feed Column (centered)
+                  Expanded(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 600),
+                        child: BlocConsumer<FeedBloc, FeedState>(
                     listener: (context, state) {
                       if (state.errorMessage != null) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -218,7 +235,24 @@ class _FeedPageContentState extends State<_FeedPageContent> {
                       );
                     },
                   ),
-                ),
+                      ),
+                    ),
+                  ),
+                  
+                  // Right Sidebar
+                  SizedBox(
+                    width: 300,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          const KitCard(),
+                          // Add more sidebar widgets here in the future
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

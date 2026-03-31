@@ -2,7 +2,14 @@ import '../../../../core/network/api_client.dart';
 import '../../domain/models/search_result_model.dart';
 
 abstract class SearchRemoteDataSource {
-  Future<SearchUsersResponse> searchUsers(String query);
+  Future<SearchUsersResponse> searchUsers(
+    String query, {
+    String? schoolName,
+    String? classGrade,
+    String? stream,
+    String? location,
+    List<String>? interests,
+  });
   Future<SearchPostsResponse> searchPosts(String query);
   Future<SearchAllResponse> searchAll(String query);
 }
@@ -13,11 +20,30 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
   SearchRemoteDataSourceImpl({required this.apiClient});
 
   @override
-  Future<SearchUsersResponse> searchUsers(String query) async {
+  Future<SearchUsersResponse> searchUsers(
+    String query, {
+    String? schoolName,
+    String? classGrade,
+    String? stream,
+    String? location,
+    List<String>? interests,
+  }) async {
+    final queryParams = <String, String>{'q': query};
+
+    // Add optional filters
+    if (schoolName != null) queryParams['school_name'] = schoolName;
+    if (classGrade != null) queryParams['class_grade'] = classGrade;
+    if (stream != null) queryParams['stream'] = stream;
+    if (location != null) queryParams['location'] = location;
+    if (interests != null && interests.isNotEmpty) {
+      // For array parameters, join with commas or send as repeated params
+      queryParams['interests'] = interests.join(',');
+    }
+
     final response = await apiClient.get(
       '/search/users',
       requiresAuth: true,
-      queryParams: {'q': query},
+      queryParams: queryParams,
     );
 
     if (!response.isSuccess || response.data == null) {

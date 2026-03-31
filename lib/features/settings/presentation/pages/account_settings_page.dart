@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:karriova_app/core/constants/app_colors.dart';
+import 'package:karriova_app/core/services/user_data_service.dart';
+import 'package:karriova_app/core/network/api_client.dart';
+import 'package:karriova_app/features/settings/presentation/pages/terms_of_service_page.dart';
 
 class AccountSettingsPage extends StatefulWidget {
   const AccountSettingsPage({super.key});
@@ -9,26 +12,13 @@ class AccountSettingsPage extends StatefulWidget {
 }
 
 class _AccountSettingsPageState extends State<AccountSettingsPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
+  late final UserDataService _userDataService;
+  bool _isDeleting = false;
 
   @override
   void initState() {
     super.initState();
-    // TODO: Load current user data
-    _nameController.text = 'John Doe';
-    _emailController.text = 'john.doe@example.com';
-    _phoneController.text = '+1 234 567 8900';
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    super.dispose();
+    _userDataService = UserDataService(ApiClient());
   }
 
   @override
@@ -40,107 +30,21 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Profile Picture Section
-              Center(
-                child: Column(
-                  children: [
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundColor: AppColors.primary.withOpacity(0.1),
-                          child: const Icon(
-                            Icons.person,
-                            size: 50,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              size: 20,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Info text
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: Text(
+                'Manage your account settings and preferences. To edit your profile information, please visit your Profile page.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
                     ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: () {
-                        // TODO: Change profile picture
-                      },
-                      child: const Text('Change Profile Picture'),
-                    ),
-                  ],
-                ),
               ),
-              const SizedBox(height: 24),
+            ),
 
-              // Personal Information
-              Text(
-                'Personal Information',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Full Name',
-                  prefixIcon: Icon(Icons.person_outline),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: Icon(Icons.email_outlined),
-                ),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'Phone Number',
-                  prefixIcon: Icon(Icons.phone_outlined),
-                ),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 32),
-
-              // Danger Zone
+            // Danger Zone
               Text(
                 'Danger Zone',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -192,36 +96,10 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                 ),
               ),
               const SizedBox(height: 32),
-
-              // Save Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _saveChanges,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Text('Save Changes'),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
+          ],
         ),
       ),
     );
-  }
-
-  void _saveChanges() {
-    if (_formKey.currentState!.validate()) {
-      // TODO: Save changes
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Changes saved successfully'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
   }
 
   void _showDeactivateDialog(BuildContext context) {
@@ -253,27 +131,100 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
   }
 
   void _showDeleteDialog(BuildContext context) {
+    final confirmController = TextEditingController();
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Account'),
-        content: const Text(
-          'This action cannot be undone. All your data will be permanently deleted.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'This action cannot be undone. All your data will be permanently deleted, including:',
+            ),
+            const SizedBox(height: 12),
+            const Text('• Your profile and posts'),
+            const Text('• Your messages and connections'),
+            const Text('• Your assessment history'),
+            const Text('• All associated data'),
+            const SizedBox(height: 16),
+            const Text(
+              'Type "DELETE" to confirm:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: confirmController,
+              decoration: const InputDecoration(
+                hintText: 'DELETE',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: Delete account
+          StatefulBuilder(
+            builder: (context, setDialogState) {
+              return ElevatedButton(
+                onPressed: _isDeleting
+                    ? null
+                    : () async {
+                        if (confirmController.text != 'DELETE') {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please type DELETE to confirm'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+                        
+                        setDialogState(() => _isDeleting = true);
+                        
+                        try {
+                          await _userDataService.deleteAccount();
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            // Navigate to login and clear all routes
+                            Navigator.of(context).pushNamedAndRemoveUntil(
+                              '/login',
+                              (route) => false,
+                            );
+                          }
+                        } catch (e) {
+                          setDialogState(() => _isDeleting = false);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to delete account: ${e.toString()}'),
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                ),
+                child: _isDeleting
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Theme.of(context).colorScheme.onError,
+                        ),
+                      )
+                    : const Text('Delete'),
+              );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
-            child: const Text('Delete'),
           ),
         ],
       ),

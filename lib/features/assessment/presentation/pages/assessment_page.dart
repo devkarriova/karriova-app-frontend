@@ -10,8 +10,9 @@ import '../../domain/models/assessment_models.dart';
 import '../bloc/assessment_bloc.dart';
 import '../bloc/assessment_event.dart';
 import '../bloc/assessment_state.dart';
-import '../widgets/assessment_progress_bar.dart';
 import '../widgets/question_card.dart';
+import '../widgets/assessment_timers.dart';
+import '../widgets/question_overview_sidebar.dart';
 
 /// Standalone full-screen assessment page
 /// Shown to users on first login before they can access the main app
@@ -26,7 +27,9 @@ class AssessmentPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
-      value: getIt<AssessmentBloc>()..add(const AssessmentLoadRequested()),
+      value: getIt<AssessmentBloc>()
+        ..add(const AssessmentLoadRequested())
+        ..add(const AssessmentStartTimer()),
       child: _AssessmentPageContent(onComplete: onComplete),
     );
   }
@@ -127,89 +130,147 @@ class _AssessmentPageContent extends StatelessWidget {
 
   Widget _buildInProgressState(BuildContext context, AssessmentState state) {
     final currentQuestion = state.currentQuestion;
-    if (currentQuestion == null) {
+    if (currentQuestion == null || state.currentSection == null) {
       return _buildLoadingState();
     }
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final showSidebarPermanent = screenWidth > 900;
+
     return Container(
       color: const Color(0xFFF5F5F7), // Light grey background
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: Padding(
-            padding: const EdgeInsets.all(AppDimensions.paddingLG),
-            child: Column(
+      child: Column(
+        children: [
+          // Timers at top (full width)
+          AssessmentTimers(
+            remainingTestTime: state.remainingTestTime,
+            remainingSectionTime: state.remainingSectionTime,
+            sectionName: state.currentSection?.name,
+          ),
+
+          // Main content area
+          Expanded(
+            child: Row(
               children: [
-                // Simple logo
-                _buildMinimalHeader(),
-                const SizedBox(height: AppDimensions.paddingMD),
-
-                // Progress bar
-                AssessmentProgressBar(
-                  progress: state.progress,
-                  currentQuestion: state.currentQuestionIndex + 1,
-                  totalQuestions: state.totalQuestions,
-                ),
-                const SizedBox(height: AppDimensions.paddingXL),
-
-                // Question card with animation
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    transitionBuilder: (child, animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0.05, 0),
-                            end: Offset.zero,
-                          ).animate(CurvedAnimation(
-                            parent: animation,
-                            curve: Curves.easeOut,
-                          )),
-                          child: child,
-                        ),
+                // Sidebar (show on desktop/tablet only)
+                if (showSidebarPermanent)
+                  QuestionOverviewSidebar(
+                    currentSection: state.currentSection!,
+                    sectionQuestions: state.currentSectionQuestions,
+                    currentQuestionIndex: state.currentQuestionIndex,
+                    attemptedQuestionIds: state.attemptedQuestionIds,
+                    onQuestionTap: (localIndex) {
+                      final globalIndex = _getGlobalIndexForSectionQuestion(
+                        state,
+                        localIndex,
                       );
+                      context.read<AssessmentBloc>().add(
+                            AssessmentNavigateToQuestion(globalIndex),
+                          );
                     },
-                    child: Container(
-                      key: ValueKey(currentQuestion.id),
-                      padding: const EdgeInsets.all(AppDimensions.paddingLG),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: SingleChildScrollView(
-                        child: QuestionCard(
-                          question: currentQuestion,
-                          selectedOptionId: state.selectedOptionId,
-                          onOptionSelected: (optionId) {
+                    onNextSection: state.canProceedToNextSection
+                        ? () {
                             context.read<AssessmentBloc>().add(
-                                  AssessmentOptionSelected(
-                                    questionId: currentQuestion.id,
-                                    optionId: optionId,
+                                  AssessmentNavigateToSection(
+                                    state.currentSectionIndex + 1,
                                   ),
                                 );
-                          },
+                          }
+                        : null,
+                    canProceedToNextSection: state.canProceedToNextSection,
+                    answeredCount: state.currentSectionAnsweredCount,
+                  ),
+
+                // Question area (centered, constrained width)
+                Expanded(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppDimensions.paddingLG),
+                        child: Column(
+                          children: [
+                            // Minimal header
+                            _buildMinimalHeader(),
+                            const SizedBox(height: AppDimensions.paddingMD),
+
+                            // Hamburger menu for mobile
+                            if (!showSidebarPermanent)
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: IconButton(
+                                  icon: const Icon(Icons.menu),
+                                  onPressed: () =>
+                                      _showMobileSidebar(context, state),
+                                ),
+                              ),
+
+                            // Question card with animation
+                            Expanded(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                transitionBuilder: (child, animation) {
+                                  return FadeTransition(
+                                    opacity: animation,
+                                    child: SlideTransition(
+                                      position: Tween<Offset>(
+                                        begin: const Offset(0.05, 0),
+                                        end: Offset.zero,
+                                      ).animate(CurvedAnimation(
+                                        parent: animation,
+                                        curve: Curves.easeOut,
+                                      )),
+                                      child: child,
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  key: ValueKey(currentQuestion.id),
+                                  padding:
+                                      const EdgeInsets.all(AppDimensions.paddingLG),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius:
+                                        BorderRadius.circular(AppDimensions.radiusLG),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.08),
+                                        blurRadius: 16,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: SingleChildScrollView(
+                                    child: QuestionCard(
+                                      question: currentQuestion,
+                                      selectedOptionId: state.selectedOptionId,
+                                      onOptionSelected: (optionId) {
+                                        context.read<AssessmentBloc>().add(
+                                              AssessmentOptionSelected(
+                                                questionId: currentQuestion.id,
+                                                optionId: optionId,
+                                              ),
+                                            );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: AppDimensions.paddingLG),
+
+                            // Arrow navigation (keep existing)
+                            _buildArrowNavigation(context, state),
+                          ],
                         ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: AppDimensions.paddingLG),
-
-                // Arrow navigation
-                _buildArrowNavigation(context, state),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -348,6 +409,63 @@ class _AssessmentPageContent extends StatelessWidget {
               style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Helper method to convert section-local question index to global index
+  int _getGlobalIndexForSectionQuestion(
+    AssessmentState state,
+    int localIndex,
+  ) {
+    final currentSectionQuestions = state.currentSectionQuestions;
+    if (localIndex >= currentSectionQuestions.length) return 0;
+
+    final targetQuestion = currentSectionQuestions[localIndex];
+    return state.allQuestions.indexWhere((q) => q.id == targetQuestion.id);
+  }
+
+  /// Show mobile sidebar as bottom sheet
+  void _showMobileSidebar(BuildContext context, AssessmentState state) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: CompactQuestionOverview(
+          currentSection: state.currentSection!,
+          sectionQuestions: state.currentSectionQuestions,
+          currentQuestionIndex: state.currentQuestionIndex,
+          attemptedQuestionIds: state.attemptedQuestionIds,
+          onQuestionTap: (localIndex) {
+            final globalIndex = _getGlobalIndexForSectionQuestion(
+              state,
+              localIndex,
+            );
+            context.read<AssessmentBloc>().add(
+                  AssessmentNavigateToQuestion(globalIndex),
+                );
+          },
+          onNextSection: state.canProceedToNextSection
+              ? () {
+                  context.read<AssessmentBloc>().add(
+                        AssessmentNavigateToSection(
+                          state.currentSectionIndex + 1,
+                        ),
+                      );
+                }
+              : null,
+          canProceedToNextSection: state.canProceedToNextSection,
+          answeredCount: state.currentSectionAnsweredCount,
         ),
       ),
     );

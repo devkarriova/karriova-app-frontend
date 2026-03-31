@@ -23,11 +23,24 @@ class CommentsBottomSheet extends StatefulWidget {
 class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   final TextEditingController _commentController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-
+  
   @override
   void initState() {
     super.initState();
     // Fetch comments when sheet opens
+    _refreshComments();
+  }
+
+  @override
+  void didUpdateWidget(CommentsBottomSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Refresh comments if postId changes
+    if (oldWidget.postId != widget.postId) {
+      _refreshComments();
+    }
+  }
+
+  void _refreshComments() {
     context.read<FeedBloc>().add(FeedCommentFetchRequested(postId: widget.postId));
   }
 
@@ -154,15 +167,23 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                   );
                 }
 
-                return ListView.separated(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: comments.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final comment = comments[index];
-                    return _CommentItem(comment: comment);
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    _refreshComments();
+                    // Wait a bit for the comments to load
+                    await Future.delayed(const Duration(milliseconds: 500));
                   },
+                  color: AppColors.primary,
+                  child: ListView.separated(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: comments.length,
+                    separatorBuilder: (context, index) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final comment = comments[index];
+                      return _CommentItem(comment: comment);
+                    },
+                  ),
                 );
               },
             ),

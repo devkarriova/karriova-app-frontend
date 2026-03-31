@@ -17,6 +17,11 @@ class AssessmentBloc extends Bloc<AssessmentEvent, AssessmentState> {
     on<AssessmentSubmitRequested>(_onSubmitRequested);
     on<AssessmentStatusCheckRequested>(_onStatusCheckRequested);
     on<AssessmentResultsRequested>(_onResultsRequested);
+    // NEW event handlers
+    on<AssessmentNavigateToQuestion>(_onNavigateToQuestion);
+    on<AssessmentNavigateToSection>(_onNavigateToSection);
+    on<AssessmentStartTimer>(_onStartTimer);
+    on<AssessmentTimerTick>(_onTimerTick);
   }
 
   /// Load the active assessment
@@ -33,12 +38,24 @@ class AssessmentBloc extends Bloc<AssessmentEvent, AssessmentState> {
         status: AssessmentStatus.error,
         errorMessage: error,
       )),
-      (assessment) => emit(state.copyWith(
-        status: AssessmentStatus.inProgress,
-        assessment: assessment,
-        currentQuestionIndex: 0,
-        responses: {},
-      )),
+      (assessment) {
+        // Calculate total test duration from all sections
+        final totalDuration = assessment.sections.fold<int>(
+          0,
+          (sum, section) => sum + section.durationMinutes,
+        );
+
+        emit(state.copyWith(
+          status: AssessmentStatus.inProgress,
+          assessment: assessment,
+          currentQuestionIndex: 0,
+          currentSectionIndex: 0,
+          responses: {},
+          attemptedQuestionIds: {},
+          totalTestDurationMinutes: totalDuration,
+          sectionCompletionStatus: {},
+        ));
+      },
     );
   }
 
@@ -50,7 +67,14 @@ class AssessmentBloc extends Bloc<AssessmentEvent, AssessmentState> {
     final newResponses = Map<String, String>.from(state.responses);
     newResponses[event.questionId] = event.optionId;
 
-    emit(state.copyWith(responses: newResponses));
+    // Track this question as attempted
+    final newAttempted = Set<String>.from(state.attemptedQuestionIds);
+    newAttempted.add(event.questionId);
+
+    emit(state.copyWith(
+      responses: newResponses,
+      attemptedQuestionIds: newAttempted,
+    ));
   }
 
   /// Navigate to next question
@@ -149,5 +173,89 @@ class AssessmentBloc extends Bloc<AssessmentEvent, AssessmentState> {
         hasCompletedAssessment: assessmentResult.completed,
       )),
     );
+  }
+
+  // ========================================
+  // NEW EVENT HANDLERS
+  // ========================================
+
+  /// Navigate to a specific question by index
+  void _onNavigateToQuestion(
+    AssessmentNavigateToQuestion event,
+    Emitter<AssessmentState> emit,
+  ) {
+    // Validate: can only navigate within current section
+    if (event.questionIndex < 0 ||
+        event.questionIndex >= state.totalQuestions) {
+      return; // Invalid index
+    }
+
+    final targetQuestion = state.allQuestions[event.questionIndex];
+
+    // Check if question is in current section
+    final currentSectionQuestions = state.currentSectionQuestions;
+    final isInCurrentSection = currentSectionQuestions.any((q) => q.id == targetQuestion.id);
+
+    if (!isInCurrentSection) {
+      // Cannot navigate to questions in other sections
+      return;
+    }
+
+    emit(state.copyWith(currentQuestionIndex: event.questionIndex));
+  }
+
+  /// Navigate to a specific section
+  void _onNavigateToSection(
+    AssessmentNavigateToSection event,
+    Emitter<AssessmentState> emit,
+  ) {
+    if (event.sectionIndex < 0 || event.sectionIndex >= state.sections.length) {
+      return; // Invalid section index
+    }
+
+    // Can only navigate forward if current section is complete
+    if (event.sectionIndex > state.currentSectionIndex &&
+        !state.isCurrentSectionComplete) {
+      return; // Current section not complete
+    }
+
+    // Find first question in target section
+    final targetSection = state.sections[event.sectionIndex];
+    final targetSectionFirstQuestion = targetSection.allQuestions.first;
+    final targetQuestionIndex = state.allQuestions.indexWhere((q) => q.id == targetSectionFirstQuestion.id);
+
+    emit(state.copyWith(
+      currentSectionIndex: event.sectionIndex,
+      currentQuestionIndex: targetQuestionIndex,
+      sectionStartTime: DateTime.now(), // Reset section timer
+    ));
+  }
+
+  /// Start the assessment timer
+  void _onStartTimer(
+    AssessmentStartTimer event,
+    Emitter<AssessmentState> emit,
+  ) {
+    final now = DateTime.now();
+    emit(state.copyWith(
+      assessmentStartTime: now,
+      sectionStartTime: now,
+    ));
+  }
+
+  /// Handle timer tick (no-op, state recalculates timers dynamically)
+  void _onTimerTick(
+    AssessmentTimerTick event,
+    Emitter<AssessmentState> emit,
+  ) {
+    // Timer state is calculated dynamically in getters
+    // This event can trigger a rebuild if needed
+    if (state.isTestTimeExpired || state.isSectionTimeExpired) {
+      // Could auto-submit or show warning here
+      emit(state.copyWith(
+        status: AssessmentStatus.error,
+        errorMessage: 'Time expired',
+      ));
+    }
   }
 }

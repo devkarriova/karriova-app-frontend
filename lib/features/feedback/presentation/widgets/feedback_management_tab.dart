@@ -44,74 +44,74 @@ class _FeedbackManagementView extends StatelessWidget {
         const _FiltersBar(),
 
         // Ticket list
-        Expanded(
-          child: BlocBuilder<AdminFeedbackBloc, AdminFeedbackState>(
-            builder: (context, state) {
-              if (state.isLoading && state.tickets.isEmpty) {
-                return const Center(child: CircularProgressIndicator());
-              }
+        BlocBuilder<AdminFeedbackBloc, AdminFeedbackState>(
+          builder: (context, state) {
+            if (state.isLoading && state.tickets.isEmpty) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-              if (state.error != null && state.tickets.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline,
-                          size: 64, color: AppColors.error),
-                      const SizedBox(height: 16),
-                      const Text('Failed to load tickets'),
-                      const SizedBox(height: 8),
-                      ElevatedButton(
-                        onPressed: () => context
-                            .read<AdminFeedbackBloc>()
-                            .add(const LoadAllTickets()),
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              if (state.tickets.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.inbox_outlined,
-                        size: 64,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        state.hasFilters
-                            ? 'No tickets match your filters'
-                            : 'No support tickets yet',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              return RefreshIndicator(
-                onRefresh: () async {
-                  context.read<AdminFeedbackBloc>().add(const LoadAllTickets());
-                  await Future.delayed(const Duration(milliseconds: 500));
-                },
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: state.tickets.length,
-                  itemBuilder: (context, index) {
-                    final ticket = state.tickets[index];
-                    return _AdminTicketCard(ticket: ticket);
-                  },
+            if (state.error != null && state.tickets.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline,
+                        size: 64, color: AppColors.error),
+                    const SizedBox(height: 16),
+                    const Text('Failed to load tickets'),
+                    const SizedBox(height: 8),
+                    ElevatedButton(
+                      onPressed: () => context
+                          .read<AdminFeedbackBloc>()
+                          .add(const LoadAllTickets()),
+                      child: const Text('Retry'),
+                    ),
+                  ],
                 ),
               );
-            },
-          ),
+            }
+
+            if (state.tickets.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.inbox_outlined,
+                      size: 64,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      state.hasFilters
+                          ? 'No tickets match your filters'
+                          : 'No support tickets yet',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return RefreshIndicator(
+              onRefresh: () async {
+                context.read<AdminFeedbackBloc>().add(const LoadAllTickets());
+                await Future.delayed(const Duration(milliseconds: 500));
+              },
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                itemCount: state.tickets.length,
+                itemBuilder: (context, index) {
+                  final ticket = state.tickets[index];
+                  return _AdminTicketCard(ticket: ticket);
+                },
+              ),
+            );
+          },
         ),
       ],
     );

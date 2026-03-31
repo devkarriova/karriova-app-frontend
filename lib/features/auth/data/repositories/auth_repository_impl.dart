@@ -115,12 +115,20 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
     required String name,
+    String? dateOfBirth,
+    String? phone,
+    String? parentPhone,
+    String? otpCode,
   }) async {
     try {
       final authResponse = await remoteDataSource.signup(
         email: email,
         password: password,
         name: name,
+        dateOfBirth: dateOfBirth,
+        phone: phone,
+        parentPhone: parentPhone,
+        otpCode: otpCode,
       );
 
       // Save user and tokens
@@ -136,6 +144,42 @@ class AuthRepositoryImpl implements AuthRepository {
       return Right(authResponse.user);
     } catch (e) {
       AppLogger.error('Signup failed: $e');
+      return Left(_handleError(e));
+    }
+  }
+
+  @override
+  Future<Either<String, DateTime>> sendOTP({
+    required String phone,
+    required String purpose,
+  }) async {
+    try {
+      final expiresAt = await remoteDataSource.sendOTP(
+        phone: phone,
+        purpose: purpose,
+      );
+      return Right(expiresAt);
+    } catch (e) {
+      AppLogger.error('Send OTP failed: $e');
+      return Left(_handleError(e));
+    }
+  }
+
+  @override
+  Future<Either<String, bool>> verifyOTP({
+    required String phone,
+    required String otpCode,
+    required String purpose,
+  }) async {
+    try {
+      final verified = await remoteDataSource.verifyOTP(
+        phone: phone,
+        otpCode: otpCode,
+        purpose: purpose,
+      );
+      return Right(verified);
+    } catch (e) {
+      AppLogger.error('Verify OTP failed: $e');
       return Left(_handleError(e));
     }
   }
@@ -231,22 +275,6 @@ class AuthRepositoryImpl implements AuthRepository {
       return Right(authResponse.user);
     } catch (e) {
       AppLogger.error('Google login completion failed: $e');
-      return Left(_handleError(e));
-    }
-  }
-
-  @override
-  @Deprecated('Use initiateGoogleLogin and completeGoogleLogin instead')
-  Future<Either<String, UserModel>> loginWithGoogle() async {
-    try {
-      final user = await remoteDataSource.loginWithGoogle();
-      await localDataSource.saveUser(user);
-      return Right(user);
-    } on GoogleOAuthRedirectRequired catch (e) {
-      // Return the OAuth URL as an error message for backwards compatibility
-      return Left('OAUTH_REDIRECT:${e.url}');
-    } catch (e) {
-      AppLogger.error('Google login failed: $e');
       return Left(_handleError(e));
     }
   }

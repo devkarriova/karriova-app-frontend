@@ -102,7 +102,7 @@ class _SearchBarState extends State<_SearchBar> {
         focusNode: _searchFocusNode,
         style: const TextStyle(fontSize: 14),
         decoration: InputDecoration(
-          hintText: 'Search jobs, events, people...',
+          hintText: 'Search internships, events, people...',
           hintStyle: const TextStyle(
             color: AppColors.textTertiary,
             fontSize: 14,
@@ -231,27 +231,27 @@ class _NotificationIconState extends State<_NotificationIcon> {
             // Notification badge
             if (unreadCount > 0)
               Positioned(
-                right: 8,
-                top: 8,
+                right: 6,
+                top: 6,
                 child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  decoration: BoxDecoration(
                     color: Colors.red,
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   constraints: const BoxConstraints(
-                    minWidth: 18,
-                    minHeight: 18,
+                    minWidth: 16,
+                    minHeight: 16,
                   ),
-                  child: Center(
-                    child: Text(
-                      unreadCount > 99 ? '99+' : unreadCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  child: Text(
+                    unreadCount > 99 ? '99+' : unreadCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      height: 1.2,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               ),
@@ -387,7 +387,7 @@ class _ProfileMenu extends StatelessWidget {
             context.go(AppRouter.profile);
             break;
           case 'settings':
-            // TODO: Navigate to settings page when created
+            context.push(AppRouter.settings);
             break;
           case 'logout':
             context.read<AuthBloc>().add(const AuthLogoutRequested());

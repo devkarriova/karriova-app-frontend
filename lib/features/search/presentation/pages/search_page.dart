@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../shared/widgets/shimmer_loader.dart';
 import '../../../follow/presentation/bloc/follow_bloc.dart';
 import '../../../follow/presentation/bloc/follow_event.dart';
 import '../../../follow/presentation/widgets/follow_button.dart';
@@ -46,6 +47,13 @@ class _SearchPageContent extends StatefulWidget {
 class _SearchPageContentState extends State<_SearchPageContent> {
   final TextEditingController _searchController = TextEditingController();
 
+  // Filter state
+  String? _schoolNameFilter;
+  String? _classGradeFilter;
+  String? _streamFilter;
+  String? _locationFilter;
+  List<String> _interestsFilter = [];
+
   @override
   void initState() {
     super.initState();
@@ -71,12 +79,166 @@ class _SearchPageContentState extends State<_SearchPageContent> {
   }
 
   void _onSearchChanged(String value) {
-    context.read<SearchBloc>().add(SearchQueryChanged(query: value));
+    context.read<SearchBloc>().add(SearchQueryChanged(
+      query: value,
+      schoolName: _schoolNameFilter,
+      classGrade: _classGradeFilter,
+      stream: _streamFilter,
+      location: _locationFilter,
+      interests: _interestsFilter.isEmpty ? null : _interestsFilter,
+    ));
   }
 
   void _onClearSearch() {
     _searchController.clear();
     context.read<SearchBloc>().add(const SearchCleared());
+  }
+
+  void _onClearFilters() {
+    setState(() {
+      _schoolNameFilter = null;
+      _classGradeFilter = null;
+      _streamFilter = null;
+      _locationFilter = null;
+      _interestsFilter = [];
+    });
+    // Re-trigger search with cleared filters
+    if (_searchController.text.isNotEmpty) {
+      _onSearchChanged(_searchController.text);
+    }
+  }
+
+  bool get _hasActiveFilters {
+    return _schoolNameFilter != null ||
+        _classGradeFilter != null ||
+        _streamFilter != null ||
+        _locationFilter != null ||
+        _interestsFilter.isNotEmpty;
+  }
+
+  void _showFilterDialog() {
+    final schoolController = TextEditingController(text: _schoolNameFilter ?? '');
+    final locationController = TextEditingController(text: _locationFilter ?? '');
+    final interestsController = TextEditingController(text: _interestsFilter.join(', '));
+    String? selectedClass = _classGradeFilter;
+    String? selectedStream = _streamFilter;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Filter Search'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: schoolController,
+                  decoration: const InputDecoration(
+                    labelText: 'School/College Name',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.school),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedClass,
+                  decoration: const InputDecoration(
+                    labelText: 'Class/Grade',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.class_),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: null, child: Text('Any')),
+                    DropdownMenuItem(value: '9', child: Text('Class 9')),
+                    DropdownMenuItem(value: '10', child: Text('Class 10')),
+                    DropdownMenuItem(value: '11', child: Text('Class 11')),
+                    DropdownMenuItem(value: '12', child: Text('Class 12')),
+                  ],
+                  onChanged: (value) {
+                    setDialogState(() => selectedClass = value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedStream,
+                  decoration: const InputDecoration(
+                    labelText: 'Stream',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.category),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: null, child: Text('Any')),
+                    DropdownMenuItem(value: 'Science', child: Text('Science')),
+                    DropdownMenuItem(value: 'Commerce', child: Text('Commerce')),
+                    DropdownMenuItem(value: 'Arts', child: Text('Arts')),
+                  ],
+                  onChanged: (value) {
+                    setDialogState(() => selectedStream = value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: locationController,
+                  decoration: const InputDecoration(
+                    labelText: 'Location',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.location_on),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: interestsController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Interests (comma separated)',
+                    hintText: 'e.g., Reading, Sports, Music',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.interests),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _schoolNameFilter = schoolController.text.trim().isEmpty
+                      ? null
+                      : schoolController.text.trim();
+                  _classGradeFilter = selectedClass;
+                  _streamFilter = selectedStream;
+                  _locationFilter = locationController.text.trim().isEmpty
+                      ? null
+                      : locationController.text.trim();
+                  _interestsFilter = interestsController.text
+                      .split(',')
+                      .map((e) => e.trim())
+                      .where((e) => e.isNotEmpty)
+                      .toList();
+                });
+                Navigator.pop(dialogContext);
+                // Re-trigger search with new filters
+                if (_searchController.text.isNotEmpty) {
+                  _onSearchChanged(_searchController.text);
+                }
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    ).then((_) {
+      schoolController.dispose();
+      locationController.dispose();
+      interestsController.dispose();
+    });
   }
 
   @override
@@ -95,56 +257,114 @@ class _SearchPageContentState extends State<_SearchPageContent> {
                   bottom: BorderSide(color: AppColors.divider),
                 ),
               ),
-              child: BlocBuilder<SearchBloc, SearchState>(
-                builder: (context, state) {
-                  return TextField(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged,
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: 'Search for people...',
-                      hintStyle: const TextStyle(color: AppColors.textTertiary),
-                      prefixIcon: state.isLoading
-                          ? const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            )
-                          : const Icon(Icons.search,
-                              color: AppColors.textSecondary),
-                      suffixIcon: state.query.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 20),
-                              onPressed: _onClearSearch,
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: AppColors.surfaceVariant,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
+              child: Column(
+                children: [
+                  BlocBuilder<SearchBloc, SearchState>(
+                    builder: (context, state) {
+                      return TextField(
+                        controller: _searchController,
+                        onChanged: _onSearchChanged,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: 'Search for people...',
+                          hintStyle: const TextStyle(color: AppColors.textTertiary),
+                          prefixIcon: state.isLoading
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                )
+                              : const Icon(Icons.search,
+                                  color: AppColors.textSecondary),
+                          suffixIcon: state.query.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 20),
+                                  onPressed: _onClearSearch,
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: AppColors.surfaceVariant,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // Filter button and active filters
+                  Row(
+                    children: [
+                      Flexible(
+                        child: OutlinedButton.icon(
+                          onPressed: _showFilterDialog,
+                          icon: Icon(
+                            Icons.filter_list,
+                            size: 18,
+                            color: _hasActiveFilters ? AppColors.primary : AppColors.textSecondary,
+                          ),
+                          label: Text(
+                            'Filters',
+                            style: TextStyle(
+                              color: _hasActiveFilters ? AppColors.primary : AppColors.textSecondary,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: _hasActiveFilters ? AppColors.primary : AppColors.divider,
+                            ),
+                          ),
+                        ),
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                  );
-                },
+                      if (_hasActiveFilters) ...[
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                if (_schoolNameFilter != null)
+                                  _buildFilterChip('School: $_schoolNameFilter'),
+                                if (_classGradeFilter != null)
+                                  _buildFilterChip('Class: $_classGradeFilter'),
+                                if (_streamFilter != null)
+                                  _buildFilterChip('Stream: $_streamFilter'),
+                                if (_locationFilter != null)
+                                  _buildFilterChip('Location: $_locationFilter'),
+                                if (_interestsFilter.isNotEmpty)
+                                  _buildFilterChip('${_interestsFilter.length} interests'),
+                              ],
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.clear_all, size: 20),
+                          onPressed: _onClearFilters,
+                          tooltip: 'Clear filters',
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
               ),
             ),
 
@@ -192,6 +412,16 @@ class _SearchPageContentState extends State<_SearchPageContent> {
       );
     }
 
+    // Show skeleton loaders while loading
+    if (state.isLoading && state.users.isEmpty) {
+      return ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: 5,
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        itemBuilder: (context, index) => _buildUserSkeletonTile(),
+      );
+    }
+
     if (state.users.isEmpty && state.status == SearchStatus.success) {
       return _buildEmptyState(
         icon: Icons.person_search,
@@ -207,6 +437,41 @@ class _SearchPageContentState extends State<_SearchPageContent> {
       itemBuilder: (context, index) {
         return _buildUserTile(user: state.users[index]);
       },
+    );
+  }
+
+  Widget _buildUserSkeletonTile() {
+    return ShimmerEffect(
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const SkeletonCircle(size: 48),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SkeletonBox(width: 140, height: 16),
+                    const SizedBox(height: 6),
+                    const SkeletonBox(width: 100, height: 12),
+                    const SizedBox(height: 6),
+                    const SkeletonBox(width: 180, height: 12),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              const SkeletonBox(width: 80, height: 32, borderRadius: 20),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -308,6 +573,26 @@ class _SearchPageContentState extends State<_SearchPageContent> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          color: AppColors.primary,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

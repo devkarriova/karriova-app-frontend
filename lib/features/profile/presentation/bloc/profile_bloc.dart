@@ -38,6 +38,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     on<ProfileLanguageAdded>(_onLanguageAdded);
     on<ProfileLanguageUpdated>(_onLanguageUpdated);
     on<ProfileLanguageDeleted>(_onLanguageDeleted);
+    on<ProfileOnboardingUpdated>(_onOnboardingUpdated);
   }
 
   /// Load profile by user ID
@@ -894,6 +895,38 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         status: ProfileStatus.success,
         profile: profile,
         successMessage: 'Language deleted',
+      )),
+    );
+  }
+
+  /// Update onboarding profile (all student fields collected during setup)
+  Future<void> _onOnboardingUpdated(
+    ProfileOnboardingUpdated event,
+    Emitter<ProfileState> emit,
+  ) async {
+    emit(state.copyWith(status: ProfileStatus.updating));
+
+    final result = await profileRepository.updateOnboardingProfile(
+      board: event.board,
+      classGrade: event.classGrade,
+      schoolName: event.schoolName,
+      stream: event.stream,
+      gender: event.gender,
+      location: event.location,
+      careerGoalStatus: event.careerGoalStatus,
+      careerGoalText: event.careerGoalText,
+      generalInterests: event.generalInterests,
+      skills: event.skills,
+    );
+
+    result.fold(
+      (error) => emit(state.copyWith(
+        status: ProfileStatus.error,
+        errorMessage: error,
+      )),
+      (_) => emit(state.copyWith(
+        status: ProfileStatus.success,
+        successMessage: 'Profile setup completed successfully',
       )),
     );
   }

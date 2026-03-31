@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
-import '../../../../core/routes/app_router.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../shared/widgets/gradient_button.dart';
 import '../../../../shared/widgets/social_login_button.dart';
@@ -32,8 +31,13 @@ class _AuthPageState extends State<AuthPage> {
   final _emailController = TextEditingController();
   final _mobileController = TextEditingController();
   final _passwordController = TextEditingController();
+  
   bool _obscurePassword = true;
   late bool _isLoginMode;
+  
+  // DOB state
+  DateTime? _selectedDOB;
+  bool _isMinor = false;
 
   @override
   void initState() {
@@ -50,10 +54,55 @@ class _AuthPageState extends State<AuthPage> {
     super.dispose();
   }
 
+  int _calculateAge(DateTime dob) {
+    final now = DateTime.now();
+    int age = now.year - dob.year;
+    if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
+      age--;
+    }
+    return age;
+  }
+
+  Future<void> _selectDOB() async {
+    final now = DateTime.now();
+    final minDate = DateTime(now.year - 100, 1, 1);
+    final maxDate = DateTime(now.year - 13, now.month, now.day);
+    
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDOB ?? maxDate,
+      firstDate: minDate,
+      lastDate: maxDate,
+      helpText: 'Select your date of birth',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: AppColors.textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDOB = picked;
+        _isMinor = _calculateAge(picked) < 18;
+      });
+    }
+  }
+
   void _toggleMode() {
     setState(() {
       _isLoginMode = !_isLoginMode;
       _formKey.currentState?.reset();
+      _selectedDOB = null;
+      _isMinor = false;
     });
   }
 
@@ -67,11 +116,25 @@ class _AuthPageState extends State<AuthPage> {
               ),
             );
       } else {
+        // Signup validation
+        if (_selectedDOB == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select your date of birth'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+          return;
+        }
+
         context.read<AuthBloc>().add(
               AuthSignupRequested(
                 email: _emailController.text.trim(),
                 password: _passwordController.text,
                 name: _nameController.text.trim(),
+                dateOfBirth: DateFormat('yyyy-MM-dd').format(_selectedDOB!),
+                phone: _isMinor ? null : _mobileController.text.trim(),
+                parentPhone: _isMinor ? _mobileController.text.trim() : null,
               ),
             );
       }
@@ -127,6 +190,7 @@ class _AuthPageState extends State<AuthPage> {
         } else if (state.status == AuthStatus.authenticated) {
           // Show success message only once
           if (!_hasNavigated) {
+            _hasNavigated = true;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.successMessage ??
@@ -135,23 +199,13 @@ class _AuthPageState extends State<AuthPage> {
               ),
             );
           }
-          
-          // Check assessment status and navigate
+
+          // Trigger assessment status check if not yet known
+          // Router will handle navigation once assessment status is set
           if (state.assessmentCompleted == null) {
-            // Need to check assessment status from backend
             context.read<AuthBloc>().add(const AuthCheckAssessmentStatus());
-          } else if (!_hasNavigated) {
-            _hasNavigated = true;
-            if (state.assessmentCompleted == false) {
-              // User hasn't completed assessment - redirect to assessment page
-              // Use replace to prevent browser back navigation to auth
-              GoRouter.of(context).replace(AppRouter.assessment);
-            } else {
-              // User has completed assessment - go to feed
-              // Use replace to prevent browser back navigation to auth
-              GoRouter.of(context).replace(AppRouter.feed);
-            }
           }
+          // Navigation is handled by GoRouter's redirect based on auth state
         }
       },
       builder: (context, state) {
@@ -234,8 +288,8 @@ class _AuthPageState extends State<AuthPage> {
                               keyboardType: TextInputType.name,
                               decoration: _buildInputDecoration(
                                 hintText: 'Enter your full name',
-                                suffixIcon: const Icon(
-                                  Icons.lock_outline,
+                                prefixIcon: const Icon(
+                                  Icons.person_outline,
                                   color: AppColors.textTertiary,
                                   size: 20,
                                 ),
@@ -243,6 +297,73 @@ class _AuthPageState extends State<AuthPage> {
                               validator: !_isLoginMode
                                   ? Validators.validateName
                                   : null,
+                            ),
+                            const SizedBox(height: AppDimensions.paddingMD),
+                            
+                            // Date of Birth Field
+                            const Text(
+                              'Date of Birth',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: AppDimensions.paddingSM),
+                            InkWell(
+                              onTap: _selectDOB,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppDimensions.paddingMD,
+                                  vertical: AppDimensions.paddingMD,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5F5F5),
+                                  borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.calendar_today_outlined,
+                                      color: AppColors.textTertiary,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        _selectedDOB != null
+                                            ? DateFormat('MMM dd, yyyy').format(_selectedDOB!)
+                                            : 'Select your date of birth',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: _selectedDOB != null
+                                              ? AppColors.textPrimary
+                                              : AppColors.textTertiary,
+                                        ),
+                                      ),
+                                    ),
+                                    if (_isMinor)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.warning.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Text(
+                                          'Under 18',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.warning,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                             ),
                             const SizedBox(height: AppDimensions.paddingMD),
                           ],
@@ -286,9 +407,9 @@ class _AuthPageState extends State<AuthPage> {
 
                           // Mobile Number (only for signup)
                           if (!_isLoginMode) ...[
-                            const Text(
-                              'Mobile Number',
-                              style: TextStyle(
+                            Text(
+                              _isMinor ? "Parent's Mobile Number" : 'Mobile Number',
+                              style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 color: AppColors.textPrimary,
@@ -299,14 +420,9 @@ class _AuthPageState extends State<AuthPage> {
                               controller: _mobileController,
                               keyboardType: TextInputType.phone,
                               decoration: _buildInputDecoration(
-                                hintText: '+91-9876543210',
-                                prefixIcon: const Icon(
-                                  Icons.phone_outlined,
-                                  color: AppColors.textTertiary,
-                                  size: 20,
-                                ),
-                                suffixIcon: const Icon(
-                                  Icons.lock_outline,
+                                hintText: _isMinor ? "Parent's phone number" : '+91-9876543210',
+                                prefixIcon: Icon(
+                                  _isMinor ? Icons.family_restroom : Icons.phone_outlined,
                                   color: AppColors.textTertiary,
                                   size: 20,
                                 ),
@@ -387,7 +503,7 @@ class _AuthPageState extends State<AuthPage> {
 
                     // Submit Button
                     GradientButton(
-                      text: _isLoginMode ? 'Login' : 'Send OTP',
+                      text: _isLoginMode ? 'Login' : 'Sign Up',
                       onPressed: isLoading ? null : _handleSubmit,
                       isLoading: isLoading,
                     ),

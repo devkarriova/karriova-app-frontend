@@ -51,3 +51,37 @@ class AssessmentStatusCheckRequested extends AssessmentEvent {
 class AssessmentResultsRequested extends AssessmentEvent {
   const AssessmentResultsRequested();
 }
+
+// ========================================
+// NEW EVENTS FOR ENHANCED NAVIGATION
+// ========================================
+
+/// Navigate to a specific question by index
+class AssessmentNavigateToQuestion extends AssessmentEvent {
+  final int questionIndex;
+
+  const AssessmentNavigateToQuestion(this.questionIndex);
+
+  @override
+  List<Object?> get props => [questionIndex];
+}
+
+/// Navigate to a specific section
+class AssessmentNavigateToSection extends AssessmentEvent {
+  final int sectionIndex;
+
+  const AssessmentNavigateToSection(this.sectionIndex);
+
+  @override
+  List<Object?> get props => [sectionIndex];
+}
+
+/// Start the assessment timer
+class AssessmentStartTimer extends AssessmentEvent {
+  const AssessmentStartTimer();
+}
+
+/// Update timer state (called periodically)
+class AssessmentTimerTick extends AssessmentEvent {
+  const AssessmentTimerTick();
+}

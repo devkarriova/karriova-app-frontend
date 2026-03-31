@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/routes/app_router.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../follow/domain/models/follow_model.dart';
 import '../../../follow/presentation/bloc/follow_bloc.dart';
@@ -12,7 +13,6 @@ import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
 import '../widgets/conversation_tile.dart';
-import 'chat_conversation_page.dart';
 
 /// Chat list page - displays list of conversations
 /// Modern UI with gradient header, search, and engaging empty states
@@ -174,29 +174,8 @@ class _ChatListViewState extends State<_ChatListView>
                             isOnline: index % 3 ==
                                 0, // Demo: some users appear online
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                PageRouteBuilder(
-                                  pageBuilder: (context, animation,
-                                          secondaryAnimation) =>
-                                      ChatConversationPage(
-                                    conversationId: conversation.id,
-                                    otherUserId: conversation.otherUserId,
-                                  ),
-                                  transitionsBuilder: (context, animation,
-                                      secondaryAnimation, child) {
-                                    return SlideTransition(
-                                      position: Tween<Offset>(
-                                        begin: const Offset(1.0, 0.0),
-                                        end: Offset.zero,
-                                      ).animate(CurvedAnimation(
-                                        parent: animation,
-                                        curve: Curves.easeOutCubic,
-                                      )),
-                                      child: child,
-                                    );
-                                  },
-                                ),
+                              context.push(
+                                '${AppRouter.chatConversation}?conversationId=${conversation.id}&otherUserId=${conversation.otherUserId}',
                               );
                             },
                           );
@@ -784,28 +763,8 @@ class _ChatListViewState extends State<_ChatListView>
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            Navigator.push(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) =>
-                    ChatConversationPage(
-                  conversationId: '',
-                  otherUserId: user.id,
-                ),
-                transitionsBuilder:
-                    (context, animation, secondaryAnimation, child) {
-                  return SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(1.0, 0.0),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutCubic,
-                    )),
-                    child: child,
-                  );
-                },
-              ),
+            context.push(
+              '${AppRouter.chatConversation}?conversationId=&otherUserId=${user.id}',
             );
           },
           borderRadius: BorderRadius.circular(16),
@@ -864,29 +823,8 @@ class _ChatListViewState extends State<_ChatListView>
                       size: 18,
                     ),
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        PageRouteBuilder(
-                          pageBuilder:
-                              (context, animation, secondaryAnimation) =>
-                                  ChatConversationPage(
-                            conversationId: '',
-                            otherUserId: user.id,
-                          ),
-                          transitionsBuilder:
-                              (context, animation, secondaryAnimation, child) {
-                            return SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(1.0, 0.0),
-                                end: Offset.zero,
-                              ).animate(CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOutCubic,
-                              )),
-                              child: child,
-                            );
-                          },
-                        ),
+                      context.push(
+                        '${AppRouter.chatConversation}?conversationId=&otherUserId=${user.id}',
                       );
                     },
                     constraints: const BoxConstraints(

@@ -416,6 +416,38 @@ class ProfileRepositoryImpl implements ProfileRepository {
     }
   }
 
+  @override
+  Future<Either<String, void>> updateOnboardingProfile({
+    String? board,
+    String? classGrade,
+    String? schoolName,
+    String? stream,
+    String? gender,
+    String? location,
+    String? careerGoalStatus,
+    String? careerGoalText,
+    List<String>? generalInterests,
+    List<String>? skills,
+  }) async {
+    try {
+      await remoteDataSource.updateOnboardingProfile(
+        board: board,
+        classGrade: classGrade,
+        schoolName: schoolName,
+        stream: stream,
+        gender: gender,
+        location: location,
+        careerGoalStatus: careerGoalStatus,
+        careerGoalText: careerGoalText,
+        generalInterests: generalInterests,
+        skills: skills,
+      );
+      return const Right(null);
+    } catch (e) {
+      return Left(_handleError(e));
+    }
+  }
+
   /// Handle errors and return user-friendly messages
   String _handleError(dynamic error) {
     final errorMessage = error.toString();

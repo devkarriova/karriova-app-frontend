@@ -48,9 +48,9 @@ class AppNavigationBar extends StatelessWidget {
               ),
               _NavItem(
                 icon: Icons.work_outline,
-                label: 'Jobs',
-                route: '/jobs',
-                isActive: currentRoute == '/jobs',
+                label: 'Internships',
+                route: '/internships',
+                isActive: currentRoute == '/internships',
               ),
               _NavItem(
                 icon: Icons.event_outlined,
@@ -69,6 +69,7 @@ class AppNavigationBar extends StatelessWidget {
                 label: 'CV Generator',
                 route: '/cv-generator',
                 isActive: currentRoute == '/cv-generator',
+                isLocked: true,
               ),
               if (isAdmin)
                 _NavItem(
@@ -91,48 +92,74 @@ class _NavItem extends StatelessWidget {
   final String label;
   final String route;
   final bool isActive;
+  final bool isLocked;
 
   const _NavItem({
     required this.icon,
     required this.label,
     required this.route,
     required this.isActive,
+    this.isLocked = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => context.go(route),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: isActive ? AppColors.primary : Colors.transparent,
-              width: 2.5,
-            ),
+    final itemColor = isLocked 
+        ? Colors.grey.shade400 
+        : (isActive ? AppColors.primary : AppColors.textSecondary);
+
+    final content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: isActive && !isLocked ? AppColors.primary : Colors.transparent,
+            width: 2.5,
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: isActive ? AppColors.primary : AppColors.textSecondary,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: itemColor,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isActive && !isLocked ? FontWeight.w600 : FontWeight.w500,
+              color: itemColor,
             ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                color: isActive ? AppColors.primary : AppColors.textSecondary,
-              ),
+          ),
+          if (isLocked) ...[
+            const SizedBox(width: 4),
+            Icon(
+              Icons.lock_outline,
+              size: 14,
+              color: Colors.grey.shade400,
             ),
           ],
-        ),
+        ],
       ),
+    );
+
+    if (isLocked) {
+      return Tooltip(
+        message: 'Coming Soon',
+        child: MouseRegion(
+          cursor: SystemMouseCursors.basic,
+          child: content,
+        ),
+      );
+    }
+
+    return InkWell(
+      onTap: () => context.go(route),
+      child: content,
     );
   }
 }

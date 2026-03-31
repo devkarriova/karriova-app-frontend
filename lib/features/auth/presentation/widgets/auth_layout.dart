@@ -95,7 +95,7 @@ class _AuthLayoutState extends State<AuthLayout> {
                     const SizedBox(height: AppDimensions.paddingXL),
                     _buildFeature(
                       Icons.group_outlined,
-                      'Connect with 50,000+ students across IITs, NITs, and top universities',
+                      'Connect with students across IITs, NITs, and top universities',
                       AppColors.gradientStart,
                     ),
                     const SizedBox(height: AppDimensions.paddingLG),
@@ -117,11 +117,16 @@ class _AuthLayoutState extends State<AuthLayout> {
             // Right side - Auth Form
             Expanded(
               flex: 1,
-              child: Center(
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 500),
-                  margin: const EdgeInsets.all(AppDimensions.paddingXL),
-                  child: widget.child,
+              child: SingleChildScrollView(
+                child: Center(
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 500),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: AppDimensions.paddingXL,
+                      vertical: AppDimensions.paddingLG,
+                    ),
+                    child: widget.child,
+                  ),
                 ),
               ),
             ),

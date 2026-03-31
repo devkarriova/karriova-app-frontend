@@ -4,6 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../network/api_client.dart';
 import '../services/inactivity_service.dart';
+import '../services/firebase_otp_service.dart';
+import '../services/user_settings_service.dart';
+import '../theme/theme_cubit.dart';
 import '../config/app_config.dart';
 import '../../features/auth/data/datasources/auth_local_datasource.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
@@ -30,6 +33,7 @@ import '../../features/search/data/repositories/search_repository_impl.dart';
 import '../../features/search/domain/repositories/search_repository.dart';
 import '../../features/search/presentation/bloc/search_bloc.dart';
 import '../../features/notifications/data/datasources/notification_remote_datasource.dart';
+import '../../features/notifications/data/datasources/notification_websocket_service.dart';
 import '../../features/notifications/data/repositories/notification_repository_impl.dart';
 import '../../features/notifications/domain/repositories/notification_repository.dart';
 import '../../features/notifications/presentation/bloc/notification_bloc.dart';
@@ -100,6 +104,21 @@ Future<void> configureDependencies() async {
     ),
   );
 
+  // Firebase OTP Service (for phone number verification only)
+  getIt.registerLazySingleton<FirebaseOtpService>(
+    () => FirebaseOtpService(),
+  );
+
+  // User Settings Service
+  getIt.registerLazySingleton<UserSettingsService>(
+    () => UserSettingsService(getIt()),
+  );
+
+  // Theme Cubit
+  getIt.registerLazySingleton<ThemeCubit>(
+    () => ThemeCubit(getIt<UserSettingsService>()),
+  );
+
   // Data Sources
   getIt.registerLazySingleton<AuthRemoteDataSource>(
     () => AuthRemoteDataSourceImpl(apiClient: getIt()),
@@ -142,6 +161,14 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<NotificationRemoteDataSource>(
     () => NotificationRemoteDataSource(getIt<Dio>(),
         baseUrl: AppConfig.apiBaseUrl),
+  );
+
+  // WebSocket Service for real-time notifications
+  getIt.registerLazySingleton<NotificationWebSocketService>(
+    () => NotificationWebSocketService(
+      baseUrl: AppConfig.apiBaseUrl,
+      storage: getIt<FlutterSecureStorage>(),
+    ),
   );
 
   // Repositories
@@ -194,7 +221,8 @@ Future<void> configureDependencies() async {
   );
 
   // BLoCs
-  getIt.registerFactory<AuthBloc>(
+  // AuthBloc must be singleton so the router can listen to the same instance
+  getIt.registerLazySingleton<AuthBloc>(
     () => AuthBloc(authRepository: getIt()),
   );
 
@@ -229,7 +257,10 @@ Future<void> configureDependencies() async {
 
   // NotificationBloc as singleton - shared across the app to avoid duplicate API calls
   getIt.registerLazySingleton<NotificationBloc>(
-    () => NotificationBloc(notificationRepository: getIt()),
+    () => NotificationBloc(
+      notificationRepository: getIt(),
+      notificationWebSocketService: getIt(),
+    ),
   );
 
   // FollowBloc as singleton - shared across the app to avoid duplicate API calls
