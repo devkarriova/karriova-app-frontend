@@ -90,10 +90,18 @@ class ChatWebSocketService {
   /// Check if currently connected
   bool get isConnected => _channel != null;
 
+  void _safeWarn(String message) {
+    try {
+      _logger.w(message);
+    } catch (_) {
+      // Do not let logger formatter issues crash realtime flows.
+    }
+  }
+
   /// Connect to WebSocket server
   Future<void> connect(String authToken) async {
     if (_channel != null) {
-      _logger.w('WebSocket already connected');
+      _safeWarn('WebSocket already connected');
       return;
     }
 
@@ -158,7 +166,7 @@ class ChatWebSocketService {
   }
 
   void _handleDisconnect() {
-    _logger.w('WebSocket disconnected');
+    _safeWarn('WebSocket disconnected');
     _connectionController.add(false);
     _cleanup();
 

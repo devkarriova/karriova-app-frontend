@@ -3,7 +3,6 @@ import '../../domain/models/post_model.dart';
 import '../../domain/models/comment_model.dart';
 import '../../domain/repositories/post_repository.dart';
 import '../datasources/post_remote_datasource.dart';
-import '../../../../core/utils/logger.dart';
 
 class PostRepositoryImpl implements PostRepository {
   final PostRemoteDataSource remoteDataSource;
@@ -16,7 +15,6 @@ class PostRepositoryImpl implements PostRepository {
       final posts = await remoteDataSource.getFeed(limit: limit, offset: offset);
       return Right(posts);
     } catch (e) {
-      AppLogger.error('Failed to get feed: $e');
       return Left(_handleError(e));
     }
   }
@@ -27,7 +25,6 @@ class PostRepositoryImpl implements PostRepository {
       final posts = await remoteDataSource.getDiscover(limit: limit, offset: offset);
       return Right(posts);
     } catch (e) {
-      AppLogger.error('Failed to get discover posts: $e');
       return Left(_handleError(e));
     }
   }
@@ -38,7 +35,6 @@ class PostRepositoryImpl implements PostRepository {
       final posts = await remoteDataSource.getUserPosts(userId, limit: limit, offset: offset);
       return Right(posts);
     } catch (e) {
-      AppLogger.error('Failed to get user posts: $e');
       return Left(_handleError(e));
     }
   }
@@ -49,7 +45,6 @@ class PostRepositoryImpl implements PostRepository {
       final post = await remoteDataSource.getPost(postId);
       return Right(post);
     } catch (e) {
-      AppLogger.error('Failed to get post: $e');
       return Left(_handleError(e));
     }
   }
@@ -60,7 +55,6 @@ class PostRepositoryImpl implements PostRepository {
       final post = await remoteDataSource.createPost(content, mediaUrls);
       return Right(post);
     } catch (e) {
-      AppLogger.error('Failed to create post: $e');
       return Left(_handleError(e));
     }
   }
@@ -71,7 +65,6 @@ class PostRepositoryImpl implements PostRepository {
       final post = await remoteDataSource.updatePost(postId, content, mediaUrls);
       return Right(post);
     } catch (e) {
-      AppLogger.error('Failed to update post: $e');
       return Left(_handleError(e));
     }
   }
@@ -82,7 +75,6 @@ class PostRepositoryImpl implements PostRepository {
       await remoteDataSource.deletePost(postId);
       return const Right(null);
     } catch (e) {
-      AppLogger.error('Failed to delete post: $e');
       return Left(_handleError(e));
     }
   }
@@ -93,7 +85,6 @@ class PostRepositoryImpl implements PostRepository {
       await remoteDataSource.likePost(postId);
       return const Right(null);
     } catch (e) {
-      AppLogger.error('Failed to like post: $e');
       return Left(_handleError(e));
     }
   }
@@ -104,7 +95,6 @@ class PostRepositoryImpl implements PostRepository {
       await remoteDataSource.unlikePost(postId);
       return const Right(null);
     } catch (e) {
-      AppLogger.error('Failed to unlike post: $e');
       return Left(_handleError(e));
     }
   }
@@ -115,7 +105,6 @@ class PostRepositoryImpl implements PostRepository {
       await remoteDataSource.sharePost(postId, shareText);
       return const Right(null);
     } catch (e) {
-      AppLogger.error('Failed to share post: $e');
       return Left(_handleError(e));
     }
   }
@@ -126,7 +115,6 @@ class PostRepositoryImpl implements PostRepository {
       final comments = await remoteDataSource.getComments(postId, limit: limit, offset: offset);
       return Right(comments);
     } catch (e) {
-      AppLogger.error('Failed to get comments: $e');
       return Left(_handleError(e));
     }
   }
@@ -137,7 +125,6 @@ class PostRepositoryImpl implements PostRepository {
       final comment = await remoteDataSource.createComment(postId, content);
       return Right(comment);
     } catch (e) {
-      AppLogger.error('Failed to create comment: $e');
       return Left(_handleError(e));
     }
   }
@@ -148,7 +135,6 @@ class PostRepositoryImpl implements PostRepository {
       await remoteDataSource.deleteComment(commentId);
       return const Right(null);
     } catch (e) {
-      AppLogger.error('Failed to delete comment: $e');
       return Left(_handleError(e));
     }
   }

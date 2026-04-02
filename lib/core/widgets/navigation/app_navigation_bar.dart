@@ -49,14 +49,14 @@ class AppNavigationBar extends StatelessWidget {
               _NavItem(
                 icon: Icons.work_outline,
                 label: 'Internships',
-                route: '/internships',
-                isActive: currentRoute == '/internships',
+                route: AppRouter.internships,
+                isActive: currentRoute == AppRouter.internships,
               ),
               _NavItem(
                 icon: Icons.event_outlined,
                 label: 'Events',
-                route: '/events',
-                isActive: currentRoute == '/events',
+                route: AppRouter.events,
+                isActive: currentRoute == AppRouter.events,
               ),
               _NavItem(
                 icon: Icons.timeline_outlined,
@@ -104,8 +104,8 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final itemColor = isLocked 
-        ? Colors.grey.shade400 
+    final itemColor = isLocked
+        ? Colors.grey.shade400
         : (isActive ? AppColors.primary : AppColors.textSecondary);
 
     final content = Container(
@@ -113,7 +113,8 @@ class _NavItem extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: isActive && !isLocked ? AppColors.primary : Colors.transparent,
+            color:
+                isActive && !isLocked ? AppColors.primary : Colors.transparent,
             width: 2.5,
           ),
         ),
@@ -131,7 +132,8 @@ class _NavItem extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 13,
-              fontWeight: isActive && !isLocked ? FontWeight.w600 : FontWeight.w500,
+              fontWeight:
+                  isActive && !isLocked ? FontWeight.w600 : FontWeight.w500,
               color: itemColor,
             ),
           ),

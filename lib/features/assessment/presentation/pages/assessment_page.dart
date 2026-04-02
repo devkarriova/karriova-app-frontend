@@ -35,10 +35,19 @@ class AssessmentPage extends StatelessWidget {
   }
 }
 
-class _AssessmentPageContent extends StatelessWidget {
+class _AssessmentPageContent extends StatefulWidget {
   final VoidCallback onComplete;
 
   const _AssessmentPageContent({required this.onComplete});
+
+  @override
+  State<_AssessmentPageContent> createState() => _AssessmentPageContentState();
+}
+
+class _AssessmentPageContentState extends State<_AssessmentPageContent> {
+  bool _sidebarCollapsed = false;
+
+  VoidCallback get onComplete => widget.onComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -129,11 +138,17 @@ class _AssessmentPageContent extends StatelessWidget {
   }
 
   Widget _buildInProgressState(BuildContext context, AssessmentState state) {
+    print('🎯 [AssessmentPage] Building inProgress state...');
     final currentQuestion = state.currentQuestion;
+    print('   📝 Current question: ${currentQuestion?.text ?? "NULL"}');
+    print('   📁 Current section: ${state.currentSection?.name ?? "NULL"}');
+
     if (currentQuestion == null || state.currentSection == null) {
+      print('⚠️ [AssessmentPage] currentQuestion or currentSection is null, showing loader');
       return _buildLoadingState();
     }
 
+    print('✅ [AssessmentPage] Rendering question UI');
     final screenWidth = MediaQuery.of(context).size.width;
     final showSidebarPermanent = screenWidth > 900;
 
@@ -146,45 +161,62 @@ class _AssessmentPageContent extends StatelessWidget {
             remainingTestTime: state.remainingTestTime,
             remainingSectionTime: state.remainingSectionTime,
             sectionName: state.currentSection?.name,
+            totalTestDurationMinutes: state.totalTestDurationMinutes,
+            sectionDurationMinutes: state.currentSection?.durationMinutes ?? 15,
           ),
 
           // Main content area
           Expanded(
-            child: Row(
+            child: Stack(
               children: [
-                // Sidebar (show on desktop/tablet only)
-                if (showSidebarPermanent)
-                  QuestionOverviewSidebar(
-                    currentSection: state.currentSection!,
-                    sectionQuestions: state.currentSectionQuestions,
-                    currentQuestionIndex: state.currentQuestionIndex,
-                    attemptedQuestionIds: state.attemptedQuestionIds,
-                    onQuestionTap: (localIndex) {
-                      final globalIndex = _getGlobalIndexForSectionQuestion(
-                        state,
-                        localIndex,
-                      );
-                      context.read<AssessmentBloc>().add(
-                            AssessmentNavigateToQuestion(globalIndex),
-                          );
-                    },
-                    onNextSection: state.canProceedToNextSection
-                        ? () {
-                            context.read<AssessmentBloc>().add(
-                                  AssessmentNavigateToSection(
-                                    state.currentSectionIndex + 1,
-                                  ),
+                Row(
+                  children: [
+                    // Sidebar (show on desktop/tablet only)
+                    if (showSidebarPermanent)
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                        width: _sidebarCollapsed ? 0 : 280,
+                        child: ClipRect(
+                          child: OverflowBox(
+                            alignment: Alignment.centerLeft,
+                            maxWidth: 280,
+                            child: QuestionOverviewSidebar(
+                              currentSection: state.currentSection!,
+                              sectionQuestions: state.currentSectionQuestions,
+                              currentQuestionId: state.currentQuestion?.id ?? '',
+                              attemptedQuestionIds: state.attemptedQuestionIds,
+                              onQuestionTap: (localIndex) {
+                                final globalIndex =
+                                    _getGlobalIndexForSectionQuestion(
+                                  state,
+                                  localIndex,
                                 );
-                          }
-                        : null,
-                    canProceedToNextSection: state.canProceedToNextSection,
-                    answeredCount: state.currentSectionAnsweredCount,
-                  ),
+                                context.read<AssessmentBloc>().add(
+                                      AssessmentNavigateToQuestion(globalIndex),
+                                    );
+                              },
+                              onNextSection: state.canProceedToNextSection
+                                  ? () {
+                                      context.read<AssessmentBloc>().add(
+                                            AssessmentNavigateToSection(
+                                              state.currentSectionIndex + 1,
+                                            ),
+                                          );
+                                    }
+                                  : null,
+                              canProceedToNextSection:
+                                  state.canProceedToNextSection,
+                              answeredCount: state.currentSectionAnsweredCount,
+                            ),
+                          ),
+                        ),
+                      ),
 
-                // Question area (centered, constrained width)
-                Expanded(
-                  child: Center(
-                    child: ConstrainedBox(
+                    // Question area (centered, constrained width)
+                    Expanded(
+                      child: Center(
+                        child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 600),
                       child: Padding(
                         padding: const EdgeInsets.all(AppDimensions.paddingLG),
@@ -267,6 +299,45 @@ class _AssessmentPageContent extends StatelessWidget {
                     ),
                   ),
                 ),
+              ],
+            ),
+
+                // Floating toggle button at the sidebar edge
+                if (showSidebarPermanent)
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    top: 16,
+                    left: _sidebarCollapsed ? 4 : 266,
+                    child: GestureDetector(
+                      onTap: () => setState(
+                          () => _sidebarCollapsed = !_sidebarCollapsed),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border:
+                              Border.all(color: Colors.grey.shade300, width: 1),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          _sidebarCollapsed
+                              ? Icons.chevron_right
+                              : Icons.chevron_left,
+                          size: 18,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -444,7 +515,7 @@ class _AssessmentPageContent extends StatelessWidget {
         child: CompactQuestionOverview(
           currentSection: state.currentSection!,
           sectionQuestions: state.currentSectionQuestions,
-          currentQuestionIndex: state.currentQuestionIndex,
+          currentQuestionId: state.currentQuestion?.id ?? '',
           attemptedQuestionIds: state.attemptedQuestionIds,
           onQuestionTap: (localIndex) {
             final globalIndex = _getGlobalIndexForSectionQuestion(

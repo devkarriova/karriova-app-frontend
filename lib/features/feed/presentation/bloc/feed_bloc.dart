@@ -41,7 +41,6 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
     result.fold(
       (error) {
-        AppLogger.error('Failed to load feed: $error');
         emit(state.copyWith(
           status: FeedStatus.error,
           errorMessage: error,
@@ -72,7 +71,6 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
     result.fold(
       (error) {
-        AppLogger.error('Failed to refresh feed: $error');
         emit(state.copyWith(
           status: FeedStatus.error,
           errorMessage: error,
@@ -107,7 +105,6 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
     result.fold(
       (error) {
-        AppLogger.error('Failed to load more posts: $error');
         emit(state.copyWith(
           status: FeedStatus.error,
           errorMessage: error,
@@ -168,16 +165,13 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
     result.fold(
       (error) {
-        AppLogger.error('Failed to toggle like: $error');
         // Revert optimistic update on error
         emit(state.copyWith(
           posts: state.posts,
           errorMessage: error,
         ));
       },
-      (_) {
-        AppLogger.info('Post like toggled successfully');
-      },
+      (_) {},
     );
   }
 
@@ -190,7 +184,6 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
     result.fold(
       (error) {
-        AppLogger.error('Failed to share post: $error');
         emit(state.copyWith(errorMessage: error));
       },
       (_) {
@@ -232,7 +225,6 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
     result.fold(
       (error) {
-        AppLogger.error('Failed to delete post: $error');
         emit(state.copyWith(errorMessage: error));
       },
       (_) {
@@ -263,7 +255,6 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
       await createResult.fold(
         (error) async {
-          AppLogger.error('Failed to create post: $error');
           emit(state.copyWith(errorMessage: error));
         },
         (newPost) async {
@@ -338,7 +329,6 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
     result.fold(
       (error) {
-        AppLogger.error('Failed to fetch comments: $error');
         final updatedLoading = Map<String, bool>.from(state.commentsLoading);
         updatedLoading[event.postId] = false;
         emit(state.copyWith(
@@ -370,7 +360,6 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
     result.fold(
       (error) {
-        AppLogger.error('Failed to add comment: $error');
         emit(state.copyWith(errorMessage: error));
       },
       (newComment) {

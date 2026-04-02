@@ -1,33 +1,62 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/assessment_bloc.dart';
+import '../bloc/assessment_event.dart';
 
-/// Timer display component showing both overall test and section timers
+/// Two countdown bars. Clock icon + time rides the shrinking tip of each bar.
 class AssessmentTimers extends StatefulWidget {
   final Duration? remainingTestTime;
   final Duration? remainingSectionTime;
   final String? sectionName;
+  final int totalTestDurationMinutes;
+  final int sectionDurationMinutes;
 
   const AssessmentTimers({
     super.key,
     this.remainingTestTime,
     this.remainingSectionTime,
     this.sectionName,
+    this.totalTestDurationMinutes = 60,
+    this.sectionDurationMinutes = 15,
   });
 
   @override
   State<AssessmentTimers> createState() => _AssessmentTimersState();
 }
 
-class _AssessmentTimersState extends State<AssessmentTimers> {
+class _AssessmentTimersState extends State<AssessmentTimers>
+    with SingleTickerProviderStateMixin {
   Timer? _updateTimer;
+  late AnimationController _shakeController;
+  late Animation<double> _shakeAnimation;
 
   @override
   void initState() {
     super.initState();
-    // Update UI every second to show countdown
+
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
+    );
+    _shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: -5.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -5.0, end: 5.0), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 5.0, end: -5.0), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: -5.0, end: 5.0), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 5.0, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(parent: _shakeController, curve: Curves.easeInOut));
+
     _updateTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) {
-        setState(() {}); // Trigger rebuild to update timers
+      if (!mounted) return;
+      context.read<AssessmentBloc>().add(const AssessmentTimerTick());
+
+      final testCritical = widget.remainingTestTime != null &&
+          widget.remainingTestTime!.inSeconds < 120;
+      final sectionCritical = widget.remainingSectionTime != null &&
+          widget.remainingSectionTime!.inSeconds < 120;
+      if ((testCritical || sectionCritical) && !_shakeController.isAnimating) {
+        _shakeController.forward(from: 0);
       }
     });
   }
@@ -35,13 +64,30 @@ class _AssessmentTimersState extends State<AssessmentTimers> {
   @override
   void dispose() {
     _updateTimer?.cancel();
+    _shakeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final totalTestSeconds = widget.totalTestDurationMinutes * 60;
+    final totalSectionSeconds = widget.sectionDurationMinutes * 60;
+    final testProgress = widget.remainingTestTime != null
+        ? (widget.remainingTestTime!.inSeconds / totalTestSeconds)
+            .clamp(0.0, 1.0)
+        : 1.0;
+    final sectionProgress = widget.remainingSectionTime != null
+        ? (widget.remainingSectionTime!.inSeconds / totalSectionSeconds)
+            .clamp(0.0, 1.0)
+        : 1.0;
+
+    final testCritical = widget.remainingTestTime != null &&
+        widget.remainingTestTime!.inSeconds < 120;
+    final sectionCritical = widget.remainingSectionTime != null &&
+        widget.remainingSectionTime!.inSeconds < 120;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -52,32 +98,25 @@ class _AssessmentTimersState extends State<AssessmentTimers> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: _TimerDisplay(
-              icon: Icons.timer_outlined,
-              label: 'Total Time',
-              duration: widget.remainingTestTime,
-              isOverall: true,
-            ),
+          _TimerBar(
+            label: 'Total',
+            progress: testProgress,
+            duration: widget.remainingTestTime,
+            shakeAnimation: _shakeAnimation,
+            isCritical: testCritical,
+            clockIcon: Icons.timer_outlined,
           ),
-          Container(
-            width: 1,
-            height: 40,
-            color: Colors.grey.shade300,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-          ),
-          Expanded(
-            child: _TimerDisplay(
-              icon: Icons.timer,
-              label: widget.sectionName != null
-                  ? '${widget.sectionName} Time'
-                  : 'Section Time',
-              duration: widget.remainingSectionTime,
-              isOverall: false,
-            ),
+          const SizedBox(height: 10),
+          _TimerBar(
+            label: widget.sectionName ?? 'Section',
+            progress: sectionProgress,
+            duration: widget.remainingSectionTime,
+            shakeAnimation: _shakeAnimation,
+            isCritical: sectionCritical,
+            clockIcon: Icons.timer,
           ),
         ],
       ),
@@ -85,110 +124,157 @@ class _AssessmentTimersState extends State<AssessmentTimers> {
   }
 }
 
-/// Individual timer display widget
-class _TimerDisplay extends StatelessWidget {
-  final IconData icon;
+/// Bar where the clock+time chip rides the shrinking tip (moving rightleft).
+class _TimerBar extends StatelessWidget {
   final String label;
+  final double progress; // 1.0 = full time, 0.0 = expired
   final Duration? duration;
-  final bool isOverall;
+  final Animation<double> shakeAnimation;
+  final bool isCritical;
+  final IconData clockIcon;
 
-  const _TimerDisplay({
-    required this.icon,
+  const _TimerBar({
     required this.label,
+    required this.progress,
     required this.duration,
-    required this.isOverall,
+    required this.shakeAnimation,
+    required this.isCritical,
+    this.clockIcon = Icons.timer_outlined,
   });
+
+  Color _color() {
+    if (duration == null) return const Color(0xFF4CAF50);
+    final s = duration!.inSeconds;
+    if (s < 120) return const Color(0xFFF44336);
+    if (s < 300) return const Color(0xFFFFC107);
+    return const Color(0xFF4CAF50);
+  }
+
+  String _fmt(Duration d) {
+    final m = d.inMinutes.toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final timeString = duration != null
-        ? _formatDuration(duration!)
-        : '--:--';
-
-    final color = _getTimerColor(duration);
+    final color = _color();
+    final timeStr = duration != null ? _fmt(duration!) : '--:--';
+    const barH = 28.0;
+    const chipW = 82.0;
+    const radius = barH / 2;
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
-          icon,
-          color: color,
-          size: 24,
+        SizedBox(
+          width: 120,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade700,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              timeString,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final barWidth = constraints.maxWidth;
+              final fillW = (progress * barWidth).clamp(chipW, barWidth);
+              // Chip right-edge aligns with fill tip
+              final chipLeft = (fillW - chipW).clamp(0.0, barWidth - chipW);
+
+              return SizedBox(
+                height: barH,
+                child: Stack(
+                  children: [
+                    // Grey background track
+                    Container(
+                      height: barH,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(radius),
+                      ),
+                    ),
+                    // Colored fill (behind chip)
+                    Container(
+                      width: fillW,
+                      height: barH,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(radius),
+                      ),
+                    ),
+                    // Clock chip at fill tip
+                    Positioned(
+                      left: chipLeft,
+                      top: 0,
+                      child: AnimatedBuilder(
+                        animation: shakeAnimation,
+                        builder: (_, child) => Transform.translate(
+                          offset: Offset(
+                              isCritical ? shakeAnimation.value : 0.0, 0.0),
+                          child: child,
+                        ),
+                        child: Container(
+                          width: chipW,
+                          height: barH,
+                          decoration: BoxDecoration(
+                            color: color,
+                            borderRadius: BorderRadius.circular(radius),
+                            boxShadow: [
+                              BoxShadow(
+                                color: color.withOpacity(0.4),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(clockIcon,
+                                  color: Colors.white, size: 14),
+                              const SizedBox(width: 5),
+                              Text(
+                                timeStr,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ],
     );
   }
-
-  String _formatDuration(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-
-    if (hours > 0) {
-      return '${hours.toString().padLeft(2, '0')}:'
-          '${minutes.toString().padLeft(2, '0')}:'
-          '${seconds.toString().padLeft(2, '0')}';
-    } else {
-      return '${minutes.toString().padLeft(2, '0')}:'
-          '${seconds.toString().padLeft(2, '0')}';
-    }
-  }
-
-  Color _getTimerColor(Duration? duration) {
-    if (duration == null) {
-      return Colors.grey;
-    }
-
-    final totalSeconds = duration.inSeconds;
-
-    // Critical: < 2 minutes (120 seconds) = Red
-    if (totalSeconds < 120) {
-      return const Color(0xFFF44336); // Red
-    }
-
-    // Warning: 2-5 minutes (120-300 seconds) = Yellow/Amber
-    if (totalSeconds < 300) {
-      return const Color(0xFFFFC107); // Amber/Yellow
-    }
-
-    // Normal: > 5 minutes = Green
-    return const Color(0xFF4CAF50); // Green
-  }
 }
 
-/// Compact timer display for mobile/small screens
+/// Compact variant (mobile sidebar)
 class CompactAssessmentTimers extends StatefulWidget {
   final Duration? remainingTestTime;
   final Duration? remainingSectionTime;
+  final int totalTestDurationMinutes;
+  final int sectionDurationMinutes;
 
   const CompactAssessmentTimers({
     super.key,
     this.remainingTestTime,
     this.remainingSectionTime,
+    this.totalTestDurationMinutes = 60,
+    this.sectionDurationMinutes = 15,
   });
 
   @override
@@ -196,15 +282,33 @@ class CompactAssessmentTimers extends StatefulWidget {
       _CompactAssessmentTimersState();
 }
 
-class _CompactAssessmentTimersState extends State<CompactAssessmentTimers> {
+class _CompactAssessmentTimersState extends State<CompactAssessmentTimers>
+    with SingleTickerProviderStateMixin {
   Timer? _updateTimer;
+  late AnimationController _shakeController;
+  late Animation<double> _shakeAnimation;
 
   @override
   void initState() {
     super.initState();
+    _shakeController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 450));
+    _shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: -5.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -5.0, end: 5.0), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 5.0, end: -5.0), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: -5.0, end: 5.0), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 5.0, end: 0.0), weight: 1),
+    ]).animate(
+        CurvedAnimation(parent: _shakeController, curve: Curves.easeInOut));
+
     _updateTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) {
-        setState(() {});
+      if (!mounted) return;
+      context.read<AssessmentBloc>().add(const AssessmentTimerTick());
+      final critical = (widget.remainingTestTime?.inSeconds ?? 999) < 120 ||
+          (widget.remainingSectionTime?.inSeconds ?? 999) < 120;
+      if (critical && !_shakeController.isAnimating) {
+        _shakeController.forward(from: 0);
       }
     });
   }
@@ -212,105 +316,51 @@ class _CompactAssessmentTimersState extends State<CompactAssessmentTimers> {
   @override
   void dispose() {
     _updateTimer?.cancel();
+    _shakeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final totalTestSeconds = widget.totalTestDurationMinutes * 60;
+    final totalSectionSeconds = widget.sectionDurationMinutes * 60;
+    final testProgress = widget.remainingTestTime != null
+        ? (widget.remainingTestTime!.inSeconds / totalTestSeconds)
+            .clamp(0.0, 1.0)
+        : 1.0;
+    final sectionProgress = widget.remainingSectionTime != null
+        ? (widget.remainingSectionTime!.inSeconds / totalSectionSeconds)
+            .clamp(0.0, 1.0)
+        : 1.0;
+    final testCritical = (widget.remainingTestTime?.inSeconds ?? 999) < 120;
+    final sectionCritical =
+        (widget.remainingSectionTime?.inSeconds ?? 999) < 120;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: Colors.white,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _CompactTimer(
-            icon: Icons.timer_outlined,
-            duration: widget.remainingTestTime,
+          _TimerBar(
             label: 'Total',
+            progress: testProgress,
+            duration: widget.remainingTestTime,
+            shakeAnimation: _shakeAnimation,
+            isCritical: testCritical,
+            clockIcon: Icons.timer_outlined,
           ),
-          _CompactTimer(
-            icon: Icons.timer,
-            duration: widget.remainingSectionTime,
+          const SizedBox(height: 10),
+          _TimerBar(
             label: 'Section',
+            progress: sectionProgress,
+            duration: widget.remainingSectionTime,
+            shakeAnimation: _shakeAnimation,
+            isCritical: sectionCritical,
+            clockIcon: Icons.timer,
           ),
         ],
       ),
     );
-  }
-}
-
-class _CompactTimer extends StatelessWidget {
-  final IconData icon;
-  final Duration? duration;
-  final String label;
-
-  const _CompactTimer({
-    required this.icon,
-    required this.duration,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final timeString = duration != null
-        ? _formatDuration(duration!)
-        : '--:--';
-
-    final color = _getTimerColor(duration);
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 18),
-        const SizedBox(width: 4),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.grey.shade600,
-              ),
-            ),
-            Text(
-              timeString,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-    return '${minutes.toString().padLeft(2, '0')}:'
-        '${seconds.toString().padLeft(2, '0')}';
-  }
-
-  Color _getTimerColor(Duration? duration) {
-    if (duration == null) return Colors.grey;
-
-    final totalSeconds = duration.inSeconds;
-
-    if (totalSeconds < 120) return const Color(0xFFF44336); // Red
-    if (totalSeconds < 300) return const Color(0xFFFFC107); // Amber
-    return const Color(0xFF4CAF50); // Green
   }
 }

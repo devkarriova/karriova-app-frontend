@@ -6,7 +6,7 @@ import 'question_indicator.dart';
 class QuestionOverviewSidebar extends StatelessWidget {
   final SectionModel currentSection;
   final List<QuestionModel> sectionQuestions;
-  final int currentQuestionIndex; // Global question index
+  final String currentQuestionId;
   final Set<String> attemptedQuestionIds;
   final Function(int) onQuestionTap;
   final VoidCallback? onNextSection;
@@ -17,7 +17,7 @@ class QuestionOverviewSidebar extends StatelessWidget {
     super.key,
     required this.currentSection,
     required this.sectionQuestions,
-    required this.currentQuestionIndex,
+    required this.currentQuestionId,
     required this.attemptedQuestionIds,
     required this.onQuestionTap,
     this.onNextSection,
@@ -108,8 +108,7 @@ class QuestionOverviewSidebar extends StatelessWidget {
         sectionQuestions.length,
         (index) {
           final question = sectionQuestions[index];
-          final globalIndex = _getGlobalQuestionIndex(question);
-          final isCurrentQuestion = globalIndex == currentQuestionIndex;
+          final isCurrentQuestion = question.id == currentQuestionId;
           final isAttempted = attemptedQuestionIds.contains(question.id);
 
           final state = isCurrentQuestion
@@ -121,7 +120,7 @@ class QuestionOverviewSidebar extends StatelessWidget {
           return PulsingQuestionIndicator(
             questionNumber: index + 1,
             state: state,
-            onTap: () => onQuestionTap(globalIndex),
+            onTap: () => onQuestionTap(index),
             isEnabled: true,
           );
         },
@@ -212,19 +211,13 @@ class QuestionOverviewSidebar extends StatelessWidget {
     );
   }
 
-  int _getGlobalQuestionIndex(QuestionModel question) {
-    // This should be passed from parent or calculated based on all questions
-    // For now, returning a placeholder
-    // In real implementation, parent should provide this mapping
-    return currentQuestionIndex; // TODO: Fix this logic
-  }
 }
 
 /// Compact sidebar for mobile (drawer or bottom sheet)
 class CompactQuestionOverview extends StatelessWidget {
   final SectionModel currentSection;
   final List<QuestionModel> sectionQuestions;
-  final int currentQuestionIndex;
+  final String currentQuestionId;
   final Set<String> attemptedQuestionIds;
   final Function(int) onQuestionTap;
   final VoidCallback? onNextSection;
@@ -235,7 +228,7 @@ class CompactQuestionOverview extends StatelessWidget {
     super.key,
     required this.currentSection,
     required this.sectionQuestions,
-    required this.currentQuestionIndex,
+    required this.currentQuestionId,
     required this.attemptedQuestionIds,
     required this.onQuestionTap,
     this.onNextSection,
@@ -271,7 +264,7 @@ class CompactQuestionOverview extends StatelessWidget {
                   sectionQuestions.length,
                   (index) {
                     final question = sectionQuestions[index];
-                    final isCurrentQuestion = index == currentQuestionIndex;
+                    final isCurrentQuestion = question.id == currentQuestionId;
                     final isAttempted =
                         attemptedQuestionIds.contains(question.id);
 

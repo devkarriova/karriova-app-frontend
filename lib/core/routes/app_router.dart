@@ -30,6 +30,8 @@ import '../../features/settings/presentation/pages/help_center_page.dart';
 import '../../features/settings/presentation/pages/about_page.dart';
 import '../../features/settings/presentation/pages/privacy_policy_page.dart';
 import '../../features/settings/presentation/pages/terms_of_service_page.dart';
+import '../../features/opportunities/presentation/pages/internships_page.dart';
+import '../../features/opportunities/presentation/pages/events_page.dart';
 import '../di/injection.dart';
 
 /// Listenable that notifies when auth state changes - triggers GoRouter refresh
@@ -69,6 +71,8 @@ class AppRouter {
   static const String profile = '/profile';
   static const String chat = '/chat';
   static const String search = '/search';
+  static const String internships = '/internships';
+  static const String events = '/events';
   static const String notifications = '/notifications';
   static const String admin = '/admin';
   static const String adminEvents = '/admin/events';
@@ -79,10 +83,10 @@ class AppRouter {
   static const String profileSetup = '/profile-setup';
   static const String assessment = '/assessment';
   static const String assessmentResults = '/assessment/results';
-  
+
   // Chat routes
   static const String chatConversation = '/chat/conversation';
-  
+
   // Settings routes
   static const String settings = '/settings';
   static const String settingsAccount = '/settings/account';
@@ -104,9 +108,7 @@ class AppRouter {
   // Auth change notifier for reactive route refresh
   static AuthChangeNotifier? _authNotifier;
   static AuthChangeNotifier get _authChangeNotifier {
-    if (_authNotifier == null) {
-      _authNotifier = AuthChangeNotifier(getIt<AuthBloc>());
-    }
+    _authNotifier ??= AuthChangeNotifier(getIt<AuthBloc>());
     return _authNotifier!;
   }
 
@@ -118,8 +120,8 @@ class AppRouter {
       final authState = authBloc.state;
       final isAuthenticated = authState.status == AuthStatus.authenticated;
       final currentPath = state.uri.path;
-      final isPublicRoute = _publicRoutes.contains(currentPath) ||
-                            currentPath.isEmpty;
+      final isPublicRoute =
+          _publicRoutes.contains(currentPath) || currentPath.isEmpty;
 
       // If NOT authenticated and trying to access protected route,
       // redirect to auth page
@@ -226,7 +228,8 @@ class AppRouter {
         path: '/chat/conversation',
         name: 'chat-conversation',
         pageBuilder: (context, state) {
-          final conversationId = state.uri.queryParameters['conversationId'] ?? '';
+          final conversationId =
+              state.uri.queryParameters['conversationId'] ?? '';
           final otherUserId = state.uri.queryParameters['otherUserId'] ?? '';
           return MaterialPage(
             child: ChatConversationPage(
@@ -244,6 +247,26 @@ class AppRouter {
         pageBuilder: (context, state) {
           return const MaterialPage(
             child: SearchPage(),
+          );
+        },
+      ),
+
+      GoRoute(
+        path: '/internships',
+        name: 'internships',
+        pageBuilder: (context, state) {
+          return const MaterialPage(
+            child: InternshipsPage(),
+          );
+        },
+      ),
+
+      GoRoute(
+        path: '/events',
+        name: 'events',
+        pageBuilder: (context, state) {
+          return const MaterialPage(
+            child: EventsPage(),
           );
         },
       ),
@@ -345,7 +368,9 @@ class AppRouter {
             child: AssessmentPage(
               onComplete: () {
                 // Mark assessment as completed in auth state
-                context.read<AuthBloc>().add(const AuthSetAssessmentCompleted());
+                context
+                    .read<AuthBloc>()
+                    .add(const AuthSetAssessmentCompleted());
                 // Navigate to feed after assessment completion
                 GoRouter.of(context).go(AppRouter.feed);
               },
@@ -366,7 +391,9 @@ class AppRouter {
               result: result!,
               onContinue: () {
                 // Mark assessment as completed in auth state
-                context.read<AuthBloc>().add(const AuthSetAssessmentCompleted());
+                context
+                    .read<AuthBloc>()
+                    .add(const AuthSetAssessmentCompleted());
                 // Navigate to feed
                 GoRouter.of(context).go(AppRouter.feed);
               },

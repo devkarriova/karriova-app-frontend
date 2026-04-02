@@ -32,13 +32,20 @@ class NotificationWebSocketService {
 
   NotificationWebSocketService({required this.baseUrl, required this.storage});
 
+  void _safeWarn(String message) {
+    try {
+      _logger.w(message);
+    } catch (_) {
+      // Do not let logger formatter issues crash realtime flows.
+    }
+  }
+
   /// Check if WebSocket is connected
   bool get isConnected => _isConnected;
 
   /// Connect to the WebSocket server
   Future<void> connect() async {
     if (_isConnected) {
-      _logger.i('Notification WebSocket already connected');
       return;
     }
 
@@ -46,7 +53,7 @@ class NotificationWebSocketService {
       // Get the auth token from secure storage
       _authToken = await storage.read(key: 'access_token');
       if (_authToken == null || _authToken!.isEmpty) {
-        _logger.w('No auth token found for notification WebSocket connection, will retry...');
+        _safeWarn('No auth token found for notification WebSocket connection, will retry...');
         // Token might not be saved yet, schedule retry
         _scheduleReconnect();
         return;
@@ -68,13 +75,9 @@ class NotificationWebSocketService {
       // Note: baseUrl already includes /api/v1, so we only append /notifications/ws
       final uri = Uri.parse('$wsUrl/notifications/ws?token=$_authToken');
 
-      _logger.i('Connecting to notification WebSocket: ${uri.replace(queryParameters: {})}'); // Log without token
-
       _channel = WebSocketChannel.connect(uri);
 
       await _channel!.ready;
-
-      _logger.i('Notification WebSocket connected successfully');
       _reconnectAttempts = 0;
       _connectionController.add(true);
 
@@ -100,7 +103,6 @@ class NotificationWebSocketService {
   void _handleMessage(dynamic data) {
     try {
       final jsonData = json.decode(data as String);
-      _logger.d('Notification WebSocket message received: $jsonData');
 
       // Parse the notification
       final notification = NotificationModel.fromJson(jsonData);
@@ -117,7 +119,7 @@ class NotificationWebSocketService {
   }
 
   void _handleDisconnect() {
-    _logger.w('Notification WebSocket disconnected');
+    _safeWarn('Notification WebSocket disconnected');
     _isConnected = false;
     _connectionController.add(false);
     _scheduleReconnect();
@@ -125,16 +127,14 @@ class NotificationWebSocketService {
 
   void _scheduleReconnect() {
     if (_reconnectAttempts >= _maxReconnectAttempts) {
-      _logger.w('Max notification WebSocket reconnection attempts reached');
+      _safeWarn('Max notification WebSocket reconnection attempts reached');
       return;
     }
 
     _reconnectAttempts++;
-    _logger.i('Scheduling notification WebSocket reconnection (attempt $_reconnectAttempts/$_maxReconnectAttempts)');
 
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(_reconnectDelay, () {
-      _logger.i('Attempting to reconnect notification WebSocket...');
       connect();
     });
   }
@@ -154,7 +154,6 @@ class NotificationWebSocketService {
 
   /// Disconnect from WebSocket
   void disconnect() {
-    _logger.i('Disconnecting from notification WebSocket');
     _isConnected = false;
     _reconnectAttempts = 0; // Reset for next connection
     _reconnectTimer?.cancel();

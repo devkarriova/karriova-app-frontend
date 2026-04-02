@@ -67,15 +67,20 @@ class _AssessmentGateState extends State<AssessmentGate> {
         listener: (context, state) {
           if (!_hasCheckedStatus) {
             _hasCheckedStatus = true;
-            
-            if (state.hasCompletedAssessment) {
-              setState(() {
-                _isAssessmentComplete = true;
-              });
-            } else {
-              // Show assessment modal for first-time users
-              _showAssessmentModal();
-            }
+
+            // TODO: FOR TESTING - Always show assessment modal
+            // Comment out the completion check to always display assessment
+            // if (state.hasCompletedAssessment) {
+            //   setState(() {
+            //     _isAssessmentComplete = true;
+            //   });
+            // } else {
+            //   // Show assessment modal for first-time users
+            //   _showAssessmentModal();
+            // }
+
+            // TESTING MODE: Always show assessment
+            _showAssessmentModal();
           }
         },
         child: _isAssessmentComplete

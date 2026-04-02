@@ -35,6 +35,9 @@ class AssessmentState extends Equatable {
   // NEW - Section completion status
   final Map<String, bool> sectionCompletionStatus; // sectionId -> isComplete
 
+  // Incremented each timer tick so Equatable always sees a changed state
+  final int timerTick;
+
   const AssessmentState({
     this.status = AssessmentStatus.initial,
     this.assessment,
@@ -49,6 +52,7 @@ class AssessmentState extends Equatable {
     this.sectionStartTime,
     this.totalTestDurationMinutes = 60, // Default 60 minutes
     this.sectionCompletionStatus = const {},
+    this.timerTick = 0,
   });
 
   /// Get total number of questions
@@ -96,6 +100,15 @@ class AssessmentState extends Equatable {
   SectionModel? get currentSection {
     if (assessment == null || currentQuestion == null) return null;
     for (final section in assessment!.sections) {
+      // Check parameters (new KIT structure)
+      if (section.parameters != null) {
+        for (final parameter in section.parameters!) {
+          if (parameter.questions.any((q) => q.id == currentQuestion!.id)) {
+            return section;
+          }
+        }
+      }
+      // Check dimensions (legacy structure)
       for (final dimension in section.dimensions) {
         if (dimension.questions.any((q) => q.id == currentQuestion!.id)) {
           return section;
@@ -213,6 +226,7 @@ class AssessmentState extends Equatable {
     DateTime? sectionStartTime,
     int? totalTestDurationMinutes,
     Map<String, bool>? sectionCompletionStatus,
+    int? timerTick,
   }) {
     return AssessmentState(
       status: status ?? this.status,
@@ -231,6 +245,7 @@ class AssessmentState extends Equatable {
           totalTestDurationMinutes ?? this.totalTestDurationMinutes,
       sectionCompletionStatus:
           sectionCompletionStatus ?? this.sectionCompletionStatus,
+      timerTick: timerTick ?? this.timerTick,
     );
   }
 
@@ -249,5 +264,6 @@ class AssessmentState extends Equatable {
         sectionStartTime,
         totalTestDurationMinutes,
         sectionCompletionStatus,
+        timerTick,
       ];
 }
