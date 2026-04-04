@@ -257,6 +257,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
                   style: AppTypography.caption.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                 ),
               ],
@@ -271,6 +272,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
               blueprint.careerCategory!,
               style: AppTypography.body.copyWith(
                 color: AppColors.textSecondary,
+                fontSize: 17,
               ),
             ),
 
@@ -304,6 +306,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
           value,
           style: AppTypography.body.copyWith(
             fontWeight: FontWeight.w600,
+            fontSize: 17,
           ),
         ),
       ],
@@ -333,6 +336,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
                     section.title,
                     style: AppTypography.body.copyWith(
                       fontWeight: FontWeight.w600,
+                      fontSize: 19,
                     ),
                   ),
                   if (section.subtitle != null)
@@ -340,6 +344,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
                       section.subtitle!,
                       style: AppTypography.caption.copyWith(
                         color: AppColors.textSecondary,
+                        fontSize: 14,
                       ),
                     ),
                 ],
@@ -362,6 +367,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
                   section.description,
                   style: AppTypography.body.copyWith(
                     color: AppColors.textSecondary,
+                    fontSize: 16,
                   ),
                 ),
 
@@ -408,6 +414,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
                     section.title,
                     style: AppTypography.body.copyWith(
                       fontWeight: FontWeight.w600,
+                      fontSize: 18,
                     ),
                   ),
                   if (section.subtitle != null)
@@ -415,6 +422,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
                       section.subtitle!,
                       style: AppTypography.caption.copyWith(
                         color: AppColors.textSecondary,
+                        fontSize: 14,
                       ),
                     ),
                 ],
@@ -443,6 +451,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
               card.title,
               style: AppTypography.body.copyWith(
                 fontWeight: FontWeight.w600,
+                fontSize: 16,
               ),
             ),
           if (card.description.isNotEmpty) ...[
@@ -451,6 +460,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
               card.description,
               style: AppTypography.body.copyWith(
                 color: AppColors.textSecondary,
+                fontSize: 15,
               ),
             ),
           ],
@@ -477,6 +487,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
               item,
               style: AppTypography.body.copyWith(
                 color: AppColors.textSecondary,
+                fontSize: 15,
               ),
             ),
           ),
@@ -518,6 +529,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
                 style: AppTypography.body.copyWith(
                   fontWeight: FontWeight.w600,
                   color: _severityColor(),
+                  fontSize: 15,
                 ),
               ),
             ],
@@ -527,6 +539,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
             warning.description,
             style: AppTypography.body.copyWith(
               color: AppColors.textSecondary,
+              fontSize: 15,
             ),
           ),
         ],

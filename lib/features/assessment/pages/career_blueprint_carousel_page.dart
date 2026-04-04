@@ -200,7 +200,7 @@ class _CareerBlueprintCarouselPageState
                 children: [
                   Text(
                     'Explore Your Paths',
-                    style: AppTypography.heading2,
+                    style: AppTypography.heading2.copyWith(fontSize: 32),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -208,6 +208,7 @@ class _CareerBlueprintCarouselPageState
                     textAlign: TextAlign.center,
                     style: AppTypography.body.copyWith(
                       color: AppColors.textSecondary,
+                      fontSize: 17,
                     ),
                   ),
                 ],
@@ -373,6 +374,7 @@ class _BlueprintCard extends StatelessWidget {
                     style: AppTypography.caption.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
                   ),
                 ],
@@ -384,7 +386,7 @@ class _BlueprintCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 blueprint.careerName,
-                style: AppTypography.heading3,
+                style: AppTypography.heading3.copyWith(fontSize: 26),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -400,6 +402,7 @@ class _BlueprintCard extends StatelessWidget {
                   blueprint.careerCategory!,
                   style: AppTypography.body.copyWith(
                     color: AppColors.textSecondary,
+                    fontSize: 16,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -428,6 +431,7 @@ class _BlueprintCard extends StatelessWidget {
                         style: AppTypography.caption.copyWith(
                           color: _getDifficultyColor(),
                           fontWeight: FontWeight.w500,
+                          fontSize: 13,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -449,6 +453,7 @@ class _BlueprintCard extends StatelessWidget {
                         style: AppTypography.caption.copyWith(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w500,
+                          fontSize: 13,
                         ),
                         textAlign: TextAlign.center,
                       ),
