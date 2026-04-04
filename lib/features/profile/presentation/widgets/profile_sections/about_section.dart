@@ -225,6 +225,7 @@ class AboutSection extends StatelessWidget {
   }
 
   void _showEditBioDialog(BuildContext context, String currentBio) {
+    final profileBloc = context.read<ProfileBloc>();
     final TextEditingController bioController = TextEditingController(text: currentBio);
 
     showDialog(
@@ -248,7 +249,7 @@ class AboutSection extends StatelessWidget {
           FilledButton(
             onPressed: () {
               final newBio = bioController.text.trim();
-              context.read<ProfileBloc>().add(
+              profileBloc.add(
                 ProfilePersonalDetailsUpdated(bio: newBio),
               );
               Navigator.pop(dialogContext);
@@ -268,6 +269,7 @@ class AboutSection extends StatelessWidget {
     String currentStream,
     String currentGender,
   ) {
+    final profileBloc = context.read<ProfileBloc>();
     final boardController = TextEditingController(text: currentBoard);
     final classController = TextEditingController(text: currentClass);
     final schoolController = TextEditingController(text: currentSchool);
@@ -331,7 +333,7 @@ class AboutSection extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () {
-              context.read<ProfileBloc>().add(
+              profileBloc.add(
                 ProfileOnboardingUpdated(
                   board: boardController.text.trim(),
                   classGrade: classController.text.trim(),
@@ -356,6 +358,7 @@ class AboutSection extends StatelessWidget {
   }
 
   void _showEditInterestsDialog(BuildContext context, List<String> currentInterests) {
+    final profileBloc = context.read<ProfileBloc>();
     final interestsController = TextEditingController(text: currentInterests.join(', '));
 
     showDialog(
@@ -384,7 +387,7 @@ class AboutSection extends StatelessWidget {
                   .where((e) => e.isNotEmpty)
                   .toList();
 
-              context.read<ProfileBloc>().add(
+              profileBloc.add(
                 ProfileOnboardingUpdated(generalInterests: interests),
               );
               Navigator.pop(dialogContext);
@@ -401,7 +404,26 @@ class AboutSection extends StatelessWidget {
     String currentStatus,
     String currentGoal,
   ) {
-    String selectedStatus = currentStatus.isNotEmpty ? currentStatus : 'Sure';
+    final profileBloc = context.read<ProfileBloc>();
+    const statusOptions = [
+      'Sure about my career path',
+      'Unsure between options',
+      'Need help deciding',
+    ];
+
+    String normalizeStatus(String raw) {
+      final value = raw.trim().toLowerCase().replaceAll('.', '');
+      if (value.contains('unsure between')) return 'Unsure between options';
+      if (value == 'unsure' || value.contains('unsure')) return 'Unsure between options';
+      if (value == 'need help' || value.contains('need help')) return 'Need help deciding';
+      if (value == 'sure' || value.contains('sure')) return 'Sure about my career path';
+      return '';
+    }
+
+    String selectedStatus = normalizeStatus(currentStatus);
+    if (!statusOptions.contains(selectedStatus)) {
+      selectedStatus = statusOptions.first;
+    }
     final goalController = TextEditingController(text: currentGoal);
 
     showDialog(
@@ -417,15 +439,14 @@ class AboutSection extends StatelessWidget {
                 const Text('Status:', style: TextStyle(fontWeight: FontWeight.w500)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: selectedStatus,
+                  value: statusOptions.contains(selectedStatus) ? selectedStatus : null,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'Sure', child: Text('Sure about my goals')),
-                    DropdownMenuItem(value: 'Unsure', child: Text('Unsure about my goals')),
-                    DropdownMenuItem(value: 'Need help', child: Text('Need help deciding')),
-                  ],
+                  items: statusOptions
+                      .toSet()
+                      .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                      .toList(),
                   onChanged: (value) {
                     if (value != null) {
                       setState(() => selectedStatus = value);
@@ -453,7 +474,7 @@ class AboutSection extends StatelessWidget {
             ),
             FilledButton(
               onPressed: () {
-                context.read<ProfileBloc>().add(
+                profileBloc.add(
                   ProfileOnboardingUpdated(
                     careerGoalStatus: selectedStatus,
                     careerGoalText: goalController.text.trim(),

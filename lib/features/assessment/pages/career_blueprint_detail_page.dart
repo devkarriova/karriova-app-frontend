@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:karriova_app/core/theme/app_colors.dart';
+import 'package:karriova_app/core/constants/app_colors.dart';
+import 'package:karriova_app/core/constants/app_dimensions.dart';
 import 'package:karriova_app/core/theme/app_typography.dart';
+import 'package:karriova_app/core/config/app_config.dart';
+import 'package:karriova_app/core/di/injection.dart';
 import 'package:karriova_app/features/assessment/models/career_blueprint_model.dart';
 import 'package:karriova_app/features/assessment/services/blueprint_api_service.dart';
 import 'package:karriova_app/features/assessment/widgets/blueprint_charts_widget.dart';
@@ -39,8 +42,8 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
   void initState() {
     super.initState();
     // Initialize API service
-    final dio = widget.dio ?? Dio();
-    final baseUrl = widget.apiBaseUrl ?? 'http://localhost:8080';
+    final dio = widget.dio ?? getIt<Dio>();
+    final baseUrl = widget.apiBaseUrl ?? AppConfig.apiBaseUrl;
     _apiService = BlueprintApiService(dio: dio, baseUrl: baseUrl);
     
     _loadBlueprint();
@@ -250,7 +253,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
                 const Icon(Icons.star, size: 16, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Text(
-                  '${(blueprint.fitScore * 100).toStringAsFixed(0)}% Match',
+                  '${blueprint.fitScore.toStringAsFixed(1)} Match',
                   style: AppTypography.caption.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w600,
@@ -499,7 +502,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: _severityColor().withOpacity(0.1),
-        borderLeft: BorderSide(color: _severityColor(), width: 4),
+        border: Border(left: BorderSide(color: _severityColor(), width: 4)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(

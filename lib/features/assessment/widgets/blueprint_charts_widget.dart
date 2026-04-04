@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:karriova_app/core/theme/app_colors.dart';
+import 'package:karriova_app/core/constants/app_colors.dart';
 import 'package:karriova_app/core/theme/app_typography.dart';
 import 'package:karriova_app/features/assessment/models/career_blueprint_model.dart';
 

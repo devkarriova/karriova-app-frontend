@@ -875,6 +875,10 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     required IconData icon,
     String hint = 'Select an option',
   }) {
+    final uniqueItems = items.toSet().toList();
+    final normalizedValue = value?.trim();
+    final selectedValue = uniqueItems.contains(normalizedValue) ? normalizedValue : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -888,7 +892,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: items.contains(value) ? value : null,
+          value: selectedValue,
           hint: Text(hint),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: AppColors.textSecondary),
@@ -911,10 +915,10 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               vertical: 14,
             ),
           ),
-          items: items.map((item) {
+          items: uniqueItems.map((item) {
             return DropdownMenuItem(value: item, child: Text(item));
           }).toList(),
-          onChanged: items.isNotEmpty ? onChanged : null,
+          onChanged: uniqueItems.isNotEmpty ? onChanged : null,
         ),
       ],
     );

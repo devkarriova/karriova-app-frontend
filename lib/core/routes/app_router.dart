@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 import '../../features/auth/presentation/pages/auth_page.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_event.dart';
@@ -20,7 +21,10 @@ import '../../features/admin/presentation/pages/admin_reminders_page.dart';
 import '../../features/admin/presentation/pages/admin_moderation_page.dart';
 import '../../features/assessment/presentation/pages/assessment_page.dart';
 import '../../features/assessment/presentation/bloc/assessment_bloc.dart';
+import '../../features/assessment/pages/career_blueprint_carousel_page.dart';
+import '../../features/assessment/pages/career_blueprint_detail_page.dart';
 import '../../features/profile/presentation/pages/profile_setup_page.dart';
+import '../../features/assessment/pages/career_roadmap_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/settings/presentation/pages/account_settings_page.dart';
 import '../../features/settings/presentation/pages/notification_settings_page.dart';
@@ -83,6 +87,9 @@ class AppRouter {
   static const String profileSetup = '/profile-setup';
   static const String assessment = '/assessment';
   static const String assessmentResults = '/assessment/results';
+  static const String careerBlueprintCarousel = '/career-blueprint/carousel/:attemptId';
+  static const String careerBlueprintDetail = '/career-blueprint/detail/:blueprintId';
+  static const String careerRoadmap = '/career-roadmap';
 
   // Chat routes
   static const String chatConversation = '/chat/conversation';
@@ -394,14 +401,68 @@ class AppRouter {
                 context
                     .read<AuthBloc>()
                     .add(const AuthSetAssessmentCompleted());
-                // Navigate to feed
-                GoRouter.of(context).go(AppRouter.feed);
+                // Navigate to blueprint carousel
+                final attemptId = state.uri.queryParameters['attemptId'];
+                if (attemptId != null) {
+                  GoRouter.of(context)
+                      .go(AppRouter.careerBlueprintCarousel.replaceFirst(':attemptId', attemptId));
+                } else {
+                  GoRouter.of(context).go(AppRouter.feed);
+                }
               },
             ),
           );
         },
       ),
 
+      // Career Blueprint Carousel (select from 3 recommended careers)
+      GoRoute(
+        path: '/career-blueprint/carousel/:attemptId',
+        name: 'career-blueprint-carousel',
+        pageBuilder: (context, state) {
+          final attemptId = state.pathParameters['attemptId'] ?? '';
+          return MaterialPage(
+            child: CareerBlueprintCarouselPage(
+              attemptId: attemptId,
+            ),
+          );
+        },
+      ),
+
+      // Career Blueprint Detail (full career roadmap view)
+      GoRoute(
+        path: '/career-blueprint/detail/:blueprintId',
+        name: 'career-blueprint-detail',
+        pageBuilder: (context, state) {
+          final blueprintId = state.pathParameters['blueprintId'] ?? '';
+          final extraData = state.extra as Map<String, dynamic>? ?? {};
+          final careerName = extraData['careerName'] as String? ?? '';
+          final attemptId = extraData['attemptId'] as String? ?? '';
+          final dio = extraData['dio'] as Dio?;
+          final apiBaseUrl = extraData['apiBaseUrl'] as String?;
+          
+          return MaterialPage(
+            child: CareerBlueprintDetailPage(
+              blueprintId: blueprintId,
+              careerName: careerName,
+              attemptId: attemptId,
+              dio: dio,
+              apiBaseUrl: apiBaseUrl,
+            ),
+          );
+        },
+      ),
+
+        // Career Roadmap (career portal - entry point)
+        GoRoute(
+          path: '/career-roadmap',
+          name: 'career-roadmap',
+          pageBuilder: (context, state) {
+            return const MaterialPage(
+              child: CareerRoadmapPage(),
+            );
+          },
+        ),
       // Settings Page
       GoRoute(
         path: '/settings',

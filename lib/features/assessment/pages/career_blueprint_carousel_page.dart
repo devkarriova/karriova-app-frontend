@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:karriova_app/core/theme/app_colors.dart';
+import 'package:go_router/go_router.dart';
+import 'package:karriova_app/core/constants/app_colors.dart';
+import 'package:karriova_app/core/constants/app_dimensions.dart';
 import 'package:karriova_app/core/theme/app_typography.dart';
+import 'package:karriova_app/core/routes/app_router.dart';
+import 'package:karriova_app/core/config/app_config.dart';
+import 'package:karriova_app/core/di/injection.dart';
 import 'package:karriova_app/features/assessment/models/career_blueprint_model.dart';
 import 'package:karriova_app/features/assessment/services/blueprint_api_service.dart';
 import 'career_blueprint_detail_page.dart';
@@ -28,11 +33,6 @@ class CareerBlueprintCarouselPage extends StatefulWidget {
       _CareerBlueprintCarouselPageState();
 }
 
-  @override
-  _CareerBlueprintCarouselPageState createState() =>
-      _CareerBlueprintCarouselPageState();
-}
-
 class _CareerBlueprintCarouselPageState
     extends State<CareerBlueprintCarouselPage> {
   late PageController _pageController;
@@ -48,8 +48,8 @@ class _CareerBlueprintCarouselPageState
     _pageController = PageController(initialPage: 0, viewportFraction: 0.9);
     
     // Initialize API service
-    final dio = widget.dio ?? Dio();
-    final baseUrl = widget.apiBaseUrl ?? 'http://localhost:8080';
+    final dio = widget.dio ?? getIt<Dio>();
+    final baseUrl = widget.apiBaseUrl ?? AppConfig.apiBaseUrl;
     _apiService = BlueprintApiService(dio: dio, baseUrl: baseUrl);
     
     // Load data
@@ -72,10 +72,26 @@ class _CareerBlueprintCarouselPageState
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } on DioException catch (e) {
+      var message = 'Unable to load your career roadmap right now.';
+      final status = e.response?.statusCode;
+
+      if (status == 401) {
+        message = 'Your session has expired. Please sign in again.';
+      } else if (status == 404) {
+        message = 'No career blueprints found yet. Complete KIT and generate your roadmap first.';
+      } else if (status == 500) {
+        message = 'Server error while loading roadmap. Please try again shortly.';
+      }
+
       setState(() {
         _isLoading = false;
-        _errorMessage = e.toString();
+        _errorMessage = message;
+      });
+    } catch (_) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Unable to load your career roadmap right now.';
       });
     }
   }
@@ -87,18 +103,18 @@ class _CareerBlueprintCarouselPageState
   }
 
   void _selectBlueprint(CarouselBlueprint blueprint) {
-    // Navigate to detail page
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CareerBlueprintDetailPage(
-          blueprintId: blueprint.id,
-          careerName: blueprint.careerName,
-          attemptId: widget.attemptId,
-          dio: widget.dio,
-          apiBaseUrl: widget.apiBaseUrl,
-        ),
-      ),
+    final effectiveAttemptId = _carouselData?.assessmentAttemptId ?? widget.attemptId;
+
+    // Navigate to detail page via GoRouter
+    GoRouter.of(context).push(
+      AppRouter.careerBlueprintDetail
+          .replaceFirst(':blueprintId', blueprint.id),
+      extra: {
+        'careerName': blueprint.careerName,
+        'attemptId': effectiveAttemptId,
+        'dio': widget.dio,
+        'apiBaseUrl': widget.apiBaseUrl,
+      },
     ).then((_) {
       // Refresh after selection
       widget.onBlueprintSelected?.call();
@@ -281,7 +297,7 @@ class _CareerBlueprintCarouselPageState
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '${(_carouselData!.blueprints.first.fitScore * 100).toStringAsFixed(0)}%',
+                          '${_carouselData!.blueprints.first.fitScore.toStringAsFixed(1)}',
                           style: AppTypography.heading3.copyWith(
                             color: AppColors.primary,
                           ),
@@ -353,7 +369,7 @@ class _BlueprintCard extends StatelessWidget {
                   const Icon(Icons.check_circle, size: 16, color: AppColors.primary),
                   const SizedBox(width: 8),
                   Text(
-                    'Match: ${(blueprint.fitScore * 100).toStringAsFixed(0)}%',
+                    'Match: ${blueprint.fitScore.toStringAsFixed(1)}',
                     style: AppTypography.caption.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,

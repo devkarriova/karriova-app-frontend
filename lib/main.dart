@@ -17,6 +17,9 @@ import 'features/follow/presentation/bloc/follow_bloc.dart';
 import 'features/follow/presentation/bloc/follow_event.dart';
 import 'features/notifications/presentation/bloc/notification_bloc.dart';
 import 'features/notifications/presentation/bloc/notification_event.dart';
+import 'features/notifications/presentation/bloc/notification_state.dart';
+import 'features/chat/presentation/bloc/chat_bloc.dart';
+import 'features/chat/presentation/bloc/chat_state.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,6 +46,8 @@ class _KarriovaAppState extends State<KarriovaApp> {
   late final InactivityService _inactivityService;
   late final AuthBloc _authBloc;
   late final ThemeCubit _themeCubit;
+  late final ChatBloc _chatBloc;
+  late final NotificationBloc _notificationBloc;
 
   @override
   void initState() {
@@ -50,6 +55,8 @@ class _KarriovaAppState extends State<KarriovaApp> {
     _inactivityService = getIt<InactivityService>();
     _authBloc = getIt<AuthBloc>()..add(const AuthCheckStatusRequested());
     _themeCubit = getIt<ThemeCubit>();
+    _chatBloc = getIt<ChatBloc>();
+    _notificationBloc = getIt<NotificationBloc>();
 
     // Load theme preference
     _themeCubit.loadThemePreference();
@@ -76,6 +83,9 @@ class _KarriovaAppState extends State<KarriovaApp> {
     // Listen to auth state changes to enable/disable inactivity tracking
     _authBloc.stream.listen((state) {
       if (state.status == AuthStatus.authenticated) {
+        // User is logged in — sync theme from API (overwrites local cache with DB value)
+        _themeCubit.loadThemePreference();
+
         // User is logged in, enable inactivity tracking
         _inactivityService.enable(
           onTimeout: () {
@@ -88,8 +98,7 @@ class _KarriovaAppState extends State<KarriovaApp> {
         // _pushNotificationService.registerDeviceToken();
 
         // Connect to notification WebSocket for real-time updates
-        final notificationBloc = getIt<NotificationBloc>();
-        notificationBloc.add(const NotificationWebSocketConnectRequested());
+        _notificationBloc.add(const NotificationWebSocketConnectRequested());
 
         // Load followingIds for the follow button state across the app
         final followBloc = getIt<FollowBloc>();
@@ -103,9 +112,8 @@ class _KarriovaAppState extends State<KarriovaApp> {
         // Disconnect notification WebSocket and unregister device token when logged out
         if (state.status == AuthStatus.unauthenticated) {
           // _pushNotificationService.unregisterDeviceToken();
-          
-          final notificationBloc = getIt<NotificationBloc>();
-          notificationBloc.add(const NotificationWebSocketDisconnectRequested());
+
+          _notificationBloc.add(const NotificationWebSocketDisconnectRequested());
         }
       }
     });
@@ -127,6 +135,12 @@ class _KarriovaAppState extends State<KarriovaApp> {
         BlocProvider<ThemeCubit>.value(
           value: _themeCubit,
         ),
+        BlocProvider<ChatBloc>.value(
+          value: _chatBloc,
+        ),
+        BlocProvider<NotificationBloc>.value(
+          value: _notificationBloc,
+        ),
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(
         builder: (context, themeMode) {
@@ -139,9 +153,115 @@ class _KarriovaAppState extends State<KarriovaApp> {
               darkTheme: AppTheme.darkTheme,
               themeMode: themeMode,
               routerConfig: AppRouter.router,
+              builder: (context, child) {
+                return _NotificationListener(child: child!);
+              },
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Listens to incoming notifications and shows them as snackbars
+class _NotificationListener extends StatefulWidget {
+  final Widget child;
+
+  const _NotificationListener({required this.child});
+
+  @override
+  State<_NotificationListener> createState() => _NotificationListenerState();
+}
+
+class _NotificationListenerState extends State<_NotificationListener> {
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<ChatBloc, ChatState>(
+      listenWhen: (previous, current) {
+        // Detect new messages by comparing message counts
+        int prevCount = previous.messagesMap.values.fold(0, (sum, msgs) => sum + msgs.length);
+        int currCount = current.messagesMap.values.fold(0, (sum, msgs) => sum + msgs.length);
+        return currCount > prevCount;
+      },
+      listener: (context, state) {
+        // Find and show newest message
+        final allMessages = state.messagesMap.values.expand((list) => list).toList();
+        if (allMessages.isNotEmpty) {
+          final lastMessage = allMessages.last;
+          // Get current user ID to check if message is incoming
+          final authState = context.read<AuthBloc>().state;
+          final currentUserId = authState.user?.id;
+          
+          if (currentUserId != null && lastMessage.senderId != currentUserId) {
+            _showChatNotification(lastMessage.content);
+          }
+        }
+      },
+      child: BlocListener<NotificationBloc, NotificationState>(
+        listenWhen: (previous, current) {
+          // Only trigger when unread count increases (new notification arrived)
+          return current.unreadCount > previous.unreadCount;
+        },
+        listener: (context, state) {
+          // Show snackbar for new notification
+          if (state.notifications.isNotEmpty) {
+            final latestNotification = state.notifications.first;
+            final message = latestNotification.message ?? 'New notification';
+            _showGeneralNotification(message);
+          }
+        },
+        child: widget.child,
+      ),
+    );
+  }
+
+  void _showGeneralNotification(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.notifications_active, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 4),
+        backgroundColor: Colors.blue.shade600,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _showChatNotification(String messageContent) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.message, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'New message: $messageContent',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 4),
+        backgroundColor: Colors.green.shade600,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

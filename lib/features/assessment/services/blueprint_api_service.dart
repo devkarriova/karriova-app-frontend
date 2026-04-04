@@ -12,11 +12,17 @@ class BlueprintApiService {
   })  : _dio = dio,
         _baseUrl = baseUrl;
 
+  String _buildUrl(String path) {
+    final base = _baseUrl.isNotEmpty ? _baseUrl : _dio.options.baseUrl;
+    final normalizedBase = base.endsWith('/api/v1') ? base : '$base/api/v1';
+    return '$normalizedBase$path';
+  }
+
   /// Get carousel view with 3 blueprint summaries
   Future<BlueprintCarouselResponse> getCarouselBlueprints(String attemptId) async {
     try {
       final response = await _dio.get(
-        '$_baseUrl/api/v1/assessments/blueprints/carousel/$attemptId',
+        _buildUrl('/assessments/blueprints/carousel/$attemptId'),
       );
 
       return BlueprintCarouselResponse.fromJson(response.data['data'] ?? response.data);
@@ -29,7 +35,7 @@ class BlueprintApiService {
   Future<CareerBlueprint> getBlueprintDetail(String blueprintId) async {
     try {
       final response = await _dio.get(
-        '$_baseUrl/api/v1/assessments/blueprints/$blueprintId',
+        _buildUrl('/assessments/blueprints/$blueprintId'),
       );
 
       final data = response.data['blueprint'] ?? response.data['data'] ?? response.data;
@@ -43,7 +49,7 @@ class BlueprintApiService {
   Future<void> selectBlueprint(String blueprintId, String attemptId) async {
     try {
       await _dio.post(
-        '$_baseUrl/api/v1/assessments/blueprints/$blueprintId/select',
+        _buildUrl('/assessments/blueprints/$blueprintId/select'),
         data: {
           'attempt_id': attemptId,
         },
@@ -60,7 +66,7 @@ class BlueprintApiService {
   ) async {
     try {
       final response = await _dio.post(
-        '$_baseUrl/api/v1/assessments/roadmaps/generate',
+        _buildUrl('/assessments/roadmaps/generate'),
         data: {
           'attempt_id': attemptId,
           'roadmap_horizon_months': roadmapHorizonMonths,

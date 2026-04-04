@@ -116,7 +116,7 @@ Future<void> configureDependencies() async {
 
   // Theme Cubit
   getIt.registerLazySingleton<ThemeCubit>(
-    () => ThemeCubit(getIt<UserSettingsService>()),
+    () => ThemeCubit(getIt<UserSettingsService>(), getIt<SharedPreferences>()),
   );
 
   // Data Sources

@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-/// Card content for a section
 class BlueprintCardContent {
   final String title;
   final String description;
@@ -20,18 +19,17 @@ class BlueprintCardContent {
     return BlueprintCardContent(
       title: json['title'] ?? '',
       description: json['description'] ?? '',
-      items: List<String>.from(json['items'] ?? []),
+      items: List<String>.from(json['items'] ?? const []),
       icon: json['icon'],
       color: json['color'],
     );
   }
 }
 
-/// Warning/prerequisite in a section
 class BlueprintWarning {
   final String title;
   final String description;
-  final String severity; // "low", "medium", "high"
+  final String severity;
 
   BlueprintWarning({
     required this.title,
@@ -48,13 +46,12 @@ class BlueprintWarning {
   }
 }
 
-/// A section in the blueprint (14 total)
 class BlueprintSection {
   final String id;
   final String title;
   final String? subtitle;
   final String description;
-  final String sectionType; // insight, action, warning, data, timeline, list
+  final String sectionType;
   final List<BlueprintCardContent> content;
   final List<BlueprintWarning> warnings;
   final bool expanded;
@@ -78,22 +75,24 @@ class BlueprintSection {
       title: json['title'] ?? '',
       subtitle: json['subtitle'],
       description: json['description'] ?? '',
-      sectionType: json['section_type'] ?? 'insight',
+      sectionType: json['section_type'] ?? json['icon'] ?? 'insight',
       content: (json['content'] as List?)
-              ?.map((c) => BlueprintCardContent.fromJson(c))
+              ?.map((c) => BlueprintCardContent.fromJson(Map<String, dynamic>.from(c)))
               .toList() ??
-          [],
+          (json['content_cards'] as List?)
+                  ?.map((c) => BlueprintCardContent.fromJson(Map<String, dynamic>.from(c)))
+                  .toList() ??
+              const [],
       warnings: (json['warnings'] as List?)
-              ?.map((w) => BlueprintWarning.fromJson(w))
+              ?.map((w) => BlueprintWarning.fromJson(Map<String, dynamic>.from(w)))
               .toList() ??
-          [],
+          const [],
       expanded: json['expanded'] ?? false,
       orderIndex: json['order_index'] ?? 0,
     );
   }
 }
 
-/// Salary projection data
 class SalaryProjectionData {
   final String year;
   final int minSalary;
@@ -111,16 +110,15 @@ class SalaryProjectionData {
 
   factory SalaryProjectionData.fromJson(Map<String, dynamic> json) {
     return SalaryProjectionData(
-      year: json['year'] ?? '',
-      minSalary: json['min_salary'] ?? 0,
-      medSalary: json['med_salary'] ?? 0,
-      maxSalary: json['max_salary'] ?? 0,
-      trendPercent: (json['trend_percent'] ?? 0).toDouble(),
+      year: json['year']?.toString() ?? '',
+      minSalary: (json['min_salary'] ?? json['minSalary'] ?? 0) as int,
+      medSalary: (json['med_salary'] ?? json['median_salary'] ?? json['medSalary'] ?? 0) as int,
+      maxSalary: (json['max_salary'] ?? json['maxSalary'] ?? 0) as int,
+      trendPercent: (json['trend_percent'] ?? json['trendPercent'] ?? 0).toDouble(),
     );
   }
 }
 
-/// Job market demand data
 class JobMarketPoint {
   final String year;
   final int openPositions;
@@ -134,14 +132,13 @@ class JobMarketPoint {
 
   factory JobMarketPoint.fromJson(Map<String, dynamic> json) {
     return JobMarketPoint(
-      year: json['year'] ?? '',
-      openPositions: json['open_positions'] ?? 0,
-      growthRate: (json['growth_rate'] ?? 0).toDouble(),
+      year: json['year']?.toString() ?? '',
+      openPositions: (json['open_positions'] ?? json['openPositions'] ?? 0) as int,
+      growthRate: (json['growth_rate'] ?? json['growthRate'] ?? 0).toDouble(),
     );
   }
 }
 
-/// Skill alignment data for radar chart
 class SkillRadarData {
   final String skill;
   final double userLevel;
@@ -158,14 +155,13 @@ class SkillRadarData {
   factory SkillRadarData.fromJson(Map<String, dynamic> json) {
     return SkillRadarData(
       skill: json['skill'] ?? '',
-      userLevel: (json['user_level'] ?? 0).toDouble(),
+      userLevel: (json['user_level'] ?? json['userLevel'] ?? 0).toDouble(),
       required: (json['required'] ?? 0).toDouble(),
       importance: (json['importance'] ?? 0).toDouble(),
     );
   }
 }
 
-/// Chart data container
 class ChartData {
   final List<SalaryProjectionData> salaryProjection;
   final List<JobMarketPoint> jobMarketDemand;
@@ -180,22 +176,21 @@ class ChartData {
   factory ChartData.fromJson(Map<String, dynamic> json) {
     return ChartData(
       salaryProjection: (json['salary_projection'] as List?)
-              ?.map((d) => SalaryProjectionData.fromJson(d))
+              ?.map((d) => SalaryProjectionData.fromJson(Map<String, dynamic>.from(d)))
               .toList() ??
-          [],
+          const [],
       jobMarketDemand: (json['job_market_demand'] as List?)
-              ?.map((d) => JobMarketPoint.fromJson(d))
+              ?.map((d) => JobMarketPoint.fromJson(Map<String, dynamic>.from(d)))
               .toList() ??
-          [],
+          const [],
       skillAlignment: (json['skill_alignment'] as List?)
-              ?.map((d) => SkillRadarData.fromJson(d))
+              ?.map((d) => SkillRadarData.fromJson(Map<String, dynamic>.from(d)))
               .toList() ??
-          [],
+          const [],
     );
   }
 }
 
-/// Full career blueprint with 14 sections
 class CareerBlueprint {
   final String id;
   final String userId;
@@ -240,6 +235,9 @@ class CareerBlueprint {
   bool get isSelected => status == 'selected';
 
   factory CareerBlueprint.fromJson(Map<String, dynamic> json) {
+    final rawSections = json['sections'] ?? json['blueprint_data']?['sections'];
+    final rawCharts = json['charts'] ?? json['chart_data'];
+
     return CareerBlueprint(
       id: json['id'] ?? '',
       userId: json['user_id'] ?? '',
@@ -250,70 +248,47 @@ class CareerBlueprint {
       fitScore: (json['fit_score'] ?? 0).toDouble(),
       difficultyLevel: json['difficulty_level'] ?? 'medium',
       confidenceLevel: json['confidence_level'] ?? 'medium',
-      sections: (json['sections'] as List?)
-              ?.map((s) => BlueprintSection.fromJson(s))
+      sections: (rawSections as List?)
+              ?.map((s) => BlueprintSection.fromJson(Map<String, dynamic>.from(s)))
               .toList() ??
-          [],
-      charts: json['charts'] != null
-          ? ChartData.fromJson(json['charts'])
-          : null,
+          const [],
+      charts: rawCharts != null ? ChartData.fromJson(Map<String, dynamic>.from(rawCharts)) : null,
       status: json['status'] ?? 'generated',
       selectionOrder: json['selection_order'],
-      selectedAt: json['selected_at'] != null
-          ? DateTime.parse(json['selected_at'])
-          : null,
-      generatedAt: DateTime.parse(json['generated_at'] ?? DateTime.now().toIso8601String()),
-      lastViewedAt: json['last_viewed_at'] != null
-          ? DateTime.parse(json['last_viewed_at'])
-          : null,
-      updatedAt: DateTime.parse(json['updated_at'] ?? DateTime.now().toIso8601String()),
+      selectedAt: json['selected_at'] != null ? DateTime.tryParse(json['selected_at']) : null,
+      generatedAt: DateTime.tryParse(json['generated_at'] ?? '') ?? DateTime.now(),
+      lastViewedAt: json['last_viewed_at'] != null ? DateTime.tryParse(json['last_viewed_at']) : null,
+      updatedAt: DateTime.tryParse(json['updated_at'] ?? '') ?? DateTime.now(),
       generationVersion: json['generation_version'] ?? 1,
     );
   }
 
   CareerBlueprint copyWith({
-    String? id,
-    String? userId,
-    String? assessmentAttemptId,
-    String? careerId,
-    String? careerName,
-    String? careerCategory,
-    double? fitScore,
-    String? difficultyLevel,
-    String? confidenceLevel,
-    List<BlueprintSection>? sections,
-    ChartData? charts,
     String? status,
-    int? selectionOrder,
-    DateTime? selectedAt,
-    DateTime? generatedAt,
-    DateTime? lastViewedAt,
-    DateTime? updatedAt,
-    int? generationVersion,
   }) {
     return CareerBlueprint(
-      id: id ?? this.id,
-      userId: userId ?? this.userId,
-      assessmentAttemptId: assessmentAttemptId ?? this.assessmentAttemptId,
-      careerId: careerId ?? this.careerId,
-      careerName: careerName ?? this.careerName,
-      careerCategory: careerCategory ?? this.careerCategory,
-      fitScore: fitScore ?? this.fitScore,
-      difficultyLevel: difficultyLevel ?? this.difficultyLevel,
-      confidenceLevel: confidenceLevel ?? this.confidenceLevel,
-      sections: sections ?? this.sections,
-      charts: charts ?? this.charts,
+      id: id,
+      userId: userId,
+      assessmentAttemptId: assessmentAttemptId,
+      careerId: careerId,
+      careerName: careerName,
+      careerCategory: careerCategory,
+      fitScore: fitScore,
+      difficultyLevel: difficultyLevel,
+      confidenceLevel: confidenceLevel,
+      sections: sections,
+      charts: charts,
       status: status ?? this.status,
-      selectionOrder: selectionOrder ?? this.selectionOrder,
-      selectedAt: selectedAt ?? this.selectedAt,
-      generatedAt: generatedAt ?? this.generatedAt,
-      lastViewedAt: lastViewedAt ?? this.lastViewedAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      generationVersion: generationVersion ?? this.generationVersion,
+      selectionOrder: selectionOrder,
+      selectedAt: selectedAt,
+      generatedAt: generatedAt,
+      lastViewedAt: lastViewedAt,
+      updatedAt: updatedAt,
+      generationVersion: generationVersion,
     );
   }
+}
 
-/// Blueprint summary for carousel view
 class CarouselBlueprint {
   final String id;
   final String careerName;
@@ -350,16 +325,13 @@ class CarouselBlueprint {
       difficultyLevel: json['difficulty_level'] ?? 'medium',
       confidenceLevel: json['confidence_level'] ?? 'medium',
       status: json['status'] ?? 'generated',
-      selectedAt: json['selected_at'] != null
-          ? DateTime.parse(json['selected_at'])
-          : null,
+      selectedAt: json['selected_at'] != null ? DateTime.tryParse(json['selected_at']) : null,
       whyThisFits: json['why_this_fits'],
       yourJourney: json['your_journey'],
     );
   }
 }
 
-/// Carousel response with 3 blueprints
 class BlueprintCarouselResponse {
   final String assessmentAttemptId;
   final String userId;
@@ -378,10 +350,14 @@ class BlueprintCarouselResponse {
       assessmentAttemptId: json['assessment_attempt_id'] ?? '',
       userId: json['user_id'] ?? '',
       blueprints: (json['blueprints'] as List?)
-              ?.map((b) => CarouselBlueprint.fromJson(b))
+              ?.map((b) => CarouselBlueprint.fromJson(Map<String, dynamic>.from(b)))
               .toList() ??
-          [],
-      completedAt: DateTime.parse(json['completed_at'] ?? DateTime.now().toIso8601String()),
+          const [],
+      completedAt: DateTime.tryParse(json['completed_at'] ?? '') ?? DateTime.now(),
     );
   }
+}
+
+void debugPrintBlueprint(CareerBlueprint blueprint) {
+  debugPrint('Blueprint: ${blueprint.careerName} (${blueprint.fitScore})');
 }
