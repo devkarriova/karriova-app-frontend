@@ -1,9 +1,8 @@
 {
-  "buildCommand": "flutter build web --release --web-renderer canvaskit",
+  "buildCommand": "bash build.sh",
   "outputDirectory": "build/web",
   "framework": null,
   "devCommand": null,
-  "installCommand": "if ! command -v flutter &> /dev/null; then git clone https://github.com/flutter/flutter.git -b stable --depth 1 /vercel/.flutter && export PATH=\"/vercel/.flutter/bin:$PATH\" && flutter doctor; fi && flutter pub get",
   "routes": [
     {
       "src": "/(.*)",
