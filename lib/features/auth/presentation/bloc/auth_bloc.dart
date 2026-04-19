@@ -62,6 +62,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       phone: event.phone,
       parentPhone: event.parentPhone,
       otpCode: event.otpCode,
+      userType: event.userType,
     );
 
     result.fold(

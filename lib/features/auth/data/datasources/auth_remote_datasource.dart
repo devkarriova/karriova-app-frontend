@@ -27,6 +27,7 @@ abstract class AuthRemoteDataSource {
     String? phone,
     String? parentPhone,
     String? otpCode,
+    String userType = 'user',
   });
 
   /// Send OTP to a phone number
@@ -111,13 +112,15 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? phone,
     String? parentPhone,
     String? otpCode,
+    String userType = 'user',
   }) async {
     final body = <String, dynamic>{
       'email': email,
       'password': password,
       'name': name,
+      'user_type': userType,
     };
-    
+
     if (dateOfBirth != null) body['date_of_birth'] = dateOfBirth;
     if (phone != null) body['phone'] = phone;
     if (parentPhone != null) body['parent_phone'] = parentPhone;

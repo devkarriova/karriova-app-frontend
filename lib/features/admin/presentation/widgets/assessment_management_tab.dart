@@ -1,7 +1,5 @@
-import 'dart:async';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
-import 'dart:typed_data';
+import '../../../../core/utils/web_file_utils_stub.dart'
+    if (dart.library.html) '../../../../core/utils/web_file_utils_web.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -811,19 +809,11 @@ class _SectionDetailView extends StatelessWidget {
 
   void _downloadTemplateOnWeb(Uint8List bytes, String fileName) {
     final safeFileName = fileName.trim().isEmpty ? 'KIT_Question_Template.xlsx' : fileName;
-    final blob = html.Blob(
-      [bytes],
+    downloadBytesOnWeb(
+      bytes,
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      safeFileName,
     );
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    final anchor = html.AnchorElement(href: url)
-      ..setAttribute('download', safeFileName)
-      ..style.display = 'none';
-
-    html.document.body?.append(anchor);
-    anchor.click();
-    anchor.remove();
-    html.Url.revokeObjectUrl(url);
   }
 
   void _uploadQuestions(BuildContext context) {
@@ -974,46 +964,10 @@ class _BulkUploadDialogState extends State<_BulkUploadDialog> {
   }
 
   Future<void> _pickExcelFileWeb() async {
-    final input = html.FileUploadInputElement()
-      ..accept = '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-    input.click();
-
-    await input.onChange.first;
-    final file = input.files?.isNotEmpty == true ? input.files!.first : null;
-    if (file == null) {
-      return;
-    }
-
-    final reader = html.FileReader();
-    final completer = Completer<Uint8List>();
-
-    reader.onError.listen((_) {
-      if (!completer.isCompleted) {
-        completer.completeError(Exception('Failed to read file in browser'));
-      }
-    });
-
-    reader.onLoadEnd.listen((_) {
-      if (completer.isCompleted) {
-        return;
-      }
-      final result = reader.result;
-      if (result is ByteBuffer) {
-        completer.complete(Uint8List.view(result));
-      } else {
-        completer.completeError(Exception('Unexpected browser file payload'));
-      }
-    });
-
-    reader.readAsArrayBuffer(file);
-    final bytes = await completer.future;
-
+    final file = await pickExcelFileOnWeb();
+    if (file == null) return;
     setState(() {
-      _selectedFile = PlatformFile(
-        name: file.name,
-        size: bytes.length,
-        bytes: bytes,
-      );
+      _selectedFile = file;
       _validationResult = null;
     });
   }

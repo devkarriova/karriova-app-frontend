@@ -19,6 +19,18 @@ import '../../features/admin/presentation/pages/admin_assessments_page.dart';
 import '../../features/admin/presentation/pages/admin_feedback_page.dart';
 import '../../features/admin/presentation/pages/admin_reminders_page.dart';
 import '../../features/admin/presentation/pages/admin_moderation_page.dart';
+import '../../features/admin/presentation/pages/admin_careers_page.dart';
+import '../../features/admin/presentation/pages/admin_career_parameters_page.dart';
+import '../../features/admin/presentation/pages/admin_mentors_page.dart';
+import '../../features/assessment/pages/career_library_page.dart';
+import '../../features/assessment/pages/career_detail_page.dart';
+import '../../features/mentor/pages/mentor_browse_page.dart';
+import '../../features/mentor/pages/mentor_profile_page.dart';
+import '../../features/mentor/pages/mentor_dashboard_page.dart';
+import '../../features/mentor/pages/mentor_edit_profile_page.dart';
+import '../../features/landing/landing_page.dart';
+import '../../features/landing/faq_page.dart';
+import '../../features/landing/about_page.dart';
 import '../../features/assessment/presentation/pages/assessment_page.dart';
 import '../../features/assessment/presentation/bloc/assessment_bloc.dart';
 import '../../features/assessment/pages/career_blueprint_carousel_page.dart';
@@ -64,10 +76,11 @@ class AuthChangeNotifier extends ChangeNotifier {
 }
 
 class AppRouter {
-  // Auth routes
-  static const String auth = '/';
-  static const String login = '/';
-  static const String signup = '/?mode=signup';
+  // Landing + Auth routes
+  static const String landing = '/';
+  static const String auth = '/login';
+  static const String login = '/login';
+  static const String signup = '/login?mode=signup';
 
   // Main app routes
   static const String home = '/home';
@@ -84,6 +97,15 @@ class AppRouter {
   static const String adminFeedback = '/admin/feedback';
   static const String adminReminders = '/admin/reminders';
   static const String adminModeration = '/admin/moderation';
+  static const String adminCareers = '/admin/careers';
+  static const String adminCareerParameters = '/admin/careers/:careerId/parameters';
+  static const String adminMentors = '/admin/mentors';
+  static const String careerLibrary = '/careers';
+  static const String careerDetail = '/careers/:careerId';
+  static const String mentorBrowse = '/mentors';
+  static const String mentorProfile = '/mentors/:mentorId';
+  static const String mentorDashboard = '/mentor/dashboard';
+  static const String mentorEditProfile = '/mentor/profile/edit';
   static const String profileSetup = '/profile-setup';
   static const String assessment = '/assessment';
   static const String assessmentResults = '/assessment/results';
@@ -108,8 +130,13 @@ class AppRouter {
   // Routes that don't require authentication
   static const List<String> _publicRoutes = [
     '/',
+    '/login',
+    '/faq',
+    '/about',
     '/privacy-policy',
     '/terms-of-service',
+    '/careers',
+    '/mentors',
   ];
 
   // Auth change notifier for reactive route refresh
@@ -136,8 +163,8 @@ class AppRouter {
         return auth;
       }
 
-      // If authenticated user is on auth page, redirect based on assessment status
-      if (isAuthenticated && (currentPath == '/' || currentPath.isEmpty)) {
+      // If authenticated user is on landing or login, redirect based on assessment status
+      if (isAuthenticated && (currentPath == '/' || currentPath == '/login' || currentPath.isEmpty)) {
         // Wait for assessment status to be determined before redirecting
         // The auth page will trigger the assessment check
         if (authState.assessmentCompleted == null) {
@@ -155,9 +182,34 @@ class AppRouter {
       return null; // No redirect needed
     },
     routes: [
-      // Auth Page (Login/Signup)
+      // Landing Page (unauthenticated home)
       GoRoute(
         path: '/',
+        name: 'landing',
+        pageBuilder: (context, state) {
+          return const MaterialPage(child: LandingPage());
+        },
+      ),
+
+      GoRoute(
+        path: '/faq',
+        name: 'faq',
+        pageBuilder: (context, state) {
+          return const MaterialPage(child: FaqPage());
+        },
+      ),
+
+      GoRoute(
+        path: '/about',
+        name: 'about',
+        pageBuilder: (context, state) {
+          return const MaterialPage(child: LandingAboutPage());
+        },
+      ),
+
+      // Auth Page (Login/Signup)
+      GoRoute(
+        path: '/login',
         name: 'auth',
         pageBuilder: (context, state) {
           final mode = state.uri.queryParameters['mode'];
@@ -352,6 +404,104 @@ class AppRouter {
           return const MaterialPage(
             child: AdminModerationPage(),
           );
+        },
+      ),
+
+      // Career Library (student-facing)
+      GoRoute(
+        path: '/careers',
+        name: 'career-library',
+        pageBuilder: (context, state) {
+          return const MaterialPage(child: CareerLibraryPage());
+        },
+      ),
+
+      // Career Detail (student-facing)
+      GoRoute(
+        path: '/careers/:careerId',
+        name: 'career-detail',
+        pageBuilder: (context, state) {
+          final careerId = state.pathParameters['careerId'] ?? '';
+          final initialData = state.extra as Map<String, dynamic>?;
+          return MaterialPage(
+            child: CareerDetailPage(careerId: careerId, initialData: initialData),
+          );
+        },
+      ),
+
+      // Admin Career Library Page
+      GoRoute(
+        path: '/admin/careers',
+        name: 'admin-careers',
+        pageBuilder: (context, state) {
+          return const MaterialPage(
+            child: AdminCareersPage(),
+          );
+        },
+      ),
+
+      // Admin Career Parameters Page
+      GoRoute(
+        path: '/admin/careers/:careerId/parameters',
+        name: 'admin-career-parameters',
+        pageBuilder: (context, state) {
+          final careerId = state.pathParameters['careerId'] ?? '';
+          final careerData = state.extra as Map<String, dynamic>?;
+          return MaterialPage(
+            child: AdminCareerParametersPage(
+              careerId: careerId,
+              careerData: careerData,
+            ),
+          );
+        },
+      ),
+
+      // Admin Mentors Page
+      GoRoute(
+        path: '/admin/mentors',
+        name: 'admin-mentors',
+        pageBuilder: (context, state) {
+          return const MaterialPage(child: AdminMentorsPage());
+        },
+      ),
+
+      // Mentor Browse (student-facing)
+      GoRoute(
+        path: '/mentors',
+        name: 'mentor-browse',
+        pageBuilder: (context, state) {
+          return const MaterialPage(child: MentorBrowsePage());
+        },
+      ),
+
+      // Mentor Profile Detail (student-facing)
+      GoRoute(
+        path: '/mentors/:mentorId',
+        name: 'mentor-profile',
+        pageBuilder: (context, state) {
+          final mentorId = state.pathParameters['mentorId'] ?? '';
+          final initialData = state.extra as Map<String, dynamic>?;
+          return MaterialPage(
+            child: MentorProfilePage(mentorId: mentorId, initialData: initialData),
+          );
+        },
+      ),
+
+      // Mentor Dashboard (mentor users only)
+      GoRoute(
+        path: '/mentor/dashboard',
+        name: 'mentor-dashboard',
+        pageBuilder: (context, state) {
+          return const MaterialPage(child: MentorDashboardPage());
+        },
+      ),
+
+      // Mentor Edit Profile
+      GoRoute(
+        path: '/mentor/profile/edit',
+        name: 'mentor-edit-profile',
+        pageBuilder: (context, state) {
+          return const MaterialPage(child: MentorEditProfilePage());
         },
       ),
 

@@ -1,3 +1,4 @@
+// ignore_for_file: unused_element, unused_field
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:karriova_app/core/constants/app_colors.dart';
@@ -84,66 +85,45 @@ class _AppearanceSettingsPageState extends State<AppearanceSettingsPage> {
       );
     }
 
+    // Theme customization disabled — coming soon once dark mode is fully supported.
     return Scaffold(
       appBar: AppBar(
         title: const Text('Appearance'),
         elevation: 0,
       ),
-      body: ListView(
-        children: [
-          const SizedBox(height: 16),
-          _buildSection(
-            context,
-            title: 'Theme',
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              RadioListTile<String>(
-                title: const Text('Light'),
-                secondary: const Icon(Icons.light_mode_outlined),
-                value: 'light',
-                groupValue: _themeMode,
-                onChanged: (value) {
-                  setState(() => _themeMode = value!);
-                },
+              Icon(
+                Icons.palette_outlined,
+                size: 64,
+                color: AppColors.textTertiary,
               ),
-              RadioListTile<String>(
-                title: const Text('Dark'),
-                secondary: const Icon(Icons.dark_mode_outlined),
-                value: 'dark',
-                groupValue: _themeMode,
-                onChanged: (value) {
-                  setState(() => _themeMode = value!);
-                },
+              const SizedBox(height: 20),
+              Text(
+                'Theme Customization',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
               ),
-              RadioListTile<String>(
-                title: const Text('System Default'),
-                secondary: const Icon(Icons.settings_brightness_outlined),
-                value: 'system',
-                groupValue: _themeMode,
-                onChanged: (value) {
-                  setState(() => _themeMode = value!);
-                },
+              const SizedBox(height: 12),
+              Text(
+                'Theme options are coming soon. The app currently uses the default light theme.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                  height: 1.5,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ElevatedButton(
-              onPressed: _isSaving ? null : _saveSettings,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: _isSaving 
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Save Settings'),
-            ),
-          ),
-          const SizedBox(height: 32),
-        ],
+        ),
       ),
     );
   }

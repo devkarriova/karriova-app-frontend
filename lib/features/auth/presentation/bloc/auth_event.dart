@@ -28,6 +28,7 @@ class AuthSignupRequested extends AuthEvent {
   final String? phone;
   final String? parentPhone;
   final String? otpCode;
+  final String userType; // "user" | "mentor"
 
   const AuthSignupRequested({
     required this.email,
@@ -37,10 +38,11 @@ class AuthSignupRequested extends AuthEvent {
     this.phone,
     this.parentPhone,
     this.otpCode,
+    this.userType = 'user',
   });
 
   @override
-  List<Object?> get props => [email, password, name, dateOfBirth, phone, parentPhone, otpCode];
+  List<Object?> get props => [email, password, name, dateOfBirth, phone, parentPhone, otpCode, userType];
 }
 
 /// Event to send OTP to a phone number

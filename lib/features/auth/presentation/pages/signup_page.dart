@@ -44,6 +44,7 @@ class _SignupPageState extends State<SignupPage> {
   bool _otpSent = false;
   bool _otpVerified = false;
   bool _isOtpLoading = false;
+  String _userType = 'user'; // 'user' | 'mentor'
 
   @override
   void dispose() {
@@ -274,6 +275,7 @@ class _SignupPageState extends State<SignupPage> {
           phone: _mobileController.text.trim(),
           parentPhone: _isMinor ? _parentPhoneController.text.trim() : null,
           otpCode: _otpController.text.trim(),
+          userType: _userType,
         ),
       );
     }
@@ -789,6 +791,42 @@ class _SignupPageState extends State<SignupPage> {
 
                     const SizedBox(height: AppDimensions.paddingLG),
 
+                    // User type selection
+                    const Text(
+                      'I am a...',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: AppDimensions.paddingSM),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _UserTypeCard(
+                            label: 'Student',
+                            icon: Icons.school_outlined,
+                            description: 'Explore careers & get guidance',
+                            selected: _userType == 'user',
+                            onTap: () => setState(() => _userType = 'user'),
+                          ),
+                        ),
+                        const SizedBox(width: AppDimensions.paddingMD),
+                        Expanded(
+                          child: _UserTypeCard(
+                            label: 'Mentor',
+                            icon: Icons.person_outlined,
+                            description: 'Guide students in their journey',
+                            selected: _userType == 'mentor',
+                            onTap: () => setState(() => _userType = 'mentor'),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: AppDimensions.paddingLG),
+
                     // Signup Button
                     GradientButton(
                       text: 'Create Account',
@@ -858,6 +896,68 @@ class _SignupPageState extends State<SignupPage> {
           ),
         );
       },
+    );
+  }
+}
+
+class _UserTypeCard extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final String description;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _UserTypeCard({
+    required this.label,
+    required this.icon,
+    required this.description,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary.withOpacity(0.08) : const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+          border: Border.all(
+            color: selected ? AppColors.primary : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: selected ? AppColors.primary : AppColors.textTertiary,
+              size: 28,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: selected ? AppColors.primary : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -119,6 +119,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String? phone,
     String? parentPhone,
     String? otpCode,
+    String userType = 'user',
   }) async {
     try {
       final authResponse = await remoteDataSource.signup(
@@ -129,6 +130,7 @@ class AuthRepositoryImpl implements AuthRepository {
         phone: phone,
         parentPhone: parentPhone,
         otpCode: otpCode,
+        userType: userType,
       );
 
       // Save user and tokens

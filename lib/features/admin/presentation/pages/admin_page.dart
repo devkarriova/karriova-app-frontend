@@ -48,6 +48,20 @@ class AdminPage extends StatelessWidget {
         route: AppRouter.adminModeration,
       ),
       _AdminCardData(
+        title: 'Career Library',
+        subtitle: 'Manage all 61 career profiles and parameter targets',
+        icon: Icons.work_outline,
+        color: Colors.cyan,
+        route: AppRouter.adminCareers,
+      ),
+      _AdminCardData(
+        title: 'Mentors',
+        subtitle: 'Verify mentor accounts and manage profiles',
+        icon: Icons.people_outline,
+        color: Colors.deepPurple,
+        route: AppRouter.adminMentors,
+      ),
+      _AdminCardData(
         title: 'Analytics',
         subtitle: 'View platform usage and engagement metrics',
         icon: Icons.analytics,

@@ -411,7 +411,7 @@ class _EnhancedCareerBlueprintPageState extends State<EnhancedCareerBlueprintPag
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Career Snapshot', style: AppTypography.heading3.copyWith(fontSize: 16)),
+        Text('Career Snapshot', style: AppTypography.heading3.copyWith(fontSize: 20)),
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -476,7 +476,7 @@ class _EnhancedCareerBlueprintPageState extends State<EnhancedCareerBlueprintPag
     required List<String> bullets,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
@@ -498,12 +498,12 @@ class _EnhancedCareerBlueprintPageState extends State<EnhancedCareerBlueprintPag
                       label,
                       style: AppTypography.caption.copyWith(
                         color: AppColors.textSecondary,
-                        fontSize: 10,
+                        fontSize: 13,
                       ),
                     ),
                     Text(
                       value,
-                      style: AppTypography.heading3.copyWith(fontSize: 14, color: color),
+                      style: AppTypography.heading3.copyWith(fontSize: 28, color: color),
                     ),
                   ],
                 ),
@@ -516,12 +516,12 @@ class _EnhancedCareerBlueprintPageState extends State<EnhancedCareerBlueprintPag
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('• ', style: TextStyle(fontSize: 10, color: color)),
+                Text('• ', style: TextStyle(fontSize: 12, color: color)),
                 Expanded(
                   child: Text(
                     bullet,
                     style: AppTypography.caption.copyWith(
-                      fontSize: 10,
+                      fontSize: 14,
                       color: AppColors.textPrimary,
                     ),
                   ),
@@ -567,7 +567,7 @@ class _EnhancedCareerBlueprintPageState extends State<EnhancedCareerBlueprintPag
               Expanded(
                 child: Text(
                   title,
-                  style: AppTypography.heading3.copyWith(fontSize: 18),
+                  style: AppTypography.heading3.copyWith(fontSize: 24),
                 ),
               ),
             ],
@@ -599,7 +599,7 @@ class _EnhancedCareerBlueprintPageState extends State<EnhancedCareerBlueprintPag
                               Expanded(
                                 child: Text(
                                   item,
-                                  style: AppTypography.caption.copyWith(fontSize: 12),
+                                  style: AppTypography.body.copyWith(fontSize: 15),
                                 ),
                               ),
                             ],
@@ -634,7 +634,7 @@ class _EnhancedCareerBlueprintPageState extends State<EnhancedCareerBlueprintPag
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTypography.heading3.copyWith(fontSize: 18)),
+          Text(title, style: AppTypography.heading3.copyWith(fontSize: 24)),
           const SizedBox(height: 16),
           ...milestones.asMap().entries.map((entry) {
             return Padding(
@@ -656,7 +656,7 @@ class _EnhancedCareerBlueprintPageState extends State<EnhancedCareerBlueprintPag
                             '${entry.key + 1}',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 12,
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -676,7 +676,7 @@ class _EnhancedCareerBlueprintPageState extends State<EnhancedCareerBlueprintPag
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
                         entry.value,
-                        style: AppTypography.body,
+                        style: AppTypography.body.copyWith(fontSize: 18),
                       ),
                     ),
                   ),

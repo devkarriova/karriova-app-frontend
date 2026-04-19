@@ -23,6 +23,7 @@ abstract class AuthRepository {
     String? phone,
     String? parentPhone,
     String? otpCode,
+    String userType = 'user',
   });
 
   /// Send OTP to a phone number
