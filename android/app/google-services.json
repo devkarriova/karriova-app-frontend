@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "39908931621",
+    "project_id": "karriova-9d610",
+    "storage_bucket": "karriova-9d610.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:39908931621:android:16a5a439b46d34a0c4a7cc",
+        "android_client_info": {
+          "package_name": "com.karriova.karriova_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDUnDt4ednARR2Q6ajfAEDyE8AnS5RL3VE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

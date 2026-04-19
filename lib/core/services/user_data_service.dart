@@ -1,8 +1,8 @@
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
 import 'package:flutter/foundation.dart';
 import '../network/api_client.dart';
+import '../utils/web_file_utils_stub.dart'
+    if (dart.library.html) '../utils/web_file_utils_web.dart';
 
 /// Service for handling user data operations (GDPR compliance)
 class UserDataService {
@@ -30,17 +30,7 @@ class UserDataService {
     final jsonString = const JsonEncoder.withIndent('  ').convert(data);
     
     if (kIsWeb) {
-      // For web, trigger a browser download
-      final bytes = utf8.encode(jsonString);
-      final blob = html.Blob([bytes], 'application/json');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute('download', 'karriova_data_export.json')
-        ..click();
-      html.Url.revokeObjectUrl(url);
-    } else {
-      // For mobile platforms, this would need platform-specific handling
-      // For now, skip local write on non-web platforms.
+      downloadJsonOnWeb(jsonString, 'karriova_data_export.json');
     }
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -151,10 +152,19 @@ class _KarriovaAppState extends State<KarriovaApp> {
               debugShowCheckedModeBanner: false,
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,
-              themeMode: themeMode,
+              // Theme switching disabled — AppColors uses hardcoded light values,
+              // dark mode causes inconsistent UI until full theme-aware refactor.
+              // themeMode: themeMode,
+              themeMode: ThemeMode.light,
               routerConfig: AppRouter.router,
               builder: (context, child) {
-                return _NotificationListener(child: child!);
+                return Shortcuts(
+                  shortcuts: const {
+                    SingleActivator(LogicalKeyboardKey.tab): NextFocusIntent(),
+                    SingleActivator(LogicalKeyboardKey.tab, shift: true): PreviousFocusIntent(),
+                  },
+                  child: _NotificationListener(child: child!),
+                );
               },
             ),
           );

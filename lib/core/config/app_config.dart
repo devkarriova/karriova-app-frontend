@@ -3,16 +3,22 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AppConfig {
   static const String appName = 'Karriova';
+  static const String _webApiBaseUrlDefault = 'https://karriova-backend-services-production.up.railway.app/api/v1';
+  static const String _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
   // Base URL - Automatically detects platform
   static String get apiBaseUrl {
     if (kIsWeb) {
-      // Web: use localhost
-      return 'http://localhost:8080/api/v1';
+      // Web: use compile-time override when provided, otherwise Railway backend
+      if (_apiBaseUrlOverride.isNotEmpty) {
+        return _apiBaseUrlOverride;
+      }
+      return _webApiBaseUrlDefault;
     } else if (Platform.isAndroid) {
-      // Android Emulator: use special IP that maps to host machine
-      // For physical device, replace with your machine's local IP (e.g., '192.168.1.100')
-      return 'http://10.0.2.2:8080/api/v1';
+      // For local dev with ngrok: run `ngrok http 8080` and paste the URL below
+      const ngrokUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+      if (ngrokUrl.isNotEmpty) return '$ngrokUrl/api/v1';
+      return _webApiBaseUrlDefault;
     } else {
       // iOS Simulator, Desktop (Windows/Linux/macOS): use localhost
       return 'http://localhost:8080/api/v1';

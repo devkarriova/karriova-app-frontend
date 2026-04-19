@@ -16,40 +16,131 @@ import 'notification_dropdown.dart';
 
 /// Common app header widget used across all pages
 /// Contains: Logo, Search bar, Notifications, Profile menu
-class AppHeader extends StatelessWidget implements PreferredSizeWidget {
+class AppHeader extends StatefulWidget implements PreferredSizeWidget {
   const AppHeader({super.key});
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
+  State<AppHeader> createState() => _AppHeaderState();
+}
+
+class _AppHeaderState extends State<AppHeader> {
+  bool _mobileSearchExpanded = false;
+  final TextEditingController _mobileSearchController = TextEditingController();
+  final FocusNode _mobileSearchFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _mobileSearchController.dispose();
+    _mobileSearchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _openMobileSearch() {
+    setState(() => _mobileSearchExpanded = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _mobileSearchFocusNode.requestFocus();
+    });
+  }
+
+  void _closeMobileSearch() {
+    _mobileSearchController.clear();
+    _mobileSearchFocusNode.unfocus();
+    setState(() => _mobileSearchExpanded = false);
+  }
+
+  void _submitMobileSearch() {
+    final query = _mobileSearchController.text.trim();
+    if (query.isNotEmpty) {
+      context.go('${AppRouter.search}?q=$query');
+      _closeMobileSearch();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+
+    if (isMobile && _mobileSearchExpanded) {
+      return AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 1,
+        shadowColor: Colors.black.withOpacity(0.1),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          onPressed: _closeMobileSearch,
+        ),
+        title: TextField(
+          controller: _mobileSearchController,
+          focusNode: _mobileSearchFocusNode,
+          autofocus: true,
+          style: const TextStyle(fontSize: 16),
+          decoration: InputDecoration(
+            hintText: 'Search internships, people...',
+            hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 15),
+            border: InputBorder.none,
+            suffixIcon: _mobileSearchController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, size: 20),
+                    onPressed: () {
+                      _mobileSearchController.clear();
+                      setState(() {});
+                    },
+                  )
+                : null,
+          ),
+          onChanged: (_) => setState(() {}),
+          onSubmitted: (_) => _submitMobileSearch(),
+          textInputAction: TextInputAction.search,
+        ),
+      );
+    }
+
     return AppBar(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
       elevation: 1,
       shadowColor: Colors.black.withOpacity(0.1),
       leading: const _LogoSection(),
-      title: const Row(
-        children: [
-          Text(
-            'Karriova',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+      title: isMobile
+          ? const Text(
+              'Karriova',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            )
+          : const Row(
+              children: [
+                Text(
+                  'Karriova',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Expanded(child: Center(child: _SearchBar())),
+              ],
             ),
-          ),
-          Expanded(child: Center(child: _SearchBar())),
-        ],
-      ),
-      actions: const [
-        _NotificationIcon(),
-        SizedBox(width: 8),
-        _ProfileMenu(),
-        SizedBox(width: 8),
-        _MessageIcon(),
-        SizedBox(width: 16),
+      actions: [
+        if (isMobile)
+          IconButton(
+            icon: const Icon(Icons.search, color: AppColors.textPrimary),
+            onPressed: _openMobileSearch,
+          )
+        else
+          const SizedBox.shrink(),
+        const _NotificationIcon(),
+        const SizedBox(width: 8),
+        const _ProfileMenu(),
+        const SizedBox(width: 8),
+        const _MessageIcon(),
+        const SizedBox(width: 16),
       ],
     );
   }

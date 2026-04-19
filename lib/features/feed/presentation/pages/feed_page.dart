@@ -75,187 +75,233 @@ class _FeedPageContentState extends State<_FeedPageContent> {
       },
       child: Scaffold(
         appBar: const AppHeader(),
+        floatingActionButton: LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth >= 768) return const SizedBox.shrink();
+            return FloatingActionButton.extended(
+              onPressed: () => _showKitBottomSheet(context),
+              icon: const Icon(Icons.psychology_outlined),
+              label: const Text('KIT'),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            );
+          },
+        ),
         body: Column(
           children: [
             const AppNavigationBar(currentRoute: AppRouter.feed),
             Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Left Sidebar (empty for future widgets)
-                  SizedBox(
-                    width: 280,
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          // Add left sidebar widgets here in the future
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  // Main Feed Column (centered)
-                  Expanded(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 600),
-                        child: BlocConsumer<FeedBloc, FeedState>(
-                    listener: (context, state) {
-                      if (state.errorMessage != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(state.errorMessage!),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                      if (state.successMessage != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(state.successMessage!),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      }
-                    },
-                    builder: (context, state) {
-                      if (state.status == FeedStatus.loading) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      if (state.status == FeedStatus.error &&
-                          state.posts.isEmpty) {
-                        return _buildErrorState(context);
-                      }
-
-                      return RefreshIndicator(
-                        onRefresh: () async {
-                          context
-                              .read<FeedBloc>()
-                              .add(const FeedRefreshRequested());
-                          await context.read<FeedBloc>().stream.firstWhere(
-                                (s) => s.status != FeedStatus.refreshing,
-                              );
-                        },
-                        child: ScrollConfiguration(
-                          behavior: ScrollConfiguration.of(context)
-                              .copyWith(scrollbars: false),
-                          child: BlocBuilder<AuthBloc, AuthState>(
-                            buildWhen: (previous, current) =>
-                                previous.user?.name != current.user?.name ||
-                                previous.user?.email != current.user?.email ||
-                                previous.user?.photoUrl !=
-                                    current.user?.photoUrl,
-                            builder: (context, authState) {
-                              final user = authState.user;
-                              return ListView.builder(
-                                controller: _scrollController,
-                                padding: const EdgeInsets.all(16),
-                                itemCount: state.posts.isEmpty
-                                    ? 2
-                                    : state.posts.length + 2,
-                                itemBuilder: (context, index) {
-                                  if (index == 0) {
-                                    return CreatePostCard(
-                                      userInitials: _generateUserInitials(
-                                          user?.name, user?.email),
-                                      userImageUrl: user?.photoUrl,
-                                      onPostTap: (content, images) {
-                                        if (content.isNotEmpty ||
-                                            images.isNotEmpty) {
-                                          context.read<FeedBloc>().add(
-                                                FeedPostCreated(
-                                                  content: content,
-                                                  images: images,
-                                                ),
-                                              );
-                                        }
-                                      },
-                                    );
-                                  }
-
-                                  if (state.posts.isEmpty && index == 1) {
-                                    return Padding(
-                                      padding: const EdgeInsets.all(32.0),
-                                      child: _buildEmptyFeedMessage(),
-                                    );
-                                  }
-
-                                  if (index == state.posts.length + 1) {
-                                    return state.status ==
-                                            FeedStatus.loadingMore
-                                        ? const Padding(
-                                            padding: EdgeInsets.all(16.0),
-                                            child: Center(
-                                                child:
-                                                    CircularProgressIndicator()),
-                                          )
-                                        : const SizedBox.shrink();
-                                  }
-
-                                  final post = state.posts[index - 1];
-                                  return PostCardWithComments(
-                                    postId: post.id,
-                                    userName: post.userName ?? 'User',
-                                    userTitle: 'Professional',
-                                    userImageUrl: post.userPhotoUrl,
-                                    timeAgo: _getTimeAgo(post.createdAt),
-                                    content: post.content,
-                                    hashtags: _extractHashtags(post.content),
-                                    likes: post.likeCount,
-                                    comments: post.commentCount,
-                                    shares: post.shareCount,
-                                    isLiked: post.isLiked,
-                                    userInitials: _generateUserInitials(
-                                        post.userName, null),
-                                    imageUrls: post.attachments
-                                        .map((a) => a.fileUrl)
-                                        .toList(),
-                                    onLike: () {
-                                      context.read<FeedBloc>().add(
-                                            FeedPostLikeToggled(
-                                              postId: post.id,
-                                              isCurrentlyLiked: post.isLiked,
-                                            ),
-                                          );
-                                    },
-                                    onShare: () {
-                                      context
-                                          .read<FeedBloc>()
-                                          .add(FeedPostShared(postId: post.id));
-                                    },
-                                    onSave: () {},
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                      ),
-                    ),
-                  ),
-                  
-                  // Right Sidebar
-                  SizedBox(
-                    width: 300,
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          const KitCard(),
-                          // Add more sidebar widgets here in the future
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isMobile = constraints.maxWidth < 768;
+                  return isMobile
+                      ? _buildFeedColumn(context)
+                      : _buildDesktopLayout(context);
+                },
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Left sidebar (reserved for future widgets)
+        const SizedBox(width: 280),
+        // Main feed
+        Expanded(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: _buildFeedColumn(context),
+            ),
+          ),
+        ),
+        // Right sidebar — KIT card
+        SizedBox(
+          width: 300,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: const Column(
+              children: [
+                KitCard(),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeedColumn(BuildContext context) {
+    return BlocConsumer<FeedBloc, FeedState>(
+      listener: (context, state) {
+        if (state.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.errorMessage!),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        if (state.successMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.successMessage!),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      },
+      builder: (context, state) {
+        if (state.status == FeedStatus.loading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (state.status == FeedStatus.error && state.posts.isEmpty) {
+          return _buildErrorState(context);
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            context.read<FeedBloc>().add(const FeedRefreshRequested());
+            await context
+                .read<FeedBloc>()
+                .stream
+                .firstWhere((s) => s.status != FeedStatus.refreshing);
+          },
+          child: ScrollConfiguration(
+            behavior:
+                ScrollConfiguration.of(context).copyWith(scrollbars: false),
+            child: BlocBuilder<AuthBloc, AuthState>(
+              buildWhen: (previous, current) =>
+                  previous.user?.name != current.user?.name ||
+                  previous.user?.email != current.user?.email ||
+                  previous.user?.photoUrl != current.user?.photoUrl,
+              builder: (context, authState) {
+                final user = authState.user;
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount:
+                      state.posts.isEmpty ? 2 : state.posts.length + 2,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return CreatePostCard(
+                        userInitials: _generateUserInitials(
+                            user?.name, user?.email),
+                        userImageUrl: user?.photoUrl,
+                        onPostTap: (content, images) {
+                          if (content.isNotEmpty || images.isNotEmpty) {
+                            context.read<FeedBloc>().add(
+                                  FeedPostCreated(
+                                    content: content,
+                                    images: images,
+                                  ),
+                                );
+                          }
+                        },
+                      );
+                    }
+
+                    if (state.posts.isEmpty && index == 1) {
+                      return Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: _buildEmptyFeedMessage(),
+                      );
+                    }
+
+                    if (index == state.posts.length + 1) {
+                      return state.status == FeedStatus.loadingMore
+                          ? const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Center(
+                                  child: CircularProgressIndicator()),
+                            )
+                          : const SizedBox.shrink();
+                    }
+
+                    final post = state.posts[index - 1];
+                    return PostCardWithComments(
+                      postId: post.id,
+                      userName: post.userName ?? 'User',
+                      userTitle: 'Professional',
+                      userImageUrl: post.userPhotoUrl,
+                      timeAgo: _getTimeAgo(post.createdAt),
+                      content: post.content,
+                      hashtags: _extractHashtags(post.content),
+                      likes: post.likeCount,
+                      comments: post.commentCount,
+                      shares: post.shareCount,
+                      isLiked: post.isLiked,
+                      userInitials:
+                          _generateUserInitials(post.userName, null),
+                      imageUrls:
+                          post.attachments.map((a) => a.fileUrl).toList(),
+                      onLike: () {
+                        context.read<FeedBloc>().add(
+                              FeedPostLikeToggled(
+                                postId: post.id,
+                                isCurrentlyLiked: post.isLiked,
+                              ),
+                            );
+                      },
+                      onShare: () {
+                        context
+                            .read<FeedBloc>()
+                            .add(FeedPostShared(postId: post.id));
+                      },
+                      onSave: () {},
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showKitBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        maxChildSize: 0.92,
+        minChildSize: 0.3,
+        builder: (_, controller) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Drag handle
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: controller,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  child: const KitCard(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

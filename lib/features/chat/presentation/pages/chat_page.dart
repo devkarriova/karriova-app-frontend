@@ -1,3 +1,4 @@
+// ignore_for_file: unused_element
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -19,14 +20,84 @@ import '../bloc/chat_state.dart';
 import '../widgets/conversation_tile.dart';
 import '../widgets/message_bubble.dart';
 
-/// Unified Chat Page with split view
-/// Left side: Conversation list
-/// Right side: Active conversation
+/// Unified Chat Page — currently shows coming soon screen.
+/// Full implementation is preserved below as _ChatPageImpl.
 class ChatPage extends StatefulWidget {
   final String? initialUserId;
   final String? initialUserName;
 
-  const ChatPage({
+  const ChatPage({super.key, this.initialUserId, this.initialUserName});
+
+  @override
+  State<ChatPage> createState() => _ChatPageComingSoonState();
+}
+
+class _ChatPageComingSoonState extends State<ChatPage> {
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/feed');
+      },
+      child: Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Messages'),
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/feed'),
+        ),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.chat_bubble_outline,
+                    size: 40, color: AppColors.primary),
+              ),
+              const SizedBox(height: 24),
+              const Text('Chat Coming Soon',
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
+              const SizedBox(height: 12),
+              const Text(
+                'We\'re working on a safe, moderated messaging experience tailored for students. Stay tuned.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 15,
+                    color: AppColors.textSecondary,
+                    height: 1.5),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ), // Scaffold
+    ); // PopScope
+  }
+}
+
+/// Full chat implementation — kept intact, not currently shown.
+class _ChatPageImpl extends StatefulWidget {
+  final String? initialUserId;
+  final String? initialUserName;
+
+  const _ChatPageImpl({
     super.key,
     this.initialUserId,
     this.initialUserName,

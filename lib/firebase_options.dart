@@ -56,10 +56,9 @@ class DefaultFirebaseOptions {
     measurementId: 'G-JZ6EN2H0KM',
   );
 
-  // TODO: Register Android app in Firebase Console and add google-services.json
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBvdCEgXFjNjYqMSFfh6hRYKNDdPjafZd0',
-    appId: '1:39908931621:web:6ea02752105073b8c4a7cc',
+    apiKey: 'AIzaSyDUnDt4ednARR2Q6ajfAEDyE8AnS5RL3VE',
+    appId: '1:39908931621:android:16a5a439b46d34a0c4a7cc',
     messagingSenderId: '39908931621',
     projectId: 'karriova-9d610',
     storageBucket: 'karriova-9d610.firebasestorage.app',

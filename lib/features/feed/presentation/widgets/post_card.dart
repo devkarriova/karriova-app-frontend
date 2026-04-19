@@ -206,31 +206,68 @@ class PostCard extends StatelessWidget {
           // Action buttons
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _ActionButton(
-                  icon: isLiked ? Icons.favorite : Icons.favorite_border,
-                  label: 'Like',
-                  onTap: onLike,
-                  color: isLiked ? Colors.red : Colors.grey[700],
-                ),
-                _ActionButton(
-                  icon: Icons.comment_outlined,
-                  label: 'Comment',
-                  onTap: onComment,
-                ),
-                _ActionButton(
-                  icon: Icons.share_outlined,
-                  label: 'Share',
-                  onTap: onShare,
-                ),
-                _ActionButton(
-                  icon: Icons.bookmark_border,
-                  label: 'Save',
-                  onTap: onSave,
-                ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isMobile = constraints.maxWidth < 500;
+                if (isMobile) {
+                  return Row(
+                    children: [
+                      _ActionButton(
+                        icon: isLiked ? Icons.favorite : Icons.favorite_border,
+                        label: 'Like',
+                        showLabel: false,
+                        onTap: onLike,
+                        color: isLiked ? Colors.red : Colors.grey[700],
+                      ),
+                      _ActionButton(
+                        icon: Icons.comment_outlined,
+                        label: 'Comment',
+                        showLabel: false,
+                        onTap: onComment,
+                      ),
+                      _ActionButton(
+                        icon: Icons.share_outlined,
+                        label: 'Share',
+                        showLabel: false,
+                        onTap: onShare,
+                      ),
+                      const Spacer(),
+                      _ActionButton(
+                        icon: Icons.bookmark_border,
+                        label: 'Save',
+                        showLabel: false,
+                        onTap: onSave,
+                      ),
+                    ],
+                  );
+                }
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _ActionButton(
+                      icon: isLiked ? Icons.favorite : Icons.favorite_border,
+                      label: 'Like',
+                      onTap: onLike,
+                      color: isLiked ? Colors.red : Colors.grey[700],
+                    ),
+                    _ActionButton(
+                      icon: Icons.comment_outlined,
+                      label: 'Comment',
+                      onTap: onComment,
+                    ),
+                    _ActionButton(
+                      icon: Icons.share_outlined,
+                      label: 'Share',
+                      onTap: onShare,
+                    ),
+                    _ActionButton(
+                      icon: Icons.bookmark_border,
+                      label: 'Save',
+                      onTap: onSave,
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -467,12 +504,14 @@ class _ActionButton extends StatefulWidget {
   final String label;
   final VoidCallback? onTap;
   final Color? color;
+  final bool showLabel;
 
   const _ActionButton({
     required this.icon,
     required this.label,
     this.onTap,
     this.color,
+    this.showLabel = true,
   });
 
   @override
@@ -541,7 +580,10 @@ class _ActionButtonState extends State<_ActionButton> with SingleTickerProviderS
               splashColor: (widget.color ?? AppColors.primary).withOpacity(0.2),
               highlightColor: (widget.color ?? AppColors.primary).withOpacity(0.1),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(
+                  horizontal: widget.showLabel ? 16 : 12,
+                  vertical: 12,
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -553,15 +595,17 @@ class _ActionButtonState extends State<_ActionButton> with SingleTickerProviderS
                         color: buttonColor,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      widget.label,
-                      style: TextStyle(
-                        fontSize: AppDimensions.fontMD,
-                        fontWeight: FontWeight.w500,
-                        color: buttonColor,
+                    if (widget.showLabel) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        widget.label,
+                        style: TextStyle(
+                          fontSize: AppDimensions.fontMD,
+                          fontWeight: FontWeight.w500,
+                          color: buttonColor,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
