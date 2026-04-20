@@ -179,6 +179,65 @@ class AssessmentState extends Equatable {
   int get currentSectionTotalQuestions => currentSectionQuestions.length;
 
   // ========================================
+  // PARAMETER (SUBSECTION) MANAGEMENT
+  // ========================================
+
+  /// Get the current parameter/subsection based on the current question.
+  /// Returns null for legacy sections that use dimensions instead of parameters.
+  ParameterModel? get currentParameter {
+    if (assessment == null || currentQuestion == null) return null;
+    for (final section in assessment!.sections) {
+      if (section.parameters != null) {
+        for (final parameter in section.parameters!) {
+          if (parameter.questions.any((q) => q.id == currentQuestion!.id)) {
+            return parameter;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /// Questions belonging to the current parameter/subsection.
+  /// Falls back to full section questions for legacy (dimension-based) sections.
+  List<QuestionModel> get currentParameterQuestions {
+    final param = currentParameter;
+    if (param == null) return currentSectionQuestions;
+    return param.questions;
+  }
+
+  /// Index of the current parameter within its section's parameter list.
+  int get currentParameterIndex {
+    if (currentSection == null || currentParameter == null) return 0;
+    final parameters = currentSection!.parameters;
+    if (parameters == null || parameters.isEmpty) return 0;
+    final idx = parameters.indexWhere((p) => p.id == currentParameter!.id);
+    return idx < 0 ? 0 : idx;
+  }
+
+  /// Whether all questions in the current parameter are answered.
+  bool get isCurrentParameterComplete {
+    final questions = currentParameterQuestions;
+    if (questions.isEmpty) return true;
+    return questions.every((q) => attemptedQuestionIds.contains(q.id));
+  }
+
+  /// Whether the user can navigate to the next parameter within the same section.
+  bool get canProceedToNextParameter {
+    if (currentSection == null) return false;
+    final parameters = currentSection!.parameters;
+    if (parameters == null || parameters.isEmpty) return false;
+    if (currentParameterIndex >= parameters.length - 1) return false;
+    return isCurrentParameterComplete;
+  }
+
+  /// Number of answered questions in the current parameter.
+  int get currentParameterAnsweredCount {
+    final questions = currentParameterQuestions;
+    return questions.where((q) => attemptedQuestionIds.contains(q.id)).length;
+  }
+
+  // ========================================
   // TIMER MANAGEMENT METHODS
   // ========================================
 

@@ -164,9 +164,9 @@ class _LoginPageState extends State<LoginPage> {
 
                   const SizedBox(height: AppDimensions.paddingLG),
 
-                  // Email or Mobile Field
+                  // Email or Phone Field
                   const Text(
-                    'Email or Mobile',
+                    'Email or Phone Number',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -183,7 +183,7 @@ class _LoginPageState extends State<LoginPage> {
                       fontWeight: FontWeight.w500,
                     ),
                     decoration: InputDecoration(
-                      hintText: '[email protected] or +91-9876543210',
+                      hintText: 'Enter your email or phone number',
                       hintStyle: const TextStyle(
                         color: AppColors.textTertiary,
                         fontSize: 14,

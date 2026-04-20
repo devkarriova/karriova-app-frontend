@@ -2,25 +2,31 @@ import 'package:flutter/material.dart';
 import '../../domain/models/assessment_models.dart';
 import 'question_indicator.dart';
 
-/// Sidebar showing overview of all questions in current section
+/// Sidebar showing overview of questions in current subsection (parameter)
 class QuestionOverviewSidebar extends StatelessWidget {
   final SectionModel currentSection;
+  final String? currentParameterName; // subsection name, null for legacy sections
   final List<QuestionModel> sectionQuestions;
   final String currentQuestionId;
   final Set<String> attemptedQuestionIds;
   final Function(int) onQuestionTap;
+  final VoidCallback? onNextParameter;
   final VoidCallback? onNextSection;
+  final bool canProceedToNextParameter;
   final bool canProceedToNextSection;
   final int answeredCount;
 
   const QuestionOverviewSidebar({
     super.key,
     required this.currentSection,
+    this.currentParameterName,
     required this.sectionQuestions,
     required this.currentQuestionId,
     required this.attemptedQuestionIds,
     required this.onQuestionTap,
+    this.onNextParameter,
     this.onNextSection,
+    this.canProceedToNextParameter = false,
     required this.canProceedToNextSection,
     required this.answeredCount,
   });
@@ -77,9 +83,9 @@ class QuestionOverviewSidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Section',
-            style: TextStyle(
+          Text(
+            currentParameterName != null ? currentSection.name : 'Section',
+            style: const TextStyle(
               color: Colors.white70,
               fontSize: 12,
               fontWeight: FontWeight.w500,
@@ -87,7 +93,7 @@ class QuestionOverviewSidebar extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            currentSection.name,
+            currentParameterName ?? currentSection.name,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -185,21 +191,31 @@ class QuestionOverviewSidebar extends StatelessWidget {
   }
 
   Widget _buildNextSectionButton(BuildContext context) {
+    final String label;
+    final VoidCallback? callback;
+
+    if (canProceedToNextParameter) {
+      label = 'Next Subsection';
+      callback = onNextParameter;
+    } else if (canProceedToNextSection) {
+      label = 'Next Section';
+      callback = onNextSection;
+    } else {
+      label = 'Complete All Questions';
+      callback = null;
+    }
+
+    final bool enabled = callback != null;
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: ElevatedButton.icon(
-        onPressed: canProceedToNextSection ? onNextSection : null,
-        icon: Icon(
-          canProceedToNextSection ? Icons.arrow_forward : Icons.lock,
-        ),
-        label: Text(
-          canProceedToNextSection ? 'Next Section' : 'Complete All Questions',
-        ),
+        onPressed: callback,
+        icon: Icon(enabled ? Icons.arrow_forward : Icons.lock),
+        label: Text(label),
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor: canProceedToNextSection
-              ? Theme.of(context).primaryColor
-              : Colors.grey,
+          backgroundColor: enabled ? Theme.of(context).primaryColor : Colors.grey,
           foregroundColor: Colors.white,
           disabledBackgroundColor: Colors.grey.shade300,
           disabledForegroundColor: Colors.grey.shade600,
@@ -216,22 +232,28 @@ class QuestionOverviewSidebar extends StatelessWidget {
 /// Compact sidebar for mobile (drawer or bottom sheet)
 class CompactQuestionOverview extends StatelessWidget {
   final SectionModel currentSection;
+  final String? currentParameterName;
   final List<QuestionModel> sectionQuestions;
   final String currentQuestionId;
   final Set<String> attemptedQuestionIds;
   final Function(int) onQuestionTap;
+  final VoidCallback? onNextParameter;
   final VoidCallback? onNextSection;
+  final bool canProceedToNextParameter;
   final bool canProceedToNextSection;
   final int answeredCount;
 
   const CompactQuestionOverview({
     super.key,
     required this.currentSection,
+    this.currentParameterName,
     required this.sectionQuestions,
     required this.currentQuestionId,
     required this.attemptedQuestionIds,
     required this.onQuestionTap,
+    this.onNextParameter,
     this.onNextSection,
+    this.canProceedToNextParameter = false,
     required this.canProceedToNextSection,
     required this.answeredCount,
   });
@@ -244,9 +266,16 @@ class CompactQuestionOverview extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Section title
+          // Section / subsection title
+          if (currentParameterName != null) ...[
+            Text(
+              currentSection.name,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 2),
+          ],
           Text(
-            currentSection.name,
+            currentParameterName ?? currentSection.name,
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -314,26 +343,31 @@ class CompactQuestionOverview extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // Next section button
-          ElevatedButton.icon(
-            onPressed: canProceedToNextSection
-                ? () {
-                    onNextSection?.call();
-                    Navigator.pop(context);
-                  }
-                : null,
-            icon: Icon(
-              canProceedToNextSection ? Icons.arrow_forward : Icons.lock,
-            ),
-            label: Text(
-              canProceedToNextSection
-                  ? 'Next Section'
-                  : 'Complete All Questions',
-            ),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-          ),
+          // Next subsection / section button
+          Builder(builder: (context) {
+            final String label;
+            final VoidCallback? callback;
+
+            if (canProceedToNextParameter) {
+              label = 'Next Subsection';
+              callback = onNextParameter;
+            } else if (canProceedToNextSection) {
+              label = 'Next Section';
+              callback = onNextSection;
+            } else {
+              label = 'Complete All Questions';
+              callback = null;
+            }
+
+            return ElevatedButton.icon(
+              onPressed: callback,
+              icon: Icon(callback != null ? Icons.arrow_forward : Icons.lock),
+              label: Text(label),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            );
+          }),
         ],
       ),
     );

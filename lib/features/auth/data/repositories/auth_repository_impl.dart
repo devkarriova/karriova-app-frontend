@@ -44,6 +44,9 @@ class AuthRepositoryImpl implements AuthRepository {
       await localDataSource.clearUser();
       await localDataSource.clearTokens();
 
+      // Clear in-memory token so future login attempts don't trigger retry loop
+      apiClient.setAccessToken(null);
+
       // Notify the app about token expiration
       if (_onTokenExpiredCallback != null) {
         _onTokenExpiredCallback!();
@@ -295,6 +298,11 @@ class AuthRepositoryImpl implements AuthRepository {
   String _handleError(dynamic error) {
     if (error is String) {
       return error;
+    }
+    if (error is Exception) {
+      final message = error.toString();
+      const prefix = 'Exception: ';
+      return message.startsWith(prefix) ? message.substring(prefix.length) : message;
     }
     return 'An unexpected error occurred. Please try again.';
   }

@@ -183,12 +183,17 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
                             maxWidth: 280,
                             child: QuestionOverviewSidebar(
                               currentSection: state.currentSection!,
-                              sectionQuestions: state.currentSectionQuestions,
-                              currentQuestionId: state.currentQuestion?.id ?? '',
-                              attemptedQuestionIds: state.attemptedQuestionIds,
+                              currentParameterName:
+                                  state.currentParameter?.name,
+                              sectionQuestions:
+                                  state.currentParameterQuestions,
+                              currentQuestionId:
+                                  state.currentQuestion?.id ?? '',
+                              attemptedQuestionIds:
+                                  state.attemptedQuestionIds,
                               onQuestionTap: (localIndex) {
                                 final globalIndex =
-                                    _getGlobalIndexForSectionQuestion(
+                                    _getGlobalIndexForParameterQuestion(
                                   state,
                                   localIndex,
                                 );
@@ -196,6 +201,11 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
                                       AssessmentNavigateToQuestion(globalIndex),
                                     );
                               },
+                              onNextParameter:
+                                  state.canProceedToNextParameter
+                                      ? () => _navigateToNextParameter(
+                                          context, state)
+                                      : null,
                               onNextSection: state.canProceedToNextSection
                                   ? () {
                                       context.read<AssessmentBloc>().add(
@@ -205,9 +215,12 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
                                           );
                                     }
                                   : null,
+                              canProceedToNextParameter:
+                                  state.canProceedToNextParameter,
                               canProceedToNextSection:
                                   state.canProceedToNextSection,
-                              answeredCount: state.currentSectionAnsweredCount,
+                              answeredCount:
+                                  state.currentParameterAnsweredCount,
                             ),
                           ),
                         ),
@@ -485,16 +498,38 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
     );
   }
 
-  /// Helper method to convert section-local question index to global index
-  int _getGlobalIndexForSectionQuestion(
+  /// Convert a parameter-local question index to the global question index.
+  int _getGlobalIndexForParameterQuestion(
     AssessmentState state,
     int localIndex,
   ) {
-    final currentSectionQuestions = state.currentSectionQuestions;
-    if (localIndex >= currentSectionQuestions.length) return 0;
+    final paramQuestions = state.currentParameterQuestions;
+    if (localIndex >= paramQuestions.length) return 0;
+    final targetQuestion = paramQuestions[localIndex];
+    final idx = state.allQuestions.indexWhere((q) => q.id == targetQuestion.id);
+    return idx < 0 ? 0 : idx;
+  }
 
-    final targetQuestion = currentSectionQuestions[localIndex];
-    return state.allQuestions.indexWhere((q) => q.id == targetQuestion.id);
+  /// Navigate to the first question of the next parameter within the current section.
+  void _navigateToNextParameter(BuildContext context, AssessmentState state) {
+    final section = state.currentSection;
+    final parameters = section?.parameters;
+    if (parameters == null || parameters.isEmpty) return;
+
+    final nextParamIndex = state.currentParameterIndex + 1;
+    if (nextParamIndex >= parameters.length) return;
+
+    final nextParam = parameters[nextParamIndex];
+    if (nextParam.questions.isEmpty) return;
+
+    final firstQuestion = nextParam.questions.first;
+    final globalIndex =
+        state.allQuestions.indexWhere((q) => q.id == firstQuestion.id);
+    if (globalIndex >= 0) {
+      context
+          .read<AssessmentBloc>()
+          .add(AssessmentNavigateToQuestion(globalIndex));
+    }
   }
 
   /// Show mobile sidebar as bottom sheet
@@ -514,18 +549,26 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
         ),
         child: CompactQuestionOverview(
           currentSection: state.currentSection!,
-          sectionQuestions: state.currentSectionQuestions,
+          currentParameterName: state.currentParameter?.name,
+          sectionQuestions: state.currentParameterQuestions,
           currentQuestionId: state.currentQuestion?.id ?? '',
           attemptedQuestionIds: state.attemptedQuestionIds,
           onQuestionTap: (localIndex) {
-            final globalIndex = _getGlobalIndexForSectionQuestion(
+            final globalIndex = _getGlobalIndexForParameterQuestion(
               state,
               localIndex,
             );
             context.read<AssessmentBloc>().add(
                   AssessmentNavigateToQuestion(globalIndex),
                 );
+            Navigator.pop(context);
           },
+          onNextParameter: state.canProceedToNextParameter
+              ? () {
+                  _navigateToNextParameter(context, state);
+                  Navigator.pop(context);
+                }
+              : null,
           onNextSection: state.canProceedToNextSection
               ? () {
                   context.read<AssessmentBloc>().add(
@@ -533,10 +576,12 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
                           state.currentSectionIndex + 1,
                         ),
                       );
+                  Navigator.pop(context);
                 }
               : null,
+          canProceedToNextParameter: state.canProceedToNextParameter,
           canProceedToNextSection: state.canProceedToNextSection,
-          answeredCount: state.currentSectionAnsweredCount,
+          answeredCount: state.currentParameterAnsweredCount,
         ),
       ),
     );
