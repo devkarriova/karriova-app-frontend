@@ -3,7 +3,6 @@ import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../network/api_client.dart';
-import '../services/inactivity_service.dart';
 import '../services/firebase_otp_service.dart';
 import '../services/user_settings_service.dart';
 import '../theme/theme_cubit.dart';
@@ -96,13 +95,6 @@ Future<void> configureDependencies() async {
 
     return dio;
   });
-
-  // Services
-  getIt.registerLazySingleton<InactivityService>(
-    () => InactivityService(
-      inactivityDuration: const Duration(minutes: 15),
-    ),
-  );
 
   // Firebase OTP Service (for phone number verification only)
   getIt.registerLazySingleton<FirebaseOtpService>(

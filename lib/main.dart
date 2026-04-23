@@ -8,7 +8,6 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_cubit.dart';
 import 'core/routes/app_router.dart';
 import 'core/config/app_config.dart';
-import 'core/services/inactivity_service.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
 import 'features/auth/presentation/bloc/auth_state.dart';
@@ -44,7 +43,6 @@ class KarriovaApp extends StatefulWidget {
 }
 
 class _KarriovaAppState extends State<KarriovaApp> {
-  late final InactivityService _inactivityService;
   late final AuthBloc _authBloc;
   late final ThemeCubit _themeCubit;
   late final ChatBloc _chatBloc;
@@ -53,7 +51,6 @@ class _KarriovaAppState extends State<KarriovaApp> {
   @override
   void initState() {
     super.initState();
-    _inactivityService = getIt<InactivityService>();
     _authBloc = getIt<AuthBloc>()..add(const AuthCheckStatusRequested());
     _themeCubit = getIt<ThemeCubit>();
     _chatBloc = getIt<ChatBloc>();
@@ -64,9 +61,7 @@ class _KarriovaAppState extends State<KarriovaApp> {
 
     // Setup token expiration callback
     _setupTokenExpirationCallback();
-
-    // Setup inactivity tracking
-    _setupInactivityTracking();
+    _setupAuthListeners();
   }
 
   void _setupTokenExpirationCallback() {
@@ -80,23 +75,12 @@ class _KarriovaAppState extends State<KarriovaApp> {
     }
   }
 
-  void _setupInactivityTracking() {
-    // Listen to auth state changes to enable/disable inactivity tracking
+  void _setupAuthListeners() {
+    // Listen to auth state changes to manage session
     _authBloc.stream.listen((state) {
       if (state.status == AuthStatus.authenticated) {
         // User is logged in — sync theme from API (overwrites local cache with DB value)
         _themeCubit.loadThemePreference();
-
-        // User is logged in, enable inactivity tracking
-        _inactivityService.enable(
-          onTimeout: () {
-            // Auto logout on inactivity
-            _authBloc.add(const AuthLogoutRequested());
-          },
-        );
-
-        // Register device token for push notifications (disabled - using WebSocket)
-        // _pushNotificationService.registerDeviceToken();
 
         // Connect to notification WebSocket for real-time updates
         _notificationBloc.add(const NotificationWebSocketConnectRequested());
@@ -106,23 +90,14 @@ class _KarriovaAppState extends State<KarriovaApp> {
         if (followBloc.state.followingIds.isEmpty) {
           followBloc.add(const LoadFollowingIdsEvent());
         }
-      } else {
-        // User is not logged in, disable tracking
-        _inactivityService.disable();
-
-        // Disconnect notification WebSocket and unregister device token when logged out
-        if (state.status == AuthStatus.unauthenticated) {
-          // _pushNotificationService.unregisterDeviceToken();
-
-          _notificationBloc.add(const NotificationWebSocketDisconnectRequested());
-        }
+      } else if (state.status == AuthStatus.unauthenticated) {
+        _notificationBloc.add(const NotificationWebSocketDisconnectRequested());
       }
     });
   }
 
   @override
   void dispose() {
-    _inactivityService.dispose();
     super.dispose();
   }
 
@@ -145,9 +120,7 @@ class _KarriovaAppState extends State<KarriovaApp> {
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(
         builder: (context, themeMode) {
-          return InactivityDetector(
-            inactivityService: _inactivityService,
-            child: MaterialApp.router(
+          return MaterialApp.router(
               title: AppConfig.appName,
               debugShowCheckedModeBanner: false,
               theme: AppTheme.lightTheme,
@@ -166,7 +139,6 @@ class _KarriovaAppState extends State<KarriovaApp> {
                   child: _NotificationListener(child: child!),
                 );
               },
-            ),
           );
         },
       ),
