@@ -586,16 +586,19 @@ class DimensionScoreModel extends Equatable {
 /// Assessment result containing all dimension scores
 class AssessmentResultModel extends Equatable {
   final bool completed;
+  final String attemptId;
   final List<DimensionScoreModel> scores;
 
   const AssessmentResultModel({
     required this.completed,
+    this.attemptId = '',
     required this.scores,
   });
 
   factory AssessmentResultModel.fromJson(Map<String, dynamic> json) {
     return AssessmentResultModel(
       completed: json['completed'] as bool? ?? false,
+      attemptId: json['attempt_id'] as String? ?? '',
       scores: (json['scores'] as List<dynamic>?)
               ?.map(
                   (e) => DimensionScoreModel.fromJson(e as Map<String, dynamic>))
@@ -605,5 +608,5 @@ class AssessmentResultModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [completed, scores];
+  List<Object?> get props => [completed, attemptId, scores];
 }

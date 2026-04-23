@@ -5,8 +5,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/routes/app_router.dart';
-import '../../../auth/presentation/bloc/auth_bloc.dart';
-import '../../../auth/presentation/bloc/auth_event.dart';
+import '../../../auth/data/datasources/auth_local_datasource.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
@@ -190,13 +189,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       skills: _skills,
     ));
 
-    // Mark profile setup as complete and navigate to feed
-    getIt<AuthBloc>().add(const AuthSetAssessmentCompleted());
-    
-    // Add a small delay to ensure state is updated before navigation
-    await Future.delayed(const Duration(milliseconds: 100));
+    // Persist profile setup done flag so we never redirect here again
+    await getIt<AuthLocalDataSource>().saveProfileSetupDone();
+
+    // Navigate to assessment (profile done, now take the KIT)
     if (mounted) {
-      GoRouter.of(context).go(AppRouter.feed);
+      GoRouter.of(context).go(AppRouter.assessment);
     }
   }
 

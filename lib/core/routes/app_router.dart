@@ -48,6 +48,7 @@ import '../../features/settings/presentation/pages/privacy_policy_page.dart';
 import '../../features/settings/presentation/pages/terms_of_service_page.dart';
 import '../../features/opportunities/presentation/pages/internships_page.dart';
 import '../../features/opportunities/presentation/pages/events_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../di/injection.dart';
 
 /// Listenable that notifies when auth state changes - triggers GoRouter refresh
@@ -157,29 +158,38 @@ class AppRouter {
       final isPublicRoute =
           _publicRoutes.contains(currentPath) || currentPath.isEmpty;
 
+      // Blueprint routes require assessment to be completed
+      if (currentPath.startsWith('/career-blueprint')) {
+        if (!isAuthenticated) return auth;
+        if (authState.assessmentCompleted != true) return assessment;
+        return null;
+      }
+
       // If NOT authenticated and trying to access protected route,
       // redirect to auth page
       if (!isAuthenticated && !isPublicRoute) {
         return auth;
       }
 
-      // If authenticated user is on landing or login, redirect based on assessment status
+      // If authenticated user is on landing or login, redirect based on status
       if (isAuthenticated && (currentPath == '/' || currentPath == '/login' || currentPath.isEmpty)) {
-        // Wait for assessment status to be determined before redirecting
-        // The auth page will trigger the assessment check
         if (authState.assessmentCompleted == null) {
-          // Don't redirect yet - let auth page check assessment status
-          // This will trigger another state change and redirect will run again
-          return null;
+          return null; // Still loading — wait
         }
 
-        if (authState.assessmentCompleted == false) {
-          return profileSetup;
-        }
+        final profileDone = getIt<SharedPreferences>().getBool('profile_setup_done') ?? false;
+        if (!profileDone) return profileSetup;                   // First time: fill profile
+        if (authState.assessmentCompleted == false) return assessment; // Profile done, needs KIT
         return feed;
       }
 
-      return null; // No redirect needed
+      // Prevent re-entering profile-setup once done
+      if (currentPath == '/profile-setup') {
+        final profileDone = getIt<SharedPreferences>().getBool('profile_setup_done') ?? false;
+        if (profileDone) return assessment;
+      }
+
+      return null;
     },
     routes: [
       // Landing Page (unauthenticated home)
@@ -521,17 +531,8 @@ class AppRouter {
         path: '/assessment',
         name: 'assessment',
         pageBuilder: (context, state) {
-          return MaterialPage(
-            child: AssessmentPage(
-              onComplete: () {
-                // Mark assessment as completed in auth state
-                context
-                    .read<AuthBloc>()
-                    .add(const AuthSetAssessmentCompleted());
-                // Navigate to feed after assessment completion
-                GoRouter.of(context).go(AppRouter.feed);
-              },
-            ),
+          return const MaterialPage(
+            child: AssessmentPage(),
           );
         },
       ),

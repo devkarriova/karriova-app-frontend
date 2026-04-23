@@ -17,11 +17,11 @@ import '../widgets/question_overview_sidebar.dart';
 /// Standalone full-screen assessment page
 /// Shown to users on first login before they can access the main app
 class AssessmentPage extends StatelessWidget {
-  final VoidCallback onComplete;
+  final VoidCallback? onComplete;
 
   const AssessmentPage({
     super.key,
-    required this.onComplete,
+    this.onComplete,
   });
 
   @override
@@ -30,7 +30,7 @@ class AssessmentPage extends StatelessWidget {
       value: getIt<AssessmentBloc>()
         ..add(const AssessmentLoadRequested())
         ..add(const AssessmentStartTimer()),
-      child: _AssessmentPageContent(onComplete: onComplete),
+      child: _AssessmentPageContent(onComplete: onComplete ?? () {}),
     );
   }
 }
@@ -54,8 +54,11 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
     return BlocConsumer<AssessmentBloc, AssessmentState>(
       listener: (context, state) {
         if (state.status == AssessmentStatus.completed && state.result != null) {
-          // Navigate to results page using go_router
-          context.go(AppRouter.assessmentResults);
+          final attemptId = state.result!.attemptId;
+          final path = attemptId.isNotEmpty
+              ? '${AppRouter.assessmentResults}?attemptId=$attemptId'
+              : AppRouter.assessmentResults;
+          context.go(path);
         }
       },
       builder: (context, state) {

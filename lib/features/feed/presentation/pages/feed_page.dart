@@ -16,6 +16,7 @@ import '../bloc/feed_state.dart';
 import '../widgets/create_post_card.dart';
 import '../widgets/post_card_with_comments.dart';
 import '../widgets/kit_card.dart';
+import '../../../../shared/widgets/profile_reminder_banner.dart';
 
 /// Activity feed page - Enterprise-level implementation with BLoC pattern
 class FeedPage extends StatelessWidget {
@@ -87,19 +88,24 @@ class _FeedPageContentState extends State<_FeedPageContent> {
             );
           },
         ),
-        body: Column(
+        body: Stack(
           children: [
-            const AppNavigationBar(currentRoute: AppRouter.feed),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isMobile = constraints.maxWidth < 768;
-                  return isMobile
-                      ? _buildFeedColumn(context)
-                      : _buildDesktopLayout(context);
-                },
-              ),
+            Column(
+              children: [
+                const AppNavigationBar(currentRoute: AppRouter.feed),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isMobile = constraints.maxWidth < 768;
+                      return isMobile
+                          ? _buildFeedColumn(context)
+                          : _buildDesktopLayout(context);
+                    },
+                  ),
+                ),
+              ],
             ),
+            const ProfileReminderBanner(),
           ],
         ),
       ),

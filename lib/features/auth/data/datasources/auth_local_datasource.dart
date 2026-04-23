@@ -12,6 +12,8 @@ abstract class AuthLocalDataSource {
   Future<void> saveRefreshToken(String token);
   Future<String?> getRefreshToken();
   Future<void> clearTokens();
+  Future<void> saveProfileSetupDone();
+  Future<bool> isProfileSetupDone();
 }
 
 class AuthLocalDataSourceImpl implements AuthLocalDataSource {
@@ -21,6 +23,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   static const String _userKey = 'cached_user';
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
+  static const String _profileSetupDoneKey = 'profile_setup_done';
 
   AuthLocalDataSourceImpl({
     required this.sharedPreferences,
@@ -71,5 +74,15 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   Future<void> clearTokens() async {
     await secureStorage.delete(key: _accessTokenKey);
     await secureStorage.delete(key: _refreshTokenKey);
+  }
+
+  @override
+  Future<void> saveProfileSetupDone() async {
+    await sharedPreferences.setBool(_profileSetupDoneKey, true);
+  }
+
+  @override
+  Future<bool> isProfileSetupDone() async {
+    return sharedPreferences.getBool(_profileSetupDoneKey) ?? false;
   }
 }
