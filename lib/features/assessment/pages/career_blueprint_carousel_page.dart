@@ -7,8 +7,11 @@ import 'package:karriova_app/core/theme/app_typography.dart';
 import 'package:karriova_app/core/routes/app_router.dart';
 import 'package:karriova_app/core/config/app_config.dart';
 import 'package:karriova_app/core/di/injection.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:karriova_app/features/assessment/models/career_blueprint_model.dart';
 import 'package:karriova_app/features/assessment/services/blueprint_api_service.dart';
+import 'package:karriova_app/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:karriova_app/features/auth/presentation/bloc/auth_state.dart';
 import 'career_blueprint_detail_page.dart';
 
 /// Blueprint Carousel Page - Shows 3 career options with summary cards
@@ -124,6 +127,76 @@ class _CareerBlueprintCarouselPageState
 
   @override
   Widget build(BuildContext context) {
+    final assessmentDone =
+        context.watch<AuthBloc>().state.assessmentCompleted == true;
+
+    if (!assessmentDone) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Career Blueprint'),
+          centerTitle: true,
+          backgroundColor: AppColors.white,
+          elevation: 0,
+          foregroundColor: AppColors.textPrimary,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.psychology_outlined,
+                          size: 48, color: AppColors.primary),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Complete Your KIT Assessment First',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Your personalised career blueprint is generated based on your KIT scores. Take the assessment to unlock your top 3 career matches.',
+                      textAlign: TextAlign.center,
+                      style:
+                          TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () => context.go(AppRouter.assessment),
+                      icon: const Icon(Icons.play_arrow_rounded),
+                      label: const Text('Take Assessment'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(

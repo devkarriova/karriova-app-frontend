@@ -158,13 +158,6 @@ class AppRouter {
       final isPublicRoute =
           _publicRoutes.contains(currentPath) || currentPath.isEmpty;
 
-      // Blueprint routes require assessment to be completed
-      if (currentPath.startsWith('/career-blueprint')) {
-        if (!isAuthenticated) return auth;
-        if (authState.assessmentCompleted != true) return assessment;
-        return null;
-      }
-
       // If NOT authenticated and trying to access protected route,
       // redirect to auth page
       if (!isAuthenticated && !isPublicRoute) {
