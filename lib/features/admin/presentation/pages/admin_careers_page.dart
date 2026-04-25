@@ -40,7 +40,7 @@ class _AdminCareersPageState extends State<AdminCareersPage> {
   Future<void> _loadCareers() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final res = await _dio.get('/api/v1/admin/careers');
+      final res = await _dio.get('/admin/careers');
       final data = res.data as Map<String, dynamic>;
       final list = List<Map<String, dynamic>>.from(data['careers'] ?? []);
       final streams = <String>{'All'};
@@ -77,7 +77,7 @@ class _AdminCareersPageState extends State<AdminCareersPage> {
 
   Future<void> _toggleActive(String id, bool currentlyActive) async {
     try {
-      await _dio.put('/api/v1/admin/careers/$id', data: {'is_active': !currentlyActive});
+      await _dio.put('/admin/careers/$id', data: {'is_active': !currentlyActive});
       _loadCareers();
     } catch (e) {
       if (mounted) {
@@ -134,7 +134,7 @@ class _AdminCareersPageState extends State<AdminCareersPage> {
               onPressed: () async {
                 if (nameCtrl.text.trim().isEmpty) return;
                 try {
-                  await _dio.post('/api/v1/admin/careers', data: {
+                  await _dio.post('/admin/careers', data: {
                     'name': nameCtrl.text.trim(),
                     'description': descCtrl.text.trim(),
                     'stream': stream,

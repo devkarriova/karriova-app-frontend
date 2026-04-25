@@ -71,7 +71,7 @@ class _AdminCareerParametersPageState extends State<AdminCareerParametersPage> {
   Future<void> _loadParameters() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final res = await _dio.get('/api/v1/admin/careers/${widget.careerId}/parameters');
+      final res = await _dio.get('/admin/careers/${widget.careerId}/parameters');
       final data = res.data as Map<String, dynamic>;
       final targets = List<Map<String, dynamic>>.from(data['targets'] ?? []);
 
@@ -101,7 +101,7 @@ class _AdminCareerParametersPageState extends State<AdminCareerParametersPage> {
       }).toList();
 
       await _dio.put(
-        '/api/v1/admin/careers/${widget.careerId}/parameters',
+        '/admin/careers/${widget.careerId}/parameters',
         data: {'targets': targets},
       );
 

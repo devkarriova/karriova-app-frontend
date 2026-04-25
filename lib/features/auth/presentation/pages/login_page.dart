@@ -91,12 +91,12 @@ class _LoginPageState extends State<LoginPage> {
             _launchGoogleOAuth(state.googleOAuthUrl!);
           }
         } else if (state.status == AuthStatus.authenticated) {
-          // Show success message only once
-          if (!_hasNavigated) {
+          // Show success message only on actual login (not silent session restore)
+          if (!_hasNavigated && state.successMessage != null) {
             _hasNavigated = true;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.successMessage ?? 'Login successful!'),
+                content: Text(state.successMessage!),
                 backgroundColor: AppColors.success,
               ),
             );
