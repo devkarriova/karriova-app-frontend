@@ -52,14 +52,18 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AssessmentBloc, AssessmentState>(
+      listenWhen: (previous, current) =>
+          previous.status != AssessmentStatus.completed &&
+          current.status == AssessmentStatus.completed &&
+          current.result != null,
       listener: (context, state) {
-        if (state.status == AssessmentStatus.completed && state.result != null) {
-          final attemptId = state.result!.attemptId;
-          final path = attemptId.isNotEmpty
-              ? '${AppRouter.assessmentResults}?attemptId=$attemptId'
-              : AppRouter.assessmentResults;
-          context.go(path);
-        }
+        final attemptId = state.result!.attemptId;
+        final path = attemptId.isNotEmpty
+            ? '${AppRouter.assessmentResults}?attemptId=$attemptId'
+            : AppRouter.assessmentResults;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) context.go(path);
+        });
       },
       builder: (context, state) {
         return Scaffold(
@@ -141,17 +145,11 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
   }
 
   Widget _buildInProgressState(BuildContext context, AssessmentState state) {
-    print('🎯 [AssessmentPage] Building inProgress state...');
     final currentQuestion = state.currentQuestion;
-    print('   📝 Current question: ${currentQuestion?.text ?? "NULL"}');
-    print('   📁 Current section: ${state.currentSection?.name ?? "NULL"}');
 
     if (currentQuestion == null || state.currentSection == null) {
-      print('⚠️ [AssessmentPage] currentQuestion or currentSection is null, showing loader');
       return _buildLoadingState();
     }
-
-    print('✅ [AssessmentPage] Rendering question UI');
     final screenWidth = MediaQuery.of(context).size.width;
     final showSidebarPermanent = screenWidth > 900;
 
@@ -591,7 +589,7 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
   }
 }
 
-/// Full-screen results page after assessment completion
+/// Full-screen completion page shown after assessment submission
 class AssessmentResultsFullPage extends StatelessWidget {
   final AssessmentResultModel result;
   final VoidCallback onContinue;
@@ -604,264 +602,74 @@ class AssessmentResultsFullPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Group scores by section
-    final scoresBySection = <String, List<DimensionScoreModel>>{};
-    for (final score in result.scores) {
-      scoresBySection.putIfAbsent(score.sectionName, () => []).add(score);
-    }
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: Padding(
-              padding: const EdgeInsets.all(AppDimensions.paddingLG),
-              child: Column(
-                children: [
-                  // Header
-                  _buildHeader(),
-                  const SizedBox(height: AppDimensions.paddingXL),
-
-                  // Results
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(AppDimensions.paddingLG),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            ...scoresBySection.entries.map((entry) => _buildSection(
-                                  sectionName: entry.key,
-                                  scores: entry.value,
-                                )),
-                          ],
-                        ),
-                      ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppDimensions.paddingXL),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Completion icon
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    borderRadius: BorderRadius.circular(48),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.3),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: AppDimensions.paddingLG),
-
-                  // Continue button
-                  SizedBox(
-                    width: double.infinity,
-                    child: GradientButton(
-                      text: 'Continue to Karriova',
-                      onPressed: onContinue,
-                    ),
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    color: AppColors.white,
+                    size: 48,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 32),
+                const Text(
+                  'Assessment Complete!',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Your responses have been analysed. Explore your personalised career blueprint with tailored roadmaps and insights.',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: AppColors.textSecondary,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 48),
+                SizedBox(
+                  width: double.infinity,
+                  child: GradientButton(
+                    text: 'Explore My Career Blueprint',
+                    onPressed: onContinue,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.gradientStart, AppColors.gradientEnd],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(36),
-          ),
-          child: const Icon(
-            Icons.check_circle,
-            color: AppColors.white,
-            size: 40,
-          ),
-        ),
-        const SizedBox(height: AppDimensions.paddingMD),
-        const Text(
-          'Assessment Complete! 🎉',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: AppDimensions.paddingSM),
-        const Text(
-          'Here\'s your personality profile based on your responses.',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSection({
-    required String sectionName,
-    required List<DimensionScoreModel> scores,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppDimensions.paddingMD),
-          child: Text(
-            sectionName,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ),
-        ...scores.map((score) => Padding(
-              padding: const EdgeInsets.only(bottom: AppDimensions.paddingMD),
-              child: _DimensionScoreBar(score: score),
-            )),
-      ],
     );
   }
 }
 
-/// Dimension score bar widget
-class _DimensionScoreBar extends StatelessWidget {
-  final DimensionScoreModel score;
-
-  const _DimensionScoreBar({required this.score});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppDimensions.paddingMD),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            score.dimensionName,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: AppDimensions.paddingSM),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                score.poleALabel,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: score.score < 50 ? FontWeight.w600 : FontWeight.w400,
-                  color: score.score < 50 ? AppColors.primary : AppColors.textTertiary,
-                ),
-              ),
-              Text(
-                score.poleBLabel,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: score.score >= 50 ? FontWeight.w600 : FontWeight.w400,
-                  color: score.score >= 50 ? AppColors.secondary : AppColors.textTertiary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppDimensions.paddingXS),
-          SizedBox(
-            height: 24,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final markerPosition = constraints.maxWidth * (score.score / 100);
-                return Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      height: 8,
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.gradientStart, AppColors.gradientEnd],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    Positioned(
-                      left: markerPosition - 12,
-                      top: 0,
-                      child: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _getMarkerColor(score.score),
-                            width: 3,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: AppDimensions.paddingSM),
-          Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: _getMarkerColor(score.score).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                score.descriptiveLabel,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: _getMarkerColor(score.score),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getMarkerColor(double score) {
-    if (score < 45) return AppColors.primary;
-    if (score > 55) return AppColors.secondary;
-    return AppColors.textSecondary;
-  }
-}

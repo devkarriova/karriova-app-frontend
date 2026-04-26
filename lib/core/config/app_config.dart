@@ -3,25 +3,28 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AppConfig {
   static const String appName = 'Karriova';
-  static const String _webApiBaseUrlDefault = 'https://karriova-backend-services-production.up.railway.app/api/v1';
+  static const String _prodApiBaseUrl = 'https://karriova-backend-services-production.up.railway.app/api/v1';
+  static const String _localApiBaseUrl = 'http://localhost:8080/api/v1';
   static const String _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
-  // Base URL - Automatically detects platform
-  static String get apiBaseUrl {
+  static bool get _isLocal {
     if (kIsWeb) {
-      // Web: use compile-time override when provided, otherwise Railway backend
-      if (_apiBaseUrlOverride.isNotEmpty) {
-        return _apiBaseUrlOverride;
-      }
-      return _webApiBaseUrlDefault;
+      final host = Uri.base.host;
+      return host == 'localhost' || host == '127.0.0.1';
+    }
+    return true; // native builds always hit local
+  }
+
+  // Base URL - auto-detects local vs prod
+  static String get apiBaseUrl {
+    if (_apiBaseUrlOverride.isNotEmpty) return '$_apiBaseUrlOverride/api/v1';
+    if (kIsWeb) {
+      return _isLocal ? _localApiBaseUrl : _prodApiBaseUrl;
     } else if (Platform.isAndroid) {
-      // For local dev with ngrok: run `ngrok http 8080` and paste the URL below
-      const ngrokUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
-      if (ngrokUrl.isNotEmpty) return '$ngrokUrl/api/v1';
-      return _webApiBaseUrlDefault;
+      // Emulator: 10.0.2.2 = host localhost. Physical device: use ngrok or local IP.
+      return 'http://10.0.2.2:8080/api/v1';
     } else {
-      // iOS Simulator, Desktop (Windows/Linux/macOS): use localhost
-      return 'http://localhost:8080/api/v1';
+      return _localApiBaseUrl;
     }
   }
 
@@ -52,8 +55,8 @@ class AppConfig {
   static const String updateOnboardingProfileEndpoint = '/profiles/me/onboarding';
 
   // Timeouts
-  static const Duration connectionTimeout = Duration(seconds: 30);
-  static const Duration receiveTimeout = Duration(seconds: 30);
+  static const Duration connectionTimeout = Duration(seconds: 120);
+  static const Duration receiveTimeout = Duration(seconds: 120);
 
   // Storage Keys
   static const String accessTokenKey = 'access_token';

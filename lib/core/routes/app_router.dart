@@ -171,15 +171,14 @@ class AppRouter {
         }
 
         final profileDone = getIt<SharedPreferences>().getBool('profile_setup_done') ?? false;
-        if (!profileDone) return profileSetup;                   // First time: fill profile
-        if (authState.assessmentCompleted == false) return assessment; // Profile done, needs KIT
-        return feed;
+        if (!profileDone) return profileSetup; // First time: fill profile
+        return feed; // Assessment is opt-in, not auto-triggered
       }
 
       // Prevent re-entering profile-setup once done
       if (currentPath == '/profile-setup') {
         final profileDone = getIt<SharedPreferences>().getBool('profile_setup_done') ?? false;
-        if (profileDone) return assessment;
+        if (profileDone) return feed;
       }
 
       return null;

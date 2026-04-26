@@ -82,19 +82,13 @@ class AssessmentRemoteDataSourceImpl implements AssessmentRemoteDataSource {
 
   @override
   Future<AssessmentModel> getActiveAssessment() async {
-    print('🌐 [AssessmentDataSource] Fetching active assessment from API...');
     final response = await _apiClient.get('/assessments/active', requiresAuth: true);
 
-    print('📡 [AssessmentDataSource] API Response - Success: ${response.isSuccess}, Status: ${response.statusCode}');
-
     if (!response.isSuccess) {
-      print('❌ [AssessmentDataSource] API Error: ${response.errorMessage}');
       throw Exception(response.errorMessage ?? 'Failed to load assessment');
     }
 
-    print('✅ [AssessmentDataSource] API returned data, parsing...');
     final assessment = AssessmentModel.fromJson(response.data as Map<String, dynamic>);
-    print('✅ [AssessmentDataSource] Parsed ${assessment.sections.length} sections');
 
     return assessment;
   }

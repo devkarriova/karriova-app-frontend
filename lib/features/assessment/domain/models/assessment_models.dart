@@ -583,16 +583,189 @@ class DimensionScoreModel extends Equatable {
       [dimensionId, dimensionName, sectionName, poleALabel, poleBLabel, score];
 }
 
+/// Parameter score from KIT scoring
+class ParameterScoreModel extends Equatable {
+  final String parameterId;
+  final String parameterName;
+  final String parameterCode;
+  final String parameterType;
+  final String category;
+  final String sectionName;
+  final String? poleALabel;
+  final String? poleBLabel;
+  final double rawScore;
+  final double normalizedScore;
+  final double? poleAPercentage;
+  final double? poleBPercentage;
+  final double? intensityScore;
+
+  const ParameterScoreModel({
+    required this.parameterId,
+    required this.parameterName,
+    required this.parameterCode,
+    required this.parameterType,
+    required this.category,
+    required this.sectionName,
+    this.poleALabel,
+    this.poleBLabel,
+    required this.rawScore,
+    required this.normalizedScore,
+    this.poleAPercentage,
+    this.poleBPercentage,
+    this.intensityScore,
+  });
+
+  factory ParameterScoreModel.fromJson(Map<String, dynamic> json) {
+    return ParameterScoreModel(
+      parameterId: json['parameter_id'] as String? ?? '',
+      parameterName: json['parameter_name'] as String? ?? '',
+      parameterCode: json['parameter_code'] as String? ?? '',
+      parameterType: json['parameter_type'] as String? ?? '',
+      category: json['category'] as String? ?? '',
+      sectionName: json['section_name'] as String? ?? '',
+      poleALabel: json['pole_a_label'] as String?,
+      poleBLabel: json['pole_b_label'] as String?,
+      rawScore: (json['raw_score'] as num?)?.toDouble() ?? 0,
+      normalizedScore: (json['normalized_score'] as num?)?.toDouble() ?? 0,
+      poleAPercentage: (json['pole_a_percentage'] as num?)?.toDouble(),
+      poleBPercentage: (json['pole_b_percentage'] as num?)?.toDouble(),
+      intensityScore: (json['intensity_score'] as num?)?.toDouble(),
+    );
+  }
+
+  @override
+  List<Object?> get props => [parameterId, normalizedScore];
+}
+
+/// Career match from MAD scoring
+class CareerMatchModel extends Equatable {
+  final String careerProfileId;
+  final String careerName;
+  final String description;
+  final double fitScore;
+  final double overallMAD;
+  final double personalityMAD;
+  final double riasecMAD;
+  final double aptitudeMAD;
+  final double orientationMAD;
+  final int rank;
+
+  const CareerMatchModel({
+    required this.careerProfileId,
+    required this.careerName,
+    required this.description,
+    required this.fitScore,
+    required this.overallMAD,
+    required this.personalityMAD,
+    required this.riasecMAD,
+    required this.aptitudeMAD,
+    required this.orientationMAD,
+    required this.rank,
+  });
+
+  factory CareerMatchModel.fromJson(Map<String, dynamic> json) {
+    return CareerMatchModel(
+      careerProfileId: json['career_profile_id'] as String? ?? '',
+      careerName: json['career_name'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      fitScore: (json['fit_score'] as num?)?.toDouble() ?? 0,
+      overallMAD: (json['overall_mad'] as num?)?.toDouble() ?? 0,
+      personalityMAD: (json['personality_mad'] as num?)?.toDouble() ?? 0,
+      riasecMAD: (json['riasec_mad'] as num?)?.toDouble() ?? 0,
+      aptitudeMAD: (json['aptitude_mad'] as num?)?.toDouble() ?? 0,
+      orientationMAD: (json['orientation_mad'] as num?)?.toDouble() ?? 0,
+      rank: json['rank'] as int? ?? 0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [careerProfileId, fitScore, rank];
+}
+
+/// Reliability summary from KIT section 8
+class ReliabilityModel extends Equatable {
+  final bool passed;
+  final bool straightLiningCheck;
+  final bool scoreDiscriminationCheck;
+  final bool extremeClusteringCheck;
+  final double scoreRange;
+  final double scoreStdDev;
+  final int extremeCount;
+
+  const ReliabilityModel({
+    required this.passed,
+    required this.straightLiningCheck,
+    required this.scoreDiscriminationCheck,
+    required this.extremeClusteringCheck,
+    required this.scoreRange,
+    required this.scoreStdDev,
+    required this.extremeCount,
+  });
+
+  factory ReliabilityModel.fromJson(Map<String, dynamic> json) {
+    return ReliabilityModel(
+      passed: json['passed'] as bool? ?? false,
+      straightLiningCheck: json['straight_lining_check'] as bool? ?? false,
+      scoreDiscriminationCheck: json['score_discrimination_check'] as bool? ?? false,
+      extremeClusteringCheck: json['extreme_clustering_check'] as bool? ?? false,
+      scoreRange: (json['score_range'] as num?)?.toDouble() ?? 0,
+      scoreStdDev: (json['score_std_dev'] as num?)?.toDouble() ?? 0,
+      extremeCount: json['extreme_count'] as int? ?? 0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [passed, scoreRange, scoreStdDev, extremeCount];
+}
+
+/// Intensity summary per category
+class IntensityModel extends Equatable {
+  final double personality;
+  final double riasec;
+  final double aptitude;
+  final double orientation;
+  final double overall;
+
+  const IntensityModel({
+    required this.personality,
+    required this.riasec,
+    required this.aptitude,
+    required this.orientation,
+    required this.overall,
+  });
+
+  factory IntensityModel.fromJson(Map<String, dynamic> json) {
+    return IntensityModel(
+      personality: (json['personality'] as num?)?.toDouble() ?? 0,
+      riasec: (json['riasec'] as num?)?.toDouble() ?? 0,
+      aptitude: (json['aptitude'] as num?)?.toDouble() ?? 0,
+      orientation: (json['orientation'] as num?)?.toDouble() ?? 0,
+      overall: (json['overall'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [personality, riasec, aptitude, orientation, overall];
+}
+
 /// Assessment result containing all dimension scores
 class AssessmentResultModel extends Equatable {
   final bool completed;
   final String attemptId;
   final List<DimensionScoreModel> scores;
+  final List<ParameterScoreModel> parameterScores;
+  final List<CareerMatchModel> careerMatches;
+  final ReliabilityModel? reliability;
+  final IntensityModel? intensity;
 
   const AssessmentResultModel({
     required this.completed,
     this.attemptId = '',
     required this.scores,
+    this.parameterScores = const [],
+    this.careerMatches = const [],
+    this.reliability,
+    this.intensity,
   });
 
   factory AssessmentResultModel.fromJson(Map<String, dynamic> json) {
@@ -600,13 +773,26 @@ class AssessmentResultModel extends Equatable {
       completed: json['completed'] as bool? ?? false,
       attemptId: json['attempt_id'] as String? ?? '',
       scores: (json['scores'] as List<dynamic>?)
-              ?.map(
-                  (e) => DimensionScoreModel.fromJson(e as Map<String, dynamic>))
+              ?.map((e) => DimensionScoreModel.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      parameterScores: (json['parameter_scores'] as List<dynamic>?)
+              ?.map((e) => ParameterScoreModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      careerMatches: (json['career_matches'] as List<dynamic>?)
+              ?.map((e) => CareerMatchModel.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      reliability: json['reliability'] != null
+          ? ReliabilityModel.fromJson(json['reliability'] as Map<String, dynamic>)
+          : null,
+      intensity: json['intensity'] != null
+          ? IntensityModel.fromJson(json['intensity'] as Map<String, dynamic>)
+          : null,
     );
   }
 
   @override
-  List<Object?> get props => [completed, attemptId, scores];
+  List<Object?> get props => [completed, attemptId, scores, parameterScores, careerMatches, reliability, intensity];
 }

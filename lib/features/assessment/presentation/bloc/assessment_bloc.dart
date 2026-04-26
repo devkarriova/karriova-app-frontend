@@ -29,32 +29,19 @@ class AssessmentBloc extends Bloc<AssessmentEvent, AssessmentState> {
     AssessmentLoadRequested event,
     Emitter<AssessmentState> emit,
   ) async {
-    print('🔄 [AssessmentBloc] Loading assessment...');
     emit(state.copyWith(status: AssessmentStatus.loading));
 
     final result = await assessmentRepository.getActiveAssessment();
 
     result.fold(
       (error) {
-        print('❌ [AssessmentBloc] Error loading assessment: $error');
         emit(state.copyWith(
           status: AssessmentStatus.error,
           errorMessage: error,
         ));
       },
       (assessment) {
-        print('✅ [AssessmentBloc] Assessment loaded successfully');
-        print('   📊 Sections: ${assessment.sections.length}');
-        for (var section in assessment.sections) {
-          print('   📁 Section: ${section.name}');
-          print('      - Parameters: ${section.parameters?.length ?? 0}');
-          print('      - Dimensions: ${section.dimensions.length}');
-          print('      - Total questions: ${section.allQuestions.length}');
-        }
-        print('   📝 Total questions across all sections: ${assessment.allQuestions.length}');
-
         if (assessment.allQuestions.isEmpty) {
-          print('⚠️ [AssessmentBloc] WARNING: No questions found in assessment!');
           emit(state.copyWith(
             status: AssessmentStatus.error,
             errorMessage: 'No questions available in the assessment',
@@ -68,7 +55,6 @@ class AssessmentBloc extends Bloc<AssessmentEvent, AssessmentState> {
           (sum, section) => sum + section.durationMinutes,
         );
 
-        print('✅ [AssessmentBloc] Transitioning to inProgress state');
         emit(state.copyWith(
           status: AssessmentStatus.inProgress,
           assessment: assessment,
@@ -272,7 +258,9 @@ class AssessmentBloc extends Bloc<AssessmentEvent, AssessmentState> {
     AssessmentTimerTick event,
     Emitter<AssessmentState> emit,
   ) {
-    // Increment timerTick so Equatable sees a changed state and triggers rebuild
+    // Only tick while the assessment is actively in progress
+    if (state.status != AssessmentStatus.inProgress) return;
+
     if (state.isTestTimeExpired || state.isSectionTimeExpired) {
       emit(state.copyWith(
         status: AssessmentStatus.error,
@@ -283,4 +271,5 @@ class AssessmentBloc extends Bloc<AssessmentEvent, AssessmentState> {
       emit(state.copyWith(timerTick: state.timerTick + 1));
     }
   }
+
 }

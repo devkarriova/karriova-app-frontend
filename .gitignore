@@ -1,3 +1,7 @@
+# Keystores (never commit these)
+*.jks
+*.keystore
+
 # Miscellaneous
 *.class
 *.log

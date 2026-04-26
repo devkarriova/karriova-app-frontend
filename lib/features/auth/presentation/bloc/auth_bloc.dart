@@ -264,7 +264,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       result.fold(
         (error) {
-          // If error, assume not completed (will prompt assessment)
           emit(state.copyWith(
             assessmentCompleted: false,
             updateAssessmentCompleted: true,
@@ -278,7 +277,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         },
       );
     } catch (e) {
-      // On error, assume not completed
       emit(state.copyWith(
         assessmentCompleted: false,
         updateAssessmentCompleted: true,

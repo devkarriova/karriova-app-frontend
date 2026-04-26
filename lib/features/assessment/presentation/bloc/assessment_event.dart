@@ -85,3 +85,4 @@ class AssessmentStartTimer extends AssessmentEvent {
 class AssessmentTimerTick extends AssessmentEvent {
   const AssessmentTimerTick();
 }
+
