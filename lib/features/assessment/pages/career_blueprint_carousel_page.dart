@@ -61,18 +61,23 @@ class _CareerBlueprintCarouselPageState
 
   Future<void> _loadCarouselData() async {
     try {
-      setState(() => _isLoading = true);
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
       
       if (widget.initialData != null) {
         setState(() {
           _carouselData = widget.initialData;
           _isLoading = false;
+          _errorMessage = null;
         });
       } else {
         final data = await _apiService.getCarouselBlueprints(widget.attemptId);
         setState(() {
           _carouselData = data;
           _isLoading = false;
+          _errorMessage = null;
         });
       }
     } on DioException catch (e) {
