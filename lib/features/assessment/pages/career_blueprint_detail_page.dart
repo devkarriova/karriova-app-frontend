@@ -90,7 +90,10 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
       _isDownloadingReport = true;
     });
 
-    final result = await _assessmentRepository.downloadKitReportPdf(type: selectedType);
+    final result = await _assessmentRepository.downloadKitReportPdf(
+      type: selectedType,
+      blueprintId: widget.blueprintId,
+    );
     if (!mounted) return;
 
     result.fold(
@@ -569,90 +572,76 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
     BlueprintSection section, {
     EdgeInsetsGeometry margin = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
   }) {
-    final accent = _accentColor(section.sectionType);
-    final sectionBg = _sectionBg(section.sectionType);
+    final cards = _effectiveCardsForSection(section);
 
     return Container(
       margin: margin,
-      decoration: BoxDecoration(
-        color: sectionBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: accent.withOpacity(0.4),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: accent.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                _getIconForType(section.sectionType),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _getIconForType(section.sectionType),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      section.title,
+                      style: AppTypography.body.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
+                      ),
+                    ),
+                    if (section.subtitle != null && section.subtitle!.isNotEmpty)
                       Text(
-                        section.title,
-                        style: AppTypography.body.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 18,
+                        section.subtitle!,
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
                         ),
                       ),
-                      if (section.subtitle != null && section.subtitle!.isNotEmpty)
-                        Text(
-                          section.subtitle!,
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (!_isDuplicateSectionDescription(section)) ...[
-              const SizedBox(height: 12),
-              Text(
-                section.description,
-                style: AppTypography.body.copyWith(
-                  color: AppColors.textSecondary,
-                  fontSize: 16,
+                  ],
                 ),
               ),
             ],
-            if (section.content.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              _buildCardGrid(section.content, section),
-            ],
-            if (section.warnings.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              ...section.warnings.map((warning) => _buildWarning(warning)),
-            ],
+          ),
+          if (cards.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _buildCardGrid(cards, section),
           ],
-        ),
+          if (section.warnings.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ...section.warnings.map((warning) => _buildWarning(warning)),
+          ],
+        ],
       ),
     );
   }
 
-  bool _isDuplicateSectionDescription(BlueprintSection section) {
-    if (section.content.isEmpty) {
-      return false;
+  List<BlueprintCardContent> _effectiveCardsForSection(BlueprintSection section) {
+    final cards = section.content.where((card) {
+      final duplicateTitle = _isDuplicateCardTitle(card, section);
+      final duplicateDescription = _isDuplicateCardDescription(card, section);
+      final hasItems = card.items.isNotEmpty;
+      return !(duplicateTitle && duplicateDescription && !hasItems);
+    }).toList();
+
+    final hasOverview = section.description.trim().isNotEmpty &&
+        !cards.any((card) => _normalized(card.description) == _normalized(section.description));
+
+    if (hasOverview) {
+      cards.insert(
+        0,
+        BlueprintCardContent(
+          title: section.subtitle?.trim().isNotEmpty == true ? section.subtitle! : 'Overview',
+          description: section.description,
+        ),
+      );
     }
-    final firstCard = section.content.first;
-    return _normalized(firstCard.description).isNotEmpty &&
-        _normalized(firstCard.description) == _normalized(section.description);
+
+    return cards;
   }
 
   bool _isDuplicateCardTitle(BlueprintCardContent card, BlueprintSection section) {
@@ -671,14 +660,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
   String _normalized(String text) => text.trim().toLowerCase();
 
   Widget _buildCardGrid(List<BlueprintCardContent> cards, BlueprintSection section) {
-    final effectiveCards = cards.where((card) {
-      final duplicateTitle = _isDuplicateCardTitle(card, section);
-      final duplicateDescription = _isDuplicateCardDescription(card, section);
-      final hasItems = card.items.isNotEmpty;
-      return !(duplicateTitle && duplicateDescription && !hasItems);
-    }).toList();
-
-    if (effectiveCards.isEmpty) {
+    if (cards.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -692,7 +674,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
         return Wrap(
           spacing: gap,
           runSpacing: gap,
-          children: effectiveCards
+          children: cards
               .map(
                 (card) => SizedBox(
                   width: cardWidth,
@@ -769,40 +751,6 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
         ],
       ),
     );
-  }
-
-  Color _accentColor(String sectionType) {
-    switch (sectionType) {
-      case 'warning':
-        return const Color(0xFFDC2626);
-      case 'timeline':
-        return const Color(0xFF059669);
-      case 'data':
-        return const Color(0xFFD97706);
-      case 'action':
-        return const Color(0xFF4F46E5);
-      case 'insight':
-        return AppColors.primary;
-      default:
-        return AppColors.textSecondary;
-    }
-  }
-
-  Color _sectionBg(String sectionType) {
-    switch (sectionType) {
-      case 'warning':
-        return const Color(0xFFFFFBFB);
-      case 'timeline':
-        return const Color(0xFFFBFFFD);
-      case 'data':
-        return const Color(0xFFFFFCF8);
-      case 'action':
-        return const Color(0xFFF8F9FF);
-      case 'insight':
-        return const Color(0xFFF8FCFF);
-      default:
-        return AppColors.white;
-    }
   }
 
   Widget _buildListItem(String item) {

@@ -16,7 +16,10 @@ abstract class AssessmentRemoteDataSource {
   Future<AssessmentResultModel> getMyResults();
 
   /// Download KIT report PDF (short or detailed)
-  Future<QuestionTemplateModel> downloadKitReportPdf({String type = 'short'});
+  Future<QuestionTemplateModel> downloadKitReportPdf({
+    String type = 'short',
+    String? blueprintId,
+  });
 
   /// Check if user has completed the assessment
   Future<bool> hasCompletedAssessment();
@@ -122,7 +125,10 @@ class AssessmentRemoteDataSourceImpl implements AssessmentRemoteDataSource {
   }
 
   @override
-  Future<QuestionTemplateModel> downloadKitReportPdf({String type = 'short'}) async {
+  Future<QuestionTemplateModel> downloadKitReportPdf({
+    String type = 'short',
+    String? blueprintId,
+  }) async {
     final reportType = type.toLowerCase().trim();
     if (reportType != 'short' && reportType != 'detailed') {
       throw Exception('Invalid report type. Use short or detailed.');
@@ -133,9 +139,12 @@ class AssessmentRemoteDataSourceImpl implements AssessmentRemoteDataSource {
       throw Exception('Unauthorized. Please login again.');
     }
 
-    final uri = Uri.parse(
-      '${AppConfig.apiBaseUrl}/assessments/reports/kit/download?type=$reportType',
-    );
+    final params = <String, String>{'type': reportType};
+    if (blueprintId != null && blueprintId.trim().isNotEmpty) {
+      params['blueprint_id'] = blueprintId.trim();
+    }
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/assessments/reports/kit/download')
+        .replace(queryParameters: params);
 
     http.Response response;
     try {
