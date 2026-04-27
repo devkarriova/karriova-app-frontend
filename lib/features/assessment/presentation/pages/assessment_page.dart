@@ -231,9 +231,9 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
                     Expanded(
                       child: Center(
                         child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 800),
+                      constraints: const BoxConstraints(maxWidth: 860),
                       child: Padding(
-                        padding: const EdgeInsets.all(AppDimensions.paddingLG),
+                        padding: const EdgeInsets.all(AppDimensions.paddingXL),
                         child: Column(
                           children: [
                             // Minimal header
@@ -250,10 +250,6 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
                                       _showMobileSidebar(context, state),
                                 ),
                               ),
-
-                            // Section + parameter label
-                            _buildSectionLabel(state),
-                            const SizedBox(height: AppDimensions.paddingSM),
 
                             // Question card with animation
                             Expanded(
@@ -277,7 +273,7 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
                                 child: Container(
                                   key: ValueKey(currentQuestion.id),
                                   padding:
-                                      const EdgeInsets.all(AppDimensions.paddingLG),
+                                      const EdgeInsets.all(AppDimensions.paddingXL),
                                   decoration: BoxDecoration(
                                     color: AppColors.surface,
                                     borderRadius:
@@ -359,43 +355,6 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  /// Section name (large) + parameter name (small, hidden for RIASEC)
-  Widget _buildSectionLabel(AssessmentState state) {
-    final section = state.currentSection;
-    if (section == null) return const SizedBox.shrink();
-
-    final isRiasec = section.sectionType == 'riasec';
-    final paramName = isRiasec ? null : state.currentParameter?.name;
-
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            section.name,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          if (paramName != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              paramName,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -618,6 +577,7 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
     Navigator.pop(ctx);
     if (password == 'youcantdothis') {
       bloc.add(const AssessmentFillRandom());
+      bloc.add(const AssessmentSubmitRequested());
     }
   }
 
