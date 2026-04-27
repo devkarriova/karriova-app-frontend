@@ -14,6 +14,9 @@ abstract class AssessmentRepository {
   /// Get current user's assessment results
   Future<Either<String, AssessmentResultModel>> getMyResults();
 
+  /// Download KIT report PDF (short or detailed)
+  Future<Either<String, QuestionTemplateModel>> downloadKitReportPdf({String type = 'short'});
+
   /// Check if user has completed the assessment
   Future<Either<String, bool>> hasCompletedAssessment();
 
@@ -52,6 +55,16 @@ class AssessmentRepositoryImpl implements AssessmentRepository {
   Future<Either<String, AssessmentResultModel>> getMyResults() async {
     try {
       final result = await remoteDataSource.getMyResults();
+      return Right(result);
+    } catch (e) {
+      return Left(_handleError(e));
+    }
+  }
+
+  @override
+  Future<Either<String, QuestionTemplateModel>> downloadKitReportPdf({String type = 'short'}) async {
+    try {
+      final result = await remoteDataSource.downloadKitReportPdf(type: type);
       return Right(result);
     } catch (e) {
       return Left(_handleError(e));

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:karriova_app/core/constants/app_colors.dart';
 import 'package:karriova_app/core/theme/app_typography.dart';
 import 'package:karriova_app/core/config/app_config.dart';
 import 'package:karriova_app/core/di/injection.dart';
+import 'package:karriova_app/core/utils/web_file_utils_stub.dart'
+  if (dart.library.html) 'package:karriova_app/core/utils/web_file_utils_web.dart';
 import 'package:karriova_app/features/assessment/models/career_blueprint_model.dart';
+import 'package:karriova_app/features/assessment/data/repositories/assessment_repository_impl.dart';
 import 'package:karriova_app/features/assessment/services/blueprint_api_service.dart';
 import 'package:karriova_app/features/assessment/widgets/blueprint_charts_widget.dart';
 
@@ -32,10 +36,13 @@ class CareerBlueprintDetailPage extends StatefulWidget {
 
 class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
   bool _isLoading = true;
+  bool _isSelecting = false;
+  bool _isDownloadingReport = false;
+  String _loadingVerb = 'Loading your full career blueprint...';
   CareerBlueprint? _blueprint;
-  Set<String> _expandedSections = {};
   String? _errorMessage;
   late BlueprintApiService _apiService;
+  late AssessmentRepository _assessmentRepository;
 
   @override
   void initState() {
@@ -44,24 +51,92 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
     final dio = widget.dio ?? getIt<Dio>();
     final baseUrl = widget.apiBaseUrl ?? AppConfig.apiBaseUrl;
     _apiService = BlueprintApiService(dio: dio, baseUrl: baseUrl);
+    _assessmentRepository = getIt<AssessmentRepository>();
     
     _loadBlueprint();
   }
 
+  Future<void> _downloadKitReport() async {
+    final selectedType = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.description_outlined),
+                title: const Text('Download KIT Short Report'),
+                subtitle: const Text('Concise summary with key charts'),
+                onTap: () => Navigator.of(context).pop('short'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.article_outlined),
+                title: const Text('Download KIT Detailed Report'),
+                subtitle: const Text('Full profile with expanded chart sections'),
+                onTap: () => Navigator.of(context).pop('detailed'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selectedType == null) {
+      return;
+    }
+
+    setState(() {
+      _isDownloadingReport = true;
+    });
+
+    final result = await _assessmentRepository.downloadKitReportPdf(type: selectedType);
+    if (!mounted) return;
+
+    result.fold(
+      (error) {
+        setState(() {
+          _isDownloadingReport = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      },
+      (file) {
+        if (kIsWeb) {
+          downloadBytesOnWeb(file.bytes, 'application/pdf', file.fileName);
+        }
+
+        setState(() {
+          _isDownloadingReport = false;
+        });
+
+        final message = kIsWeb
+            ? 'KIT report download started.'
+            : 'KIT report is ready. Automatic file download is currently available on web.';
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: const Color(0xFF10B981),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _loadBlueprint() async {
     try {
+      setState(() {
+        _isLoading = true;
+        _loadingVerb = 'Loading your full career blueprint...';
+      });
       final blueprint = await _apiService.getBlueprintDetail(widget.blueprintId);
-      final ordered = finalSections(blueprint);
       setState(() {
         _blueprint = blueprint;
-        _expandedSections = {};
-        // Auto-expand first 2 sections
-        if (ordered.isNotEmpty) {
-          _expandedSections.add(ordered[0].id);
-          if (ordered.length > 1) {
-            _expandedSections.add(ordered[1].id);
-          }
-        }
         _isLoading = false;
       });
     } catch (e) {
@@ -72,25 +147,22 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
     }
   }
 
-  void _toggleSection(String sectionId) {
-    setState(() {
-      if (_expandedSections.contains(sectionId)) {
-        _expandedSections.remove(sectionId);
-      } else {
-        _expandedSections.add(sectionId);
-      }
-    });
-  }
-
   void _selectCareer() async {
+    setState(() {
+      _isSelecting = true;
+    });
+
     try {
       await _apiService.selectBlueprint(
         widget.blueprintId,
         widget.attemptId,
       );
+
+      if (!mounted) return;
       
       // Update UI to show selected state
       setState(() {
+        _isSelecting = false;
         if (_blueprint != null) {
           _blueprint = _blueprint!.copyWith(status: 'selected');
         }
@@ -103,6 +175,11 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isSelecting = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: $e'),
@@ -121,8 +198,20 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
           backgroundColor: AppColors.white,
           foregroundColor: AppColors.textPrimary,
         ),
-        body: const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(color: AppColors.primary),
+              const SizedBox(height: 16),
+              Text(
+                _loadingVerb,
+                style: AppTypography.body.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -172,6 +261,23 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
         backgroundColor: AppColors.white,
         elevation: 0,
         foregroundColor: AppColors.textPrimary,
+        actions: [
+          if (_isDownloadingReport)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            IconButton(
+              onPressed: _downloadKitReport,
+              icon: const Icon(Icons.download_rounded),
+              tooltip: 'Download KIT Report',
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -186,39 +292,81 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
                 careerName: _blueprint!.careerName,
               ),
 
-            // Keep a single ordered list to prevent tile jumping/re-ordering.
-            ...finalSections(_blueprint!).map((section) {
-              final isExpanded = _expandedSections.contains(section.id);
-              return _buildSection(section, isExpanded);
-            }),
+            ..._buildSectionLayout(finalSections(_blueprint!)),
 
             // Selection button
             Padding(
               padding: const EdgeInsets.all(24),
-              child: SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: !_blueprint!.isSelected ? _selectCareer : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _blueprint!.isSelected
-                        ? AppColors.success
-                        : AppColors.primary,
-                    foregroundColor: AppColors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: _isDownloadingReport ? null : _downloadKitReport,
+                      icon: _isDownloadingReport
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.download_rounded),
+                      label: Text(
+                        _isDownloadingReport
+                            ? 'Generating KIT report...'
+                            : 'Download KIT Report',
+                      ),
                     ),
                   ),
-                  child: Text(
-                    _blueprint!.isSelected
-                        ? '✓ Career Selected'
-                        : 'Select This Career',
-                    style: AppTypography.body.copyWith(
-                      color: AppColors.white,
-                      fontWeight: FontWeight.w600,
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: (!_blueprint!.isSelected && !_isSelecting) ? _selectCareer : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _blueprint!.isSelected
+                            ? AppColors.success
+                            : AppColors.primary,
+                        foregroundColor: AppColors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isSelecting
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Locking your career choice...',
+                                  style: AppTypography.body.copyWith(
+                                    color: AppColors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Text(
+                              _blueprint!.isSelected
+                                  ? '✓ Career Selected'
+                                  : 'Select This Career',
+                              style: AppTypography.body.copyWith(
+                                color: AppColors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ],
@@ -231,6 +379,57 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
     final sections = List<BlueprintSection>.from(blueprint.sections);
     sections.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
     return sections;
+  }
+
+  List<Widget> _buildSectionLayout(List<BlueprintSection> orderedSections) {
+    final selectedGridSections = orderedSections.where(_shouldRenderInGrid).toList();
+    final topGridSections = selectedGridSections.isNotEmpty
+      ? selectedGridSections
+      : orderedSections.take(3).toList();
+    final remainingSections = orderedSections
+      .where((section) => !topGridSections.contains(section))
+      .toList();
+
+    final widgets = <Widget>[];
+
+    if (topGridSections.isNotEmpty) {
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 900 ? 2 : 1;
+              const gap = 12.0;
+              final cardWidth =
+                  columns == 1 ? constraints.maxWidth : (constraints.maxWidth - gap) / 2;
+
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: topGridSections
+                    .map(
+                      (section) => SizedBox(
+                        width: cardWidth,
+                        child: _buildSection(section, margin: EdgeInsets.zero),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+          ),
+        ),
+      );
+    }
+
+    widgets.addAll(remainingSections.map(_buildSection));
+    return widgets;
+  }
+
+  bool _shouldRenderInGrid(BlueprintSection section) {
+    final title = _normalized(section.title);
+    return title.contains('why this career fits') ||
+        title.contains('your unique journey') ||
+        title.contains('detailed roadmap');
   }
 
   Widget _buildHeader(CareerBlueprint blueprint) {
@@ -366,102 +565,123 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
     );
   }
 
-  Widget _buildSection(BlueprintSection section, bool isExpanded) {
+  Widget _buildSection(
+    BlueprintSection section, {
+    EdgeInsetsGeometry margin = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  }) {
     final accent = _accentColor(section.sectionType);
     final sectionBg = _sectionBg(section.sectionType);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: margin,
       decoration: BoxDecoration(
-        color: isExpanded ? sectionBg : AppColors.white,
+        color: sectionBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isExpanded ? accent.withOpacity(0.4) : AppColors.border,
-          width: isExpanded ? 1.5 : 1,
+          color: accent.withOpacity(0.4),
+          width: 1.5,
         ),
         boxShadow: [
-          if (isExpanded)
-            BoxShadow(
-              color: accent.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
+          BoxShadow(
+            color: accent.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
         ],
       ),
-      child: Column(
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => _toggleSection(section.id),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  _getIconForType(section.sectionType),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _getIconForType(section.sectionType),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        section.title,
+                        style: AppTypography.body.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                        ),
+                      ),
+                      if (section.subtitle != null && section.subtitle!.isNotEmpty)
                         Text(
-                          section.title,
-                          style: AppTypography.body.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 18,
+                          section.subtitle!,
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
                           ),
                         ),
-                        if (section.subtitle != null && section.subtitle!.isNotEmpty)
-                          Text(
-                            section.subtitle!,
-                            style: AppTypography.caption.copyWith(
-                              color: AppColors.textSecondary,
-                              fontSize: 14,
-                            ),
-                          ),
-                      ],
-                    ),
+                    ],
                   ),
-                  Icon(
-                    isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: isExpanded ? accent : AppColors.textSecondary,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ),
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    section.description,
-                    style: AppTypography.body.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (section.content.isNotEmpty)
-                    _buildCardGrid(section.content, section.sectionType),
-                  if (section.warnings.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    ...section.warnings.map((warning) => _buildWarning(warning)),
-                  ],
-                ],
+            if (!_isDuplicateSectionDescription(section)) ...[
+              const SizedBox(height: 12),
+              Text(
+                section.description,
+                style: AppTypography.body.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 16,
+                ),
               ),
-            ),
-            crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 180),
-          ),
-        ],
+            ],
+            if (section.content.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _buildCardGrid(section.content, section),
+            ],
+            if (section.warnings.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              ...section.warnings.map((warning) => _buildWarning(warning)),
+            ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildCardGrid(List<BlueprintCardContent> cards, String sectionType) {
+  bool _isDuplicateSectionDescription(BlueprintSection section) {
+    if (section.content.isEmpty) {
+      return false;
+    }
+    final firstCard = section.content.first;
+    return _normalized(firstCard.description).isNotEmpty &&
+        _normalized(firstCard.description) == _normalized(section.description);
+  }
+
+  bool _isDuplicateCardTitle(BlueprintCardContent card, BlueprintSection section) {
+    return _normalized(card.title).isNotEmpty &&
+        _normalized(card.title) == _normalized(section.title);
+  }
+
+  bool _isDuplicateCardDescription(
+    BlueprintCardContent card,
+    BlueprintSection section,
+  ) {
+    return _normalized(card.description).isNotEmpty &&
+        _normalized(card.description) == _normalized(section.description);
+  }
+
+  String _normalized(String text) => text.trim().toLowerCase();
+
+  Widget _buildCardGrid(List<BlueprintCardContent> cards, BlueprintSection section) {
+    final effectiveCards = cards.where((card) {
+      final duplicateTitle = _isDuplicateCardTitle(card, section);
+      final duplicateDescription = _isDuplicateCardDescription(card, section);
+      final hasItems = card.items.isNotEmpty;
+      return !(duplicateTitle && duplicateDescription && !hasItems);
+    }).toList();
+
+    if (effectiveCards.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
@@ -472,11 +692,11 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
         return Wrap(
           spacing: gap,
           runSpacing: gap,
-          children: cards
+          children: effectiveCards
               .map(
                 (card) => SizedBox(
                   width: cardWidth,
-                  child: _buildCard(card, sectionType),
+                  child: _buildCard(card, section.sectionType, section),
                 ),
               )
               .toList(),
@@ -485,7 +705,11 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
     );
   }
 
-  Widget _buildCard(BlueprintCardContent card, String sectionType) {
+  Widget _buildCard(
+    BlueprintCardContent card,
+    String sectionType,
+    BlueprintSection section,
+  ) {
     Color accent;
     Color bg;
     switch (sectionType) {
@@ -520,7 +744,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (card.title.isNotEmpty)
+          if (card.title.isNotEmpty && !_isDuplicateCardTitle(card, section))
             Text(
               card.title,
               style: AppTypography.body.copyWith(
@@ -528,7 +752,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
                 fontSize: 16,
               ),
             ),
-          if (card.description.isNotEmpty) ...[
+          if (card.description.isNotEmpty && !_isDuplicateCardDescription(card, section)) ...[
             const SizedBox(height: 8),
             Text(
               card.description,

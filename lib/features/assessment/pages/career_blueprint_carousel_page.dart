@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:karriova_app/core/constants/app_colors.dart';
-import 'package:karriova_app/core/constants/app_dimensions.dart';
 import 'package:karriova_app/core/theme/app_typography.dart';
 import 'package:karriova_app/core/routes/app_router.dart';
 import 'package:karriova_app/core/config/app_config.dart';
@@ -11,8 +10,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:karriova_app/features/assessment/models/career_blueprint_model.dart';
 import 'package:karriova_app/features/assessment/services/blueprint_api_service.dart';
 import 'package:karriova_app/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:karriova_app/features/auth/presentation/bloc/auth_state.dart';
-import 'career_blueprint_detail_page.dart';
 
 /// Blueprint Carousel Page - Shows 3 career options with summary cards
 class CareerBlueprintCarouselPage extends StatefulWidget {
@@ -42,6 +39,7 @@ class _CareerBlueprintCarouselPageState
   int _currentIndex = 0;
   BlueprintCarouselResponse? _carouselData;
   bool _isLoading = true;
+  String _loadingVerb = 'Loading your career options...';
   String? _errorMessage;
   late BlueprintApiService _apiService;
 
@@ -59,10 +57,17 @@ class _CareerBlueprintCarouselPageState
     _loadCarouselData();
   }
 
-  Future<void> _loadCarouselData() async {
+  Future<void> _loadCarouselData({bool isRetry = false}) async {
     try {
+      final verb = isRetry
+          ? 'Refreshing your career options...'
+          : (widget.initialData != null
+              ? 'Preparing your career options...'
+              : 'Generating your career options...');
+
       setState(() {
         _isLoading = true;
+        _loadingVerb = verb;
         _errorMessage = null;
       });
       
@@ -126,7 +131,7 @@ class _CareerBlueprintCarouselPageState
     ).then((_) {
       // Refresh after selection
       widget.onBlueprintSelected?.call();
-      _loadCarouselData();
+      _loadCarouselData(isRetry: true);
     });
   }
 
@@ -211,8 +216,18 @@ class _CareerBlueprintCarouselPageState
           elevation: 0,
           foregroundColor: AppColors.textPrimary,
         ),
-        body: const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(color: AppColors.primary),
+              const SizedBox(height: 16),
+              Text(
+                _loadingVerb,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -239,7 +254,7 @@ class _CareerBlueprintCarouselPageState
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: _loadCarouselData,
+                onPressed: () => _loadCarouselData(isRetry: true),
                 child: const Text('Retry'),
               ),
             ],

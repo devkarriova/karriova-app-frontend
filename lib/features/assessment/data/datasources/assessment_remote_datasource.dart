@@ -15,6 +15,9 @@ abstract class AssessmentRemoteDataSource {
   /// Get current user's assessment results
   Future<AssessmentResultModel> getMyResults();
 
+  /// Download KIT report PDF (short or detailed)
+  Future<QuestionTemplateModel> downloadKitReportPdf({String type = 'short'});
+
   /// Check if user has completed the assessment
   Future<bool> hasCompletedAssessment();
 
@@ -116,6 +119,44 @@ class AssessmentRemoteDataSourceImpl implements AssessmentRemoteDataSource {
       throw Exception(response.errorMessage ?? 'Failed to load results');
     }
     return AssessmentResultModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<QuestionTemplateModel> downloadKitReportPdf({String type = 'short'}) async {
+    final reportType = type.toLowerCase().trim();
+    if (reportType != 'short' && reportType != 'detailed') {
+      throw Exception('Invalid report type. Use short or detailed.');
+    }
+
+    final token = _apiClient.accessToken;
+    if (token == null || token.isEmpty) {
+      throw Exception('Unauthorized. Please login again.');
+    }
+
+    final uri = Uri.parse(
+      '${AppConfig.apiBaseUrl}/assessments/reports/kit/download?type=$reportType',
+    );
+
+    http.Response response;
+    try {
+      response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/pdf',
+        },
+      );
+    } catch (e) {
+      rethrow;
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final disposition = response.headers['content-disposition'] ?? '';
+      final fileName = _extractFilename(disposition) ?? 'KIT_${reportType}_Report.pdf';
+      return QuestionTemplateModel(bytes: response.bodyBytes, fileName: fileName);
+    }
+
+    throw Exception(_extractApiError(response.body) ?? 'Failed to download KIT report PDF');
   }
 
   @override
