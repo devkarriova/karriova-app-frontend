@@ -22,6 +22,14 @@ class _BlueprintChartsWidgetState extends State<BlueprintChartsWidget>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  String _formatInrLpa(int amountInInr) {
+    final lpa = amountInInr / 100000.0;
+    if (lpa >= 10) {
+      return 'INR ${lpa.toStringAsFixed(1)} LPA';
+    }
+    return 'INR ${lpa.toStringAsFixed(1)} LPA';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -147,7 +155,7 @@ class _BlueprintChartsWidgetState extends State<BlueprintChartsWidget>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Salary Growth Projection',
+                'Salary Growth Projection (India)',
                 style: AppTypography.body.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -245,9 +253,9 @@ class _BlueprintChartsWidgetState extends State<BlueprintChartsWidget>
                           ),
                           const SizedBox(width: 8),
                           SizedBox(
-                            width: 80,
+                            width: 120,
                             child: Text(
-                              '\$${(item.medSalary / 1000).toStringAsFixed(0)}K',
+                              _formatInrLpa(item.medSalary),
                               textAlign: TextAlign.right,
                               style: AppTypography.caption.copyWith(
                                 fontWeight: FontWeight.w600,
