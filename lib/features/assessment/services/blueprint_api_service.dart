@@ -62,7 +62,8 @@ class BlueprintApiService {
         _buildUrl('/assessments/blueprints/$blueprintId'),
       );
 
-      final data = response.data['blueprint'] ?? response.data['data'] ?? response.data;
+      final raw = response.data;
+      final data = raw['data']?['blueprint'] ?? raw['blueprint'] ?? raw['data'] ?? raw;
       return CareerBlueprint.fromJson(data);
     } catch (e) {
       throw BlueprintException('Failed to load blueprint details: $e');
