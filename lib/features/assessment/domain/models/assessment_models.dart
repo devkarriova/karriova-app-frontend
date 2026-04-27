@@ -245,6 +245,7 @@ class SectionModel extends Equatable {
   final int durationMinutes; // Duration for this section in minutes
   final List<DimensionModel> dimensions; // For old structure (backward compatibility)
   final List<ParameterModel>? parameters; // For new KIT structure
+  final List<QuestionModel>? questions; // Flat interleaved order from backend
   final String? sectionType; // "personality", "riasec", "aptitude_mcq", etc.
   final String? scoringMethod; // "bipolar", "selection", "mcq", "weighted"
   final int? totalQuestions;
@@ -260,6 +261,7 @@ class SectionModel extends Equatable {
     required this.durationMinutes,
     this.dimensions = const [],
     this.parameters,
+    this.questions,
     this.sectionType,
     this.scoringMethod,
     this.totalQuestions,
@@ -282,6 +284,9 @@ class SectionModel extends Equatable {
       parameters: (json['parameters'] as List<dynamic>?)
           ?.map((e) => ParameterModel.fromJson(e as Map<String, dynamic>))
           .toList(),
+      questions: (json['questions'] as List<dynamic>?)
+          ?.map((e) => QuestionModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
       sectionType: json['section_type'] as String?,
       scoringMethod: json['scoring_method'] as String?,
       totalQuestions: json['total_questions'] as int?,
@@ -300,6 +305,7 @@ class SectionModel extends Equatable {
       'duration_minutes': durationMinutes,
       'dimensions': dimensions.map((e) => e.toJson()).toList(),
       'parameters': parameters?.map((e) => e.toJson()).toList(),
+      'questions': questions?.map((e) => e.toJson()).toList(),
       'section_type': sectionType,
       'scoring_method': scoringMethod,
       'total_questions': totalQuestions,
@@ -308,8 +314,12 @@ class SectionModel extends Equatable {
     };
   }
 
-  /// Get all questions from dimensions or parameters in this section
+  /// Get all questions from dimensions or parameters in this section.
+  /// Prefers the flat interleaved list provided by the backend if available.
   List<QuestionModel> get allQuestions {
+    if (questions != null && questions!.isNotEmpty) {
+      return questions!;
+    }
     if (parameters != null && parameters!.isNotEmpty) {
       return parameters!.expand((p) => p.questions).toList();
     }
@@ -326,6 +336,7 @@ class SectionModel extends Equatable {
         durationMinutes,
         dimensions,
         parameters,
+        questions,
         sectionType,
         scoringMethod,
         totalQuestions,

@@ -231,7 +231,7 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
                     Expanded(
                       child: Center(
                         child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 600),
+                      constraints: const BoxConstraints(maxWidth: 800),
                       child: Padding(
                         padding: const EdgeInsets.all(AppDimensions.paddingLG),
                         child: Column(
@@ -250,6 +250,10 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
                                       _showMobileSidebar(context, state),
                                 ),
                               ),
+
+                            // Section + parameter label
+                            _buildSectionLabel(state),
+                            const SizedBox(height: AppDimensions.paddingSM),
 
                             // Question card with animation
                             Expanded(
@@ -360,6 +364,43 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
     );
   }
 
+  /// Section name (large) + parameter name (small, hidden for RIASEC)
+  Widget _buildSectionLabel(AssessmentState state) {
+    final section = state.currentSection;
+    if (section == null) return const SizedBox.shrink();
+
+    final isRiasec = section.sectionType == 'riasec';
+    final paramName = isRiasec ? null : state.currentParameter?.name;
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            section.name,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          if (paramName != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              paramName,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildMinimalHeader() {
     return Container(
       width: 48,
@@ -388,6 +429,18 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        // Debug: Fill Random button (password-gated)
+        TextButton.icon(
+          onPressed: () => _showFillRandomDialog(context, bloc),
+          icon: const Icon(Icons.shuffle, size: 16, color: AppColors.textSecondary),
+          label: const Text(
+            'Fill Random',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          ),
+        ),
         // Left arrow (Back)
         AnimatedOpacity(
           duration: const Duration(milliseconds: 200),
@@ -530,6 +583,41 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
       context
           .read<AssessmentBloc>()
           .add(AssessmentNavigateToQuestion(globalIndex));
+    }
+  }
+
+  /// Show password dialog before filling random answers
+  void _showFillRandomDialog(BuildContext context, AssessmentBloc bloc) {
+    final controller = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Debug: Fill Random'),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Password'),
+          onSubmitted: (_) => _submitFillRandom(ctx, controller.text, bloc),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => _submitFillRandom(ctx, controller.text, bloc),
+            child: const Text('Fill'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _submitFillRandom(BuildContext ctx, String password, AssessmentBloc bloc) {
+    Navigator.pop(ctx);
+    if (password == 'youcantdothis') {
+      bloc.add(const AssessmentFillRandom());
     }
   }
 

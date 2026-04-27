@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repositories/assessment_repository_impl.dart';
 import '../../domain/models/assessment_models.dart';
@@ -22,6 +23,7 @@ class AssessmentBloc extends Bloc<AssessmentEvent, AssessmentState> {
     on<AssessmentNavigateToSection>(_onNavigateToSection);
     on<AssessmentStartTimer>(_onStartTimer);
     on<AssessmentTimerTick>(_onTimerTick);
+    on<AssessmentFillRandom>(_onFillRandom);
   }
 
   /// Load the active assessment
@@ -270,6 +272,29 @@ class AssessmentBloc extends Bloc<AssessmentEvent, AssessmentState> {
     } else {
       emit(state.copyWith(timerTick: state.timerTick + 1));
     }
+  }
+
+  /// Fill all questions with random answers (debug use only)
+  void _onFillRandom(
+    AssessmentFillRandom event,
+    Emitter<AssessmentState> emit,
+  ) {
+    final rng = math.Random();
+    final newResponses = Map<String, String>.from(state.responses);
+    final newAttempted = Set<String>.from(state.attemptedQuestionIds);
+
+    for (final question in state.allQuestions) {
+      if (question.options.isNotEmpty) {
+        final pick = question.options[rng.nextInt(question.options.length)];
+        newResponses[question.id] = pick.id;
+        newAttempted.add(question.id);
+      }
+    }
+
+    emit(state.copyWith(
+      responses: newResponses,
+      attemptedQuestionIds: newAttempted,
+    ));
   }
 
 }

@@ -86,3 +86,8 @@ class AssessmentTimerTick extends AssessmentEvent {
   const AssessmentTimerTick();
 }
 
+/// Fill all questions with random answers (debug/testing only)
+class AssessmentFillRandom extends AssessmentEvent {
+  const AssessmentFillRandom();
+}
+
