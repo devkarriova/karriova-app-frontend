@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:karriova_app/core/constants/app_colors.dart';
-import 'package:karriova_app/core/constants/app_dimensions.dart';
 import 'package:karriova_app/core/theme/app_typography.dart';
 import 'package:karriova_app/core/config/app_config.dart';
 import 'package:karriova_app/core/di/injection.dart';
@@ -52,13 +51,15 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
   Future<void> _loadBlueprint() async {
     try {
       final blueprint = await _apiService.getBlueprintDetail(widget.blueprintId);
+      final ordered = finalSections(blueprint);
       setState(() {
         _blueprint = blueprint;
+        _expandedSections = {};
         // Auto-expand first 2 sections
-        if (blueprint.sections.isNotEmpty) {
-          _expandedSections.add(blueprint.sections[0].id);
-          if (blueprint.sections.length > 1) {
-            _expandedSections.add(blueprint.sections[1].id);
+        if (ordered.isNotEmpty) {
+          _expandedSections.add(ordered[0].id);
+          if (ordered.length > 1) {
+            _expandedSections.add(ordered[1].id);
           }
         }
         _isLoading = false;
@@ -185,18 +186,11 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
                 careerName: _blueprint!.careerName,
               ),
 
-            // Expandable sections
-            ..._blueprint!.sections
-                .where((s) => _expandedSections.contains(s.id))
-                .map((section) => _buildSection(section))
-                .toList(),
-
-            // Non-expanded sections (collapsed items)
-            if (_expandedSections.length < _blueprint!.sections.length)
-              ..._blueprint!.sections
-                  .where((s) => !_expandedSections.contains(s.id))
-                  .map((section) => _buildCollapsedSection(section))
-                  .toList(),
+            // Keep a single ordered list to prevent tile jumping/re-ordering.
+            ...finalSections(_blueprint!).map((section) {
+              final isExpanded = _expandedSections.contains(section.id);
+              return _buildSection(section, isExpanded);
+            }).toList(),
 
             // Selection button
             Padding(
@@ -231,6 +225,12 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
         ),
       ),
     );
+  }
+
+  List<BlueprintSection> finalSections(CareerBlueprint blueprint) {
+    final sections = List<BlueprintSection>.from(blueprint.sections);
+    sections.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+    return sections;
   }
 
   Widget _buildHeader(CareerBlueprint blueprint) {
@@ -313,135 +313,129 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
     );
   }
 
-  Widget _buildSection(BlueprintSection section) {
-    final isExpanded = _expandedSections.contains(section.id);
-
+  Widget _buildSection(BlueprintSection section, bool isExpanded) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: isExpanded ? AppColors.primary.withOpacity(0.35) : AppColors.border,
+          width: isExpanded ? 1.5 : 1,
+        ),
+        boxShadow: [
+          if (isExpanded)
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+        ],
       ),
-      child: ExpansionTile(
-        title: Row(
-          children: [
-            _getIconForType(section.sectionType),
-            const SizedBox(width: 12),
-            Expanded(
+      child: Column(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => _toggleSection(section.id),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  _getIconForType(section.sectionType),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          section.title,
+                          style: AppTypography.body.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                          ),
+                        ),
+                        if (section.subtitle != null && section.subtitle!.isNotEmpty)
+                          Text(
+                            section.subtitle!,
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.textSecondary,
+                              fontSize: 14,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    section.title,
+                    section.description,
                     style: AppTypography.body.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 19,
+                      color: AppColors.textSecondary,
+                      fontSize: 16,
                     ),
                   ),
-                  if (section.subtitle != null)
-                    Text(
-                      section.subtitle!,
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textSecondary,
-                        fontSize: 14,
-                      ),
-                    ),
+                  const SizedBox(height: 16),
+                  ...(section.content).map((card) => _buildCard(card, section.sectionType)).toList(),
+                  if (section.warnings.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    ...(section.warnings).map((warning) => _buildWarning(warning)).toList(),
+                  ],
                 ],
               ),
             ),
-          ],
-        ),
-        initiallyExpanded: section.expanded,
-        onExpansionChanged: (value) {
-          _toggleSection(section.id);
-        },
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Description
-                Text(
-                  section.description,
-                  style: AppTypography.body.copyWith(
-                    color: AppColors.textSecondary,
-                    fontSize: 16,
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Content cards
-                ...(section.content).map((card) => _buildCard(card)).toList(),
-
-                // Warnings
-                if (section.warnings.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  ...(section.warnings)
-                      .map((warning) => _buildWarning(warning))
-                      .toList(),
-                ],
-              ],
-            ),
+            crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 180),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCollapsedSection(BlueprintSection section) {
-    return GestureDetector(
-      onTap: () => _toggleSection(section.id),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            _getIconForType(section.sectionType),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    section.title,
-                    style: AppTypography.body.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                    ),
-                  ),
-                  if (section.subtitle != null)
-                    Text(
-                      section.subtitle!,
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textSecondary,
-                        fontSize: 14,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const Icon(Icons.expand_more, color: AppColors.textSecondary),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _buildCard(BlueprintCardContent card, String sectionType) {
+    Color accent;
+    Color bg;
+    switch (sectionType) {
+      case 'warning':
+        accent = const Color(0xFFDC2626);
+        bg = const Color(0xFFFEE2E2);
+        break;
+      case 'timeline':
+        accent = const Color(0xFF059669);
+        bg = const Color(0xFFD1FAE5);
+        break;
+      case 'data':
+        accent = const Color(0xFFD97706);
+        bg = const Color(0xFFFFEDD5);
+        break;
+      case 'action':
+        accent = const Color(0xFF4F46E5);
+        bg = const Color(0xFFE0E7FF);
+        break;
+      default:
+        accent = AppColors.primary;
+        bg = AppColors.lightBlue;
+    }
 
-  Widget _buildCard(BlueprintCardContent card) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.lightGray,
+        color: bg,
         borderRadius: BorderRadius.circular(8),
+        border: Border(left: BorderSide(color: accent, width: 3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
