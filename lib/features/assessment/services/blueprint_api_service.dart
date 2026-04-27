@@ -26,6 +26,30 @@ class BlueprintApiService {
       );
 
       return BlueprintCarouselResponse.fromJson(response.data['data'] ?? response.data);
+    } on DioException catch (e) {
+      // Split-submit flow fallback:
+      // 1) Compute/persist career matches
+      // 2) Retry blueprint carousel once
+      final statusCode = e.response?.statusCode;
+      final message = (e.response?.data?['error']?['message'] ?? '').toString();
+      final shouldRetry = statusCode == 404 &&
+          message.toLowerCase().contains('no career blueprints found');
+
+      if (shouldRetry) {
+        try {
+          await _dio.get(_buildUrl('/assessments/career-matches'));
+          final retryResponse = await _dio.get(
+            _buildUrl('/assessments/blueprints/carousel/$attemptId'),
+          );
+          return BlueprintCarouselResponse.fromJson(
+            retryResponse.data['data'] ?? retryResponse.data,
+          );
+        } catch (_) {
+          // Fall through to throw a single standardized error below.
+        }
+      }
+
+      throw BlueprintException('Failed to load carousel blueprints: $e');
     } catch (e) {
       throw BlueprintException('Failed to load carousel blueprints: $e');
     }
