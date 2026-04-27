@@ -48,7 +48,6 @@ import '../../features/settings/presentation/pages/privacy_policy_page.dart';
 import '../../features/settings/presentation/pages/terms_of_service_page.dart';
 import '../../features/opportunities/presentation/pages/internships_page.dart';
 import '../../features/opportunities/presentation/pages/events_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../di/injection.dart';
 
 /// Listenable that notifies when auth state changes - triggers GoRouter refresh
@@ -164,21 +163,12 @@ class AppRouter {
         return auth;
       }
 
-      // If authenticated user is on landing or login, redirect based on status
+      // If authenticated user is on landing or login, go to feed.
       if (isAuthenticated && (currentPath == '/' || currentPath == '/login' || currentPath.isEmpty)) {
         if (authState.assessmentCompleted == null) {
           return null; // Still loading — wait
         }
-
-        final profileDone = getIt<SharedPreferences>().getBool('profile_setup_done') ?? false;
-        if (!profileDone) return profileSetup; // First time: fill profile
         return feed; // Assessment is opt-in, not auto-triggered
-      }
-
-      // Prevent re-entering profile-setup once done
-      if (currentPath == '/profile-setup') {
-        final profileDone = getIt<SharedPreferences>().getBool('profile_setup_done') ?? false;
-        if (profileDone) return feed;
       }
 
       return null;

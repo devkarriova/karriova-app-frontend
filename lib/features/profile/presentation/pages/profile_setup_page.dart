@@ -192,9 +192,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     // Persist profile setup done flag so we never redirect here again
     await getIt<AuthLocalDataSource>().saveProfileSetupDone();
 
-    // Navigate to assessment (profile done, now take the KIT)
+    // Navigate to feed. KIT assessment is opt-in.
     if (mounted) {
-      GoRouter.of(context).go(AppRouter.assessment);
+      GoRouter.of(context).go(AppRouter.feed);
     }
   }
 
