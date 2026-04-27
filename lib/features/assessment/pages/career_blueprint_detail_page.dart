@@ -190,7 +190,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
             ...finalSections(_blueprint!).map((section) {
               final isExpanded = _expandedSections.contains(section.id);
               return _buildSection(section, isExpanded);
-            }).toList(),
+            }),
 
             // Selection button
             Padding(
@@ -235,7 +235,13 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
 
   Widget _buildHeader(CareerBlueprint blueprint) {
     return Container(
-      color: AppColors.lightBlue,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFE9F5FF), Color(0xFFF5F8FF)],
+        ),
+      ),
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,8 +272,18 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
 
           const SizedBox(height: 16),
 
+          Text(
+            blueprint.careerName,
+            style: AppTypography.heading3.copyWith(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
           // category
-          if (blueprint.careerCategory != null)
+          if (blueprint.careerCategory != null && blueprint.careerCategory!.isNotEmpty)
             Text(
               blueprint.careerCategory!,
               style: AppTypography.body.copyWith(
@@ -286,6 +302,43 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
               _buildStatItem('Fit Level', blueprint.confidenceLevel),
               _buildStatItem('Sections', '${blueprint.sections.length}'),
             ],
+          ),
+
+          const SizedBox(height: 14),
+
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildMetaChip('Personalized Plan', const Icon(Icons.auto_awesome, size: 14)),
+              _buildMetaChip('14 Action Sections', const Icon(Icons.view_agenda_outlined, size: 14)),
+              _buildMetaChip('Live Growth Insights', const Icon(Icons.trending_up, size: 14)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetaChip(String text, Icon icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          icon,
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: AppTypography.caption.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -314,19 +367,22 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
   }
 
   Widget _buildSection(BlueprintSection section, bool isExpanded) {
+    final accent = _accentColor(section.sectionType);
+    final sectionBg = _sectionBg(section.sectionType);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: isExpanded ? sectionBg : AppColors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isExpanded ? AppColors.primary.withOpacity(0.35) : AppColors.border,
+          color: isExpanded ? accent.withOpacity(0.4) : AppColors.border,
           width: isExpanded ? 1.5 : 1,
         ),
         boxShadow: [
           if (isExpanded)
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.08),
+              color: accent.withOpacity(0.1),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -367,7 +423,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
                   ),
                   Icon(
                     isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: AppColors.textSecondary,
+                    color: isExpanded ? accent : AppColors.textSecondary,
                   ),
                 ],
               ),
@@ -388,10 +444,10 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  ...(section.content).map((card) => _buildCard(card, section.sectionType)).toList(),
+                  ...section.content.map((card) => _buildCard(card, section.sectionType)),
                   if (section.warnings.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    ...(section.warnings).map((warning) => _buildWarning(warning)).toList(),
+                    ...section.warnings.map((warning) => _buildWarning(warning)),
                   ],
                 ],
               ),
@@ -460,13 +516,45 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
           ],
           if (card.items.isNotEmpty) ...[
             const SizedBox(height: 12),
-            ...card.items
-                .map((item) => _buildListItem(item))
-                .toList(),
+            ...card.items.map((item) => _buildListItem(item)),
           ],
         ],
       ),
     );
+  }
+
+  Color _accentColor(String sectionType) {
+    switch (sectionType) {
+      case 'warning':
+        return const Color(0xFFDC2626);
+      case 'timeline':
+        return const Color(0xFF059669);
+      case 'data':
+        return const Color(0xFFD97706);
+      case 'action':
+        return const Color(0xFF4F46E5);
+      case 'insight':
+        return AppColors.primary;
+      default:
+        return AppColors.textSecondary;
+    }
+  }
+
+  Color _sectionBg(String sectionType) {
+    switch (sectionType) {
+      case 'warning':
+        return const Color(0xFFFFFBFB);
+      case 'timeline':
+        return const Color(0xFFFBFFFD);
+      case 'data':
+        return const Color(0xFFFFFCF8);
+      case 'action':
+        return const Color(0xFFF8F9FF);
+      case 'insight':
+        return const Color(0xFFF8FCFF);
+      default:
+        return AppColors.white;
+    }
   }
 
   Widget _buildListItem(String item) {
@@ -491,7 +579,7 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
   }
 
   Widget _buildWarning(BlueprintWarning warning) {
-    Color _severityColor() {
+    Color severityColor() {
       switch (warning.severity.toLowerCase()) {
         case 'high':
           return AppColors.error;
@@ -506,8 +594,8 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: _severityColor().withOpacity(0.1),
-        border: Border(left: BorderSide(color: _severityColor(), width: 4)),
+        color: severityColor().withOpacity(0.1),
+        border: Border(left: BorderSide(color: severityColor(), width: 4)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -516,13 +604,13 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
           Row(
             children: [
               Icon(Icons.warning_amber_rounded,
-                  size: 16, color: _severityColor()),
+                  size: 16, color: severityColor()),
               const SizedBox(width: 8),
               Text(
                 warning.title,
                 style: AppTypography.body.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: _severityColor(),
+                  color: severityColor(),
                   fontSize: 15,
                 ),
               ),
