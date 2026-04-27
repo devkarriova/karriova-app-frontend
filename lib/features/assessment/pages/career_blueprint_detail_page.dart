@@ -444,7 +444,8 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  ...section.content.map((card) => _buildCard(card, section.sectionType)),
+                  if (section.content.isNotEmpty)
+                    _buildCardGrid(section.content, section.sectionType),
                   if (section.warnings.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     ...section.warnings.map((warning) => _buildWarning(warning)),
@@ -457,6 +458,30 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCardGrid(List<BlueprintCardContent> cards, String sectionType) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxW = constraints.maxWidth;
+        final columns = maxW >= 920 ? 3 : (maxW >= 560 ? 2 : 1);
+        final gap = 12.0;
+        final cardWidth = (maxW - ((columns - 1) * gap)) / columns;
+
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: cards
+              .map(
+                (card) => SizedBox(
+                  width: cardWidth,
+                  child: _buildCard(card, sectionType),
+                ),
+              )
+              .toList(),
+        );
+      },
     );
   }
 
@@ -486,7 +511,6 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: bg,

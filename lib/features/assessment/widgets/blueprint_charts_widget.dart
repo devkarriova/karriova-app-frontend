@@ -133,8 +133,13 @@ class _BlueprintChartsWidgetState extends State<BlueprintChartsWidget>
   }
 
   Widget _buildSalaryChart(List<SalaryProjectionData> data) {
+    final maxSalary = data.fold<int>(
+      0,
+      (max, d) => d.maxSalary > max ? d.maxSalary : max,
+    );
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -170,10 +175,6 @@ class _BlueprintChartsWidgetState extends State<BlueprintChartsWidget>
                 ...data.asMap().entries.map((entry) {
                   final index = entry.key;
                   final item = entry.value;
-                  final maxSalary = data.fold<int>(
-                    0,
-                    (max, d) => d.maxSalary > max ? d.maxSalary : max,
-                  );
 
                   return Column(
                     children: [
@@ -188,44 +189,58 @@ class _BlueprintChartsWidgetState extends State<BlueprintChartsWidget>
                             ),
                           ),
                           Expanded(
-                            child: Column(
-                              children: [
-                                // Bar chart
-                                Container(
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.lightGray,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Stack(
-                                    children: [
-                                      Container(
-                                        width: (item.minSalary / maxSalary) *
-                                            MediaQuery.of(context).size.width *
-                                            0.5,
-                                        height: 8,
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final fullWidth = constraints.maxWidth;
+                                final minW = (item.minSalary / maxSalary) * fullWidth;
+                                final medW = (item.medSalary / maxSalary) * fullWidth;
+                                final maxW = (item.maxSalary / maxSalary) * fullWidth;
+
+                                return Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Container(
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.lightGray,
+                                        borderRadius: BorderRadius.circular(999),
+                                      ),
+                                    ),
+                                    Container(
+                                      width: maxW,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFB923C).withOpacity(0.35),
+                                        borderRadius: BorderRadius.circular(999),
+                                      ),
+                                    ),
+                                    Container(
+                                      width: medW,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF97316),
+                                        borderRadius: BorderRadius.circular(999),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      left: minW - 4,
+                                      top: -2,
+                                      child: Container(
+                                        width: 14,
+                                        height: 14,
                                         decoration: BoxDecoration(
-                                          color: AppColors.primary
-                                              .withOpacity(0.3),
-                                          borderRadius:
-                                              BorderRadius.circular(4),
+                                          color: AppColors.white,
+                                          border: Border.all(
+                                            color: const Color(0xFFF97316),
+                                            width: 2,
+                                          ),
+                                          shape: BoxShape.circle,
                                         ),
                                       ),
-                                      Container(
-                                        width: (item.medSalary / maxSalary) *
-                                            MediaQuery.of(context).size.width *
-                                            0.5,
-                                        height: 8,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary,
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -233,6 +248,7 @@ class _BlueprintChartsWidgetState extends State<BlueprintChartsWidget>
                             width: 80,
                             child: Text(
                               '\$${(item.medSalary / 1000).toStringAsFixed(0)}K',
+                              textAlign: TextAlign.right,
                               style: AppTypography.caption.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -254,6 +270,11 @@ class _BlueprintChartsWidgetState extends State<BlueprintChartsWidget>
   }
 
   Widget _buildJobMarketChart(List<JobMarketPoint> data) {
+    final maxPositions = data.fold<int>(
+      0,
+      (max, d) => d.openPositions > max ? d.openPositions : max,
+    );
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -291,10 +312,6 @@ class _BlueprintChartsWidgetState extends State<BlueprintChartsWidget>
                 ...data.asMap().entries.map((entry) {
                   final index = entry.key;
                   final item = entry.value;
-                  final maxPositions = data.fold<int>(
-                    0,
-                    (max, d) => d.openPositions > max ? d.openPositions : max,
-                  );
 
                   return Column(
                     children: [
@@ -309,21 +326,31 @@ class _BlueprintChartsWidgetState extends State<BlueprintChartsWidget>
                             ),
                           ),
                           Expanded(
-                            child: Container(
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: AppColors.lightGray,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Container(
-                                width:
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final barWidth =
                                     (item.openPositions / maxPositions) *
-                                        100,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF59E0B),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
+                                        constraints.maxWidth;
+
+                                return Container(
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.lightGray,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Container(
+                                      width: barWidth,
+                                      height: 12,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF59E0B),
+                                        borderRadius: BorderRadius.circular(999),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(width: 8),
