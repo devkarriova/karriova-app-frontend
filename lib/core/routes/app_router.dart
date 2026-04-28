@@ -152,10 +152,16 @@ class AppRouter {
     redirect: (context, state) {
       final authBloc = getIt<AuthBloc>();
       final authState = authBloc.state;
-      final isAuthenticated = authState.status == AuthStatus.authenticated;
       final currentPath = state.uri.path;
       final isPublicRoute =
           _publicRoutes.contains(currentPath) || currentPath.isEmpty;
+
+      // If session is being verified, wait (don't redirect to login)
+      if (authState.status == AuthStatus.loading) {
+        return null;
+      }
+
+      final isAuthenticated = authState.status == AuthStatus.authenticated;
 
       // If NOT authenticated and trying to access protected route,
       // redirect to auth page
@@ -166,7 +172,7 @@ class AppRouter {
       // If authenticated user is on landing or login, go to feed.
       if (isAuthenticated && (currentPath == '/' || currentPath == '/login' || currentPath.isEmpty)) {
         if (authState.assessmentCompleted == null) {
-          return null; // Still loading — wait
+          return null; // Still loading assessment status — wait
         }
         return feed; // Assessment is opt-in, not auto-triggered
       }

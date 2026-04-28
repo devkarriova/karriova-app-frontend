@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/di/injection.dart';
 import '../../../assessment/data/repositories/assessment_repository_impl.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 
 /// Card prompting users to take the KIT (Karriova Insight Test)
 /// Shows completed state if already taken with next available date
@@ -16,32 +19,34 @@ class KitCard extends StatefulWidget {
 }
 
 class _KitCardState extends State<KitCard> {
-  bool _isLoading = true;
-  bool _hasCompleted = false;
   DateTime? _completedAt;
 
   @override
   void initState() {
     super.initState();
-    _checkAssessmentStatus();
+    _loadCompletedDate();
   }
 
-  Future<void> _checkAssessmentStatus() async {
+  /// Load the assessment completion date from local cache
+  /// (for calculating retake eligibility, not for completion status)
+  Future<void> _loadCompletedDate() async {
     try {
       final repo = getIt<AssessmentRepository>();
       final result = await repo.hasCompletedAssessment();
       if (mounted) {
         setState(() {
-          _isLoading = false;
-          _hasCompleted = result.fold((_) => false, (completed) => completed);
-          if (_hasCompleted) _completedAt = DateTime.now();
+          // Just use current date for retake calculation
+          // Actual completion status comes from AuthBloc
+          if (result.fold((_) => false, (completed) => completed)) {
+            _completedAt = DateTime.now();
+          }
         });
       }
     } catch (e) {
+      // Silently fail — use current date for retake calc
       if (mounted) {
         setState(() {
-          _isLoading = false;
-          _hasCompleted = false;
+          _completedAt = null;
         });
       }
     }
@@ -54,28 +59,17 @@ class _KitCardState extends State<KitCard> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      );
-    }
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, authState) {
+        final assessmentCompleted = authState.assessmentCompleted ?? false;
 
-    if (_hasCompleted) {
-      return _buildCompletedCard();
-    }
+        if (assessmentCompleted) {
+          return _buildCompletedCard();
+        }
 
-    return _buildTakeTestCard();
+        return _buildTakeTestCard();
+      },
+    );
   }
 
   Widget _buildCompletedCard() {
