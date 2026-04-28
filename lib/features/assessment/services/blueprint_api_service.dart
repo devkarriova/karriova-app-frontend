@@ -21,6 +21,23 @@ class BlueprintApiService {
   /// Resolve latest completed assessment attempt and fetch its blueprint carousel.
   Future<LatestBlueprintBundle> getLatestCarouselBlueprints() async {
     try {
+      final latestResp = await _dio.get(
+        _buildUrl('/assessments/blueprints/carousel/latest'),
+      );
+      final latestCarousel = BlueprintCarouselResponse.fromJson(
+        latestResp.data['data'] ?? latestResp.data,
+      );
+
+      final latestAttemptId = latestCarousel.assessmentAttemptId.isNotEmpty
+          ? latestCarousel.assessmentAttemptId
+          : 'latest';
+
+      return LatestBlueprintBundle(
+        attemptId: latestAttemptId,
+        carousel: latestCarousel,
+      );
+    } on DioException {
+      // Backward compatibility fallback if latest endpoint is unavailable.
       final response = await _dio.get(_buildUrl('/assessments/results'));
       final raw = response.data;
       final data = raw['data'] ?? raw;
@@ -37,7 +54,6 @@ class BlueprintApiService {
       }
 
       if (attemptId.isEmpty) {
-        // Some environments support latest alias directly.
         final fallback = await getCarouselBlueprints('latest');
         final effectiveAttempt = fallback.assessmentAttemptId.isNotEmpty
             ? fallback.assessmentAttemptId
