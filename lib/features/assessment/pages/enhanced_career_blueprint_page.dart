@@ -6,6 +6,7 @@ import 'package:karriova_app/core/di/injection.dart';
 import 'package:karriova_app/features/assessment/models/career_blueprint_model.dart';
 import 'package:karriova_app/features/assessment/pages/career_blueprint_carousel_page.dart';
 import 'package:karriova_app/features/assessment/services/blueprint_api_service.dart';
+import 'package:karriova_app/features/assessment/widgets/blueprint_loading_widget.dart';
 
 /// API-driven blueprint entry page for the Career Roadmap tab.
 /// It resolves the latest attempt and then renders the real carousel UI.
@@ -64,18 +65,8 @@ class _EnhancedCareerBlueprintPageState
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            CircularProgressIndicator(color: AppColors.primary),
-            SizedBox(height: 12),
-            Text(
-              'Loading your latest career options...',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ],
-        ),
+      return const BlueprintLoadingWidget(
+        variant: BlueprintLoadingVariant.options,
       );
     }
 

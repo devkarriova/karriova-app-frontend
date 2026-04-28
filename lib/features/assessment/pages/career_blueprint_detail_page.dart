@@ -10,6 +10,7 @@ import 'package:karriova_app/core/utils/web_file_utils_stub.dart'
 import 'package:karriova_app/features/assessment/models/career_blueprint_model.dart';
 import 'package:karriova_app/features/assessment/data/repositories/assessment_repository_impl.dart';
 import 'package:karriova_app/features/assessment/services/blueprint_api_service.dart';
+import 'package:karriova_app/features/assessment/widgets/blueprint_loading_widget.dart';
 import 'package:karriova_app/features/assessment/widgets/blueprint_charts_widget.dart';
 
 /// Blueprint Detail Page - Full 14-section blueprint with expandable cards
@@ -38,7 +39,6 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
   bool _isLoading = true;
   bool _isSelecting = false;
   bool _isDownloadingReport = false;
-  String _loadingVerb = 'Loading your full career blueprint...';
   CareerBlueprint? _blueprint;
   String? _errorMessage;
   late BlueprintApiService _apiService;
@@ -135,7 +135,6 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
     try {
       setState(() {
         _isLoading = true;
-        _loadingVerb = 'Loading your full career blueprint...';
       });
       final blueprint = await _apiService.getBlueprintDetail(widget.blueprintId);
       setState(() {
@@ -196,25 +195,9 @@ class _CareerBlueprintDetailPageState extends State<CareerBlueprintDetailPage> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Loading Blueprint'),
-          backgroundColor: AppColors.white,
-          foregroundColor: AppColors.textPrimary,
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(color: AppColors.primary),
-              const SizedBox(height: 16),
-              Text(
-                _loadingVerb,
-                style: AppTypography.body.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
+        backgroundColor: AppColors.background,
+        body: const BlueprintLoadingWidget(
+          variant: BlueprintLoadingVariant.detail,
         ),
       );
     }

@@ -9,6 +9,7 @@ import 'package:karriova_app/core/di/injection.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:karriova_app/features/assessment/models/career_blueprint_model.dart';
 import 'package:karriova_app/features/assessment/services/blueprint_api_service.dart';
+import 'package:karriova_app/features/assessment/widgets/blueprint_loading_widget.dart';
 import 'package:karriova_app/features/auth/presentation/bloc/auth_bloc.dart';
 
 /// Blueprint Carousel Page - Shows 3 career options with summary cards
@@ -263,18 +264,9 @@ class _CareerBlueprintCarouselPageState
 
     if (_isLoading) {
       return withScaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(color: AppColors.primary),
-              const SizedBox(height: 16),
-              Text(
-                _loadingVerb,
-                style: const TextStyle(color: AppColors.textSecondary),
-              ),
-            ],
-          ),
+        body: BlueprintLoadingWidget(
+          variant: BlueprintLoadingVariant.options,
+          message: _loadingVerb == 'Loading your career options...' ? null : _loadingVerb,
         ),
       );
     }
@@ -601,9 +593,13 @@ class _BlueprintCard extends StatelessWidget {
                 height: 48,
                 child: ElevatedButton.icon(
                   onPressed: isGenerating ? null : onTap,
-                  icon: Icon(isGenerating
-                      ? Icons.hourglass_top
-                      : (blueprint.id.isNotEmpty ? Icons.arrow_forward : Icons.auto_awesome)),
+                  icon: isGenerating
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CardGeneratingIndicator(),
+                        )
+                      : Icon(blueprint.id.isNotEmpty ? Icons.arrow_forward : Icons.auto_awesome),
                   label: Text(isGenerating
                       ? 'Generating...'
                       : (blueprint.id.isNotEmpty ? 'View Full Blueprint' : 'Generate Blueprint')),
