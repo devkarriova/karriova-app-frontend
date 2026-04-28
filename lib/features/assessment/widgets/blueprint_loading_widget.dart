@@ -86,7 +86,7 @@ class _BlueprintLoadingWidgetState extends State<BlueprintLoadingWidget>
   Widget _buildSpinner() {
     switch (widget.variant) {
       case BlueprintLoadingVariant.generating:
-        return const SpinKitPulsingGrid(
+        return const SpinKitCubeGrid(
           color: AppColors.primary,
           size: 72,
         );
