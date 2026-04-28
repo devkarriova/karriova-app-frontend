@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
@@ -111,6 +112,8 @@ class ApiClient {
   LogoutCallback? _onLogoutRequired;
   TokenProviderCallback? _tokenProvider;
   bool _isRefreshing = false;
+  /// Completer shared by all callers queued behind an in-progress token refresh.
+  Completer<bool>? _refreshCompleter;
 
   /// Rate limiter to prevent runaway API calls
   final ApiRateLimiter _rateLimiter;
@@ -367,9 +370,10 @@ class ApiClient {
   ) async {
     final apiResponse = _handleResponse(response);
 
-    // If 401 Unauthorized, handle based on token state
+    // If 401 Unauthorized, handle token refresh with queuing so concurrent
+    // requests don't each trigger their own refresh — they all wait for one.
     if (apiResponse.statusCode == 401) {
-      // If no access token at all, logout immediately (shouldn't be here)
+      // No token at all — logout immediately.
       if (_accessToken == null || _accessToken!.isEmpty) {
         if (_onLogoutRequired != null) {
           await _onLogoutRequired!();
@@ -377,28 +381,41 @@ class ApiClient {
         return apiResponse;
       }
 
-      // If we have a token but got 401, try to refresh it
-      if (_onTokenExpired != null && !_isRefreshing) {
-        _isRefreshing = true;
-        try {
-          final refreshed = await _onTokenExpired!();
-          _isRefreshing = false;
+      if (_onTokenExpired == null) {
+        return apiResponse;
+      }
 
-          if (refreshed) {
-            // Retry the original request with new token
-            return await retry();
-          } else {
-            // Token refresh failed - logout user
-            if (_onLogoutRequired != null) {
-              await _onLogoutRequired!();
-            }
-          }
-        } catch (e) {
-          _isRefreshing = false;
-          // Token refresh threw exception - logout user
+      if (_isRefreshing) {
+        // A refresh is already in flight — wait for it, then retry.
+        final refreshed = await _refreshCompleter!.future;
+        if (refreshed) {
+          return await retry();
+        }
+        return apiResponse;
+      }
+
+      // We are the first — kick off the refresh.
+      _isRefreshing = true;
+      _refreshCompleter = Completer<bool>();
+      try {
+        final refreshed = await _onTokenExpired!();
+        _refreshCompleter!.complete(refreshed);
+        _isRefreshing = false;
+        _refreshCompleter = null;
+
+        if (refreshed) {
+          return await retry();
+        } else {
           if (_onLogoutRequired != null) {
             await _onLogoutRequired!();
           }
+        }
+      } catch (e) {
+        _refreshCompleter!.complete(false);
+        _isRefreshing = false;
+        _refreshCompleter = null;
+        if (_onLogoutRequired != null) {
+          await _onLogoutRequired!();
         }
       }
     }
