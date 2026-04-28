@@ -43,6 +43,7 @@ class _CareerBlueprintCarouselPageState
   bool _isLoading = true;
   String _loadingVerb = 'Loading your career options...';
   String? _errorMessage;
+  String? _generatingCareerId;
   late BlueprintApiService _apiService;
 
   @override
@@ -65,7 +66,7 @@ class _CareerBlueprintCarouselPageState
           ? 'Refreshing your career options...'
           : (widget.initialData != null
               ? 'Preparing your career options...'
-              : 'Generating your career options...');
+            : 'Loading your career options...');
 
       setState(() {
         _isLoading = true;
@@ -94,9 +95,9 @@ class _CareerBlueprintCarouselPageState
       if (status == 401) {
         message = 'Your session has expired. Please sign in again.';
       } else if (status == 404) {
-        message = 'No career blueprints found yet. Complete KIT and generate your roadmap first.';
+        message = 'No career options found yet. Complete KIT to see your top matches.';
       } else if (status == 500) {
-        message = 'Server error while loading roadmap. Please try again shortly.';
+        message = 'Server error while loading career options. Please try again shortly.';
       }
 
       setState(() {
@@ -117,13 +118,50 @@ class _CareerBlueprintCarouselPageState
     super.dispose();
   }
 
-  void _selectBlueprint(CarouselBlueprint blueprint) {
+  Future<void> _selectBlueprint(CarouselBlueprint blueprint) async {
     final effectiveAttemptId = _carouselData?.assessmentAttemptId ?? widget.attemptId;
+    var targetBlueprintId = blueprint.id;
+
+    if (targetBlueprintId.isEmpty) {
+      final selectedCareerId = (blueprint.careerId ?? '').trim();
+      if (selectedCareerId.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('This career option cannot be generated right now.')),
+        );
+        return;
+      }
+
+      setState(() {
+        _generatingCareerId = selectedCareerId;
+      });
+
+      try {
+        targetBlueprintId = await _apiService.generateSelectedBlueprint(
+          attemptId: effectiveAttemptId,
+          careerId: selectedCareerId,
+        );
+      } catch (_) {
+        if (!mounted) return;
+        setState(() {
+          _generatingCareerId = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to generate this blueprint. Please try again.')),
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _generatingCareerId = null;
+      });
+    }
 
     // Navigate to detail page via GoRouter
     GoRouter.of(context).push(
       AppRouter.careerBlueprintDetail
-          .replaceFirst(':blueprintId', blueprint.id),
+          .replaceFirst(':blueprintId', targetBlueprintId),
       extra: {
         'careerName': blueprint.careerName,
         'attemptId': effectiveAttemptId,
@@ -317,6 +355,7 @@ class _CareerBlueprintCarouselPageState
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: _BlueprintCard(
                       blueprint: blueprint,
+                      isGenerating: _generatingCareerId == (blueprint.careerId ?? '').trim(),
                       onTap: () => _selectBlueprint(blueprint),
                     ),
                   );
@@ -368,7 +407,7 @@ class _CareerBlueprintCarouselPageState
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '${_carouselData!.blueprints.length}',
+                          _carouselData!.blueprints.length.toString(),
                           style: AppTypography.heading3.copyWith(
                             color: AppColors.primary,
                           ),
@@ -385,7 +424,7 @@ class _CareerBlueprintCarouselPageState
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '${_carouselData!.blueprints.first.fitScore.toStringAsFixed(1)}',
+                          _carouselData!.blueprints.first.fitScore.toStringAsFixed(1),
                           style: AppTypography.heading3.copyWith(
                             color: AppColors.primary,
                           ),
@@ -406,10 +445,12 @@ class _CareerBlueprintCarouselPageState
 /// Individual blueprint card for carousel
 class _BlueprintCard extends StatelessWidget {
   final CarouselBlueprint blueprint;
+  final bool isGenerating;
   final VoidCallback onTap;
 
   const _BlueprintCard({
     required this.blueprint,
+    this.isGenerating = false,
     required this.onTap,
   });
 
@@ -559,9 +600,13 @@ class _BlueprintCard extends StatelessWidget {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton.icon(
-                  onPressed: onTap,
-                  icon: const Icon(Icons.arrow_forward),
-                  label: const Text('View Full Blueprint'),
+                  onPressed: isGenerating ? null : onTap,
+                  icon: Icon(isGenerating
+                      ? Icons.hourglass_top
+                      : (blueprint.id.isNotEmpty ? Icons.arrow_forward : Icons.auto_awesome)),
+                  label: Text(isGenerating
+                      ? 'Generating...'
+                      : (blueprint.id.isNotEmpty ? 'View Full Blueprint' : 'Generate Blueprint')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: AppColors.white,

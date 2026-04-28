@@ -291,6 +291,7 @@ class CareerBlueprint {
 
 class CarouselBlueprint {
   final String id;
+  final String? careerId;
   final String careerName;
   final String? careerCategory;
   final double fitScore;
@@ -303,6 +304,7 @@ class CarouselBlueprint {
 
   CarouselBlueprint({
     required this.id,
+    this.careerId,
     required this.careerName,
     this.careerCategory,
     required this.fitScore,
@@ -319,6 +321,7 @@ class CarouselBlueprint {
   factory CarouselBlueprint.fromJson(Map<String, dynamic> json) {
     return CarouselBlueprint(
       id: json['id'] ?? '',
+      careerId: json['career_id']?.toString(),
       careerName: json['career_name'] ?? '',
       careerCategory: json['career_category'],
       fitScore: (json['fit_score'] ?? 0).toDouble(),

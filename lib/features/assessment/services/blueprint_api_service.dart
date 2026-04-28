@@ -18,11 +18,19 @@ class BlueprintApiService {
     return '$normalizedBase$path';
   }
 
+  Options _longRequestOptions() {
+    return Options(
+      sendTimeout: const Duration(seconds: 120),
+      receiveTimeout: const Duration(seconds: 120),
+    );
+  }
+
   /// Resolve latest completed assessment attempt and fetch its blueprint carousel.
   Future<LatestBlueprintBundle> getLatestCarouselBlueprints() async {
     try {
       final latestResp = await _dio.get(
         _buildUrl('/assessments/blueprints/carousel/latest'),
+        options: _longRequestOptions(),
       );
       final latestCarousel = BlueprintCarouselResponse.fromJson(
         latestResp.data['data'] ?? latestResp.data,
@@ -76,6 +84,7 @@ class BlueprintApiService {
     try {
       final response = await _dio.get(
         _buildUrl('/assessments/blueprints/carousel/$attemptId'),
+        options: _longRequestOptions(),
       );
 
       return BlueprintCarouselResponse.fromJson(response.data['data'] ?? response.data);
@@ -85,14 +94,23 @@ class BlueprintApiService {
       // 2) Retry blueprint carousel once
       final statusCode = e.response?.statusCode;
       final message = (e.response?.data?['error']?['message'] ?? '').toString();
-      final shouldRetry = statusCode == 404 &&
-          message.toLowerCase().contains('no career blueprints found');
+      final normalized = message.toLowerCase();
+      final shouldRetryNoBlueprints = statusCode == 404 &&
+          normalized.contains('no career blueprints found');
+      final shouldRetryGenerationFailure = statusCode == 500 &&
+          normalized.contains('failed to generate career blueprints');
+
+      final shouldRetry = shouldRetryNoBlueprints || shouldRetryGenerationFailure;
 
       if (shouldRetry) {
         try {
-          await _dio.get(_buildUrl('/assessments/career-matches'));
+          await _dio.get(
+            _buildUrl('/assessments/career-matches'),
+            options: _longRequestOptions(),
+          );
           final retryResponse = await _dio.get(
             _buildUrl('/assessments/blueprints/carousel/$attemptId'),
+            options: _longRequestOptions(),
           );
           return BlueprintCarouselResponse.fromJson(
             retryResponse.data['data'] ?? retryResponse.data,
@@ -120,6 +138,35 @@ class BlueprintApiService {
       return CareerBlueprint.fromJson(data);
     } catch (e) {
       throw BlueprintException('Failed to load blueprint details: $e');
+    }
+  }
+
+  /// Generate a single blueprint for the selected career option.
+  Future<String> generateSelectedBlueprint({
+    required String attemptId,
+    required String careerId,
+    int roadmapHorizonMonths = 12,
+  }) async {
+    try {
+      final response = await _dio.post(
+        _buildUrl('/assessments/blueprints/generate'),
+        data: {
+          'attempt_id': attemptId,
+          'career_id': careerId,
+          'roadmap_horizon_months': roadmapHorizonMonths,
+        },
+        options: _longRequestOptions(),
+      );
+
+      final raw = response.data;
+      final data = raw['data'] ?? raw;
+      final blueprintId = (data['blueprint_id'] ?? '').toString();
+      if (blueprintId.isEmpty) {
+        throw BlueprintException('Blueprint was generated but no blueprint_id was returned');
+      }
+      return blueprintId;
+    } catch (e) {
+      throw BlueprintException('Failed to generate selected blueprint: $e');
     }
   }
 
