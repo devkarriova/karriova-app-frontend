@@ -306,130 +306,154 @@ class _CareerBlueprintCarouselPageState
         ),
       );
     }
-    return withScaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  Text(
-                    'Explore Your Paths',
-                    style: AppTypography.heading2.copyWith(fontSize: 32),
+
+    final bodyContent = SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                Text(
+                  'Explore Your Paths',
+                  style: AppTypography.heading2.copyWith(fontSize: 32),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Swipe to explore your top 3 career matches.\nSelect one to dive deep into your personalized roadmap.',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.body.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 17,
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Swipe to explore your top 3 career matches.\nSelect one to dive deep into your personalized roadmap.',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.body.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 17,
-                    ),
+                ),
+              ],
+            ),
+          ),
+
+          // Carousel
+          SizedBox(
+            height: 520,
+            child: PageView.builder(
+              controller: _pageController,
+              onPageChanged: (index) {
+                setState(() => _currentIndex = index);
+              },
+              itemCount: _carouselData!.blueprints.length,
+              itemBuilder: (context, index) {
+                final blueprint = _carouselData!.blueprints[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: _BlueprintCard(
+                    blueprint: blueprint,
+                    isGenerating: _generatingCareerId == (blueprint.careerId ?? '').trim(),
+                    onTap: () => _selectBlueprint(blueprint),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // Indicator dots
+          Padding(
+            padding: const EdgeInsets.only(top: 24, bottom: 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                _carouselData!.blueprints.length,
+                (index) => Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: index == _currentIndex
+                        ? AppColors.primary
+                        : AppColors.border,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Quick stats
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.lightBlue,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Column(
+                    children: [
+                      Text(
+                        'Total Matches',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _carouselData!.blueprints.length.toString(),
+                        style: AppTypography.heading3.copyWith(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      Text(
+                        'Top Match',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _carouselData!.blueprints.first.fitScore.toStringAsFixed(1),
+                        style: AppTypography.heading3.copyWith(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
 
-            // Carousel
-            SizedBox(
-              height: 520,
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: (index) {
-                  setState(() => _currentIndex = index);
-                },
-                itemCount: _carouselData!.blueprints.length,
-                itemBuilder: (context, index) {
-                  final blueprint = _carouselData!.blueprints[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: _BlueprintCard(
-                      blueprint: blueprint,
-                      isGenerating: _generatingCareerId == (blueprint.careerId ?? '').trim(),
-                      onTap: () => _selectBlueprint(blueprint),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // Indicator dots
-            Padding(
-              padding: const EdgeInsets.only(top: 24, bottom: 24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  _carouselData!.blueprints.length,
-                  (index) => Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: index == _currentIndex
-                          ? AppColors.primary
-                          : AppColors.border,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // Quick stats
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.lightBlue,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Column(
-                      children: [
-                        Text(
-                          'Total Matches',
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _carouselData!.blueprints.length.toString(),
-                          style: AppTypography.heading3.copyWith(
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      children: [
-                        Text(
-                          'Top Match',
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _carouselData!.blueprints.first.fitScore.toStringAsFixed(1),
-                          style: AppTypography.heading3.copyWith(
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+    // Show generating overlay if one is in progress
+    if (_generatingCareerId != null) {
+      return withScaffold(
+        body: Stack(
+          children: [
+            // Blur background
+            bodyContent,
+            // Overlay
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: BlueprintLoadingWidget(
+                  variant: BlueprintLoadingVariant.generating,
                 ),
               ),
             ),
           ],
         ),
-      ),
+      );
+    }
+
+    return withScaffold(
+      body: bodyContent,
     );
   }
 }
