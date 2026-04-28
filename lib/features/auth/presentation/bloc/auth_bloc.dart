@@ -23,6 +23,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthVerifyOTPRequested>(_onVerifyOTPRequested);
   }
 
+  Future<bool?> _loadAssessmentCompletionStatus() async {
+    try {
+      final assessmentRepo = getIt<AssessmentRepository>();
+      final result = await assessmentRepo.getAssessmentStatus();
+      return result.fold((_) => null, (completed) => completed);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _onLoginRequested(
     AuthLoginRequested event,
     Emitter<AuthState> emit,
@@ -34,18 +44,29 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       password: event.password,
     );
 
+    String? errorMessage;
+    dynamic user;
     result.fold(
-      (error) => emit(state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: error,
-      )),
-      (user) => emit(state.copyWith(
-        status: AuthStatus.authenticated,
-        user: user,
-        successMessage: 'Login successful!',
-        assessmentCompleted: null, // Reset - will be checked next
-      )),
+      (error) => errorMessage = error,
+      (u) => user = u,
     );
+
+    if (errorMessage != null) {
+      emit(state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: errorMessage,
+      ));
+      return;
+    }
+
+    final assessmentCompleted = await _loadAssessmentCompletionStatus();
+    emit(state.copyWith(
+      status: AuthStatus.authenticated,
+      user: user,
+      successMessage: 'Login successful!',
+      assessmentCompleted: assessmentCompleted,
+      updateAssessmentCompleted: true,
+    ));
   }
 
   Future<void> _onSignupRequested(
@@ -65,18 +86,29 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       userType: event.userType,
     );
 
+    String? errorMessage;
+    dynamic user;
     result.fold(
-      (error) => emit(state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: error,
-      )),
-      (user) => emit(state.copyWith(
-        status: AuthStatus.authenticated,
-        user: user,
-        successMessage: 'Signup successful!',
-        assessmentCompleted: false, // New users haven't taken assessment
-      )),
+      (error) => errorMessage = error,
+      (u) => user = u,
     );
+
+    if (errorMessage != null) {
+      emit(state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: errorMessage,
+      ));
+      return;
+    }
+
+    final assessmentCompleted = await _loadAssessmentCompletionStatus();
+    emit(state.copyWith(
+      status: AuthStatus.authenticated,
+      user: user,
+      successMessage: 'Signup successful!',
+      assessmentCompleted: assessmentCompleted ?? false,
+      updateAssessmentCompleted: true,
+    ));
   }
 
   Future<void> _onSendOTPRequested(
@@ -186,18 +218,29 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       state: event.state,
     );
 
+    String? errorMessage;
+    dynamic user;
     result.fold(
-      (error) => emit(state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: error,
-      )),
-      (user) => emit(state.copyWith(
-        status: AuthStatus.authenticated,
-        user: user,
-        successMessage: 'Login successful!',
-        assessmentCompleted: null, // Reset - will be checked next
-      )),
+      (error) => errorMessage = error,
+      (u) => user = u,
     );
+
+    if (errorMessage != null) {
+      emit(state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: errorMessage,
+      ));
+      return;
+    }
+
+    final assessmentCompleted = await _loadAssessmentCompletionStatus();
+    emit(state.copyWith(
+      status: AuthStatus.authenticated,
+      user: user,
+      successMessage: 'Login successful!',
+      assessmentCompleted: assessmentCompleted,
+      updateAssessmentCompleted: true,
+    ));
   }
 
   Future<void> _onCheckStatusRequested(
@@ -210,13 +253,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     if (isLoggedIn) {
       final result = await authRepository.getCurrentUser();
+      String? errorMessage;
+      dynamic user;
       result.fold(
-        (error) => emit(const AuthState(status: AuthStatus.unauthenticated)),
-        (user) => emit(AuthState(
-          status: AuthStatus.authenticated,
-          user: user,
-        )),
+        (error) => errorMessage = error,
+        (u) => user = u,
       );
+
+      if (errorMessage != null) {
+        emit(const AuthState(status: AuthStatus.unauthenticated));
+        return;
+      }
+
+      final assessmentCompleted = await _loadAssessmentCompletionStatus();
+      emit(AuthState(
+        status: AuthStatus.authenticated,
+        user: user,
+        assessmentCompleted: assessmentCompleted,
+      ));
     } else {
       emit(const AuthState(status: AuthStatus.unauthenticated));
     }
@@ -263,12 +317,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final result = await assessmentRepo.getAssessmentStatus();
 
       result.fold(
-        (error) {
-          emit(state.copyWith(
-            assessmentCompleted: false,
-            updateAssessmentCompleted: true,
-          ));
-        },
+        (error) {},
         (completed) {
           emit(state.copyWith(
             assessmentCompleted: completed,
@@ -277,10 +326,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         },
       );
     } catch (e) {
-      emit(state.copyWith(
-        assessmentCompleted: false,
-        updateAssessmentCompleted: true,
-      ));
+      // Keep existing value on transient failures to avoid false negatives.
     }
   }
 

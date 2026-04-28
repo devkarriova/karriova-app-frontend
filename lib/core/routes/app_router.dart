@@ -534,14 +534,8 @@ class AppRouter {
                 context
                     .read<AuthBloc>()
                     .add(const AuthSetAssessmentCompleted());
-                // Navigate to blueprint carousel
-                final attemptId = state.uri.queryParameters['attemptId'];
-                if (attemptId != null) {
-                  GoRouter.of(context)
-                      .go(AppRouter.careerBlueprintCarousel.replaceFirst(':attemptId', attemptId));
-                } else {
-                  GoRouter.of(context).go(AppRouter.feed);
-                }
+                // Navigate to Career Roadmap tab.
+                GoRouter.of(context).go(AppRouter.careerRoadmap);
               },
             ),
           );

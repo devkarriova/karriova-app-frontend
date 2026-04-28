@@ -215,16 +215,26 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<String, UserModel>> getCurrentUser() async {
     try {
-      final user = await localDataSource.getUser();
-      if (user != null) {
-        // Load and set access token when getting current user
-        final accessToken = await localDataSource.getAccessToken();
-        if (accessToken != null) {
-          apiClient.setAccessToken(accessToken);
-        }
+      // Load and set access token before hitting protected /users/me.
+      final accessToken = await localDataSource.getAccessToken();
+      if (accessToken != null) {
+        apiClient.setAccessToken(accessToken);
+      }
+
+      final remote = await apiClient.get('/users/me', requiresAuth: true);
+      if (remote.isSuccess && remote.data != null) {
+        final user = UserModel.fromJson(remote.data as Map<String, dynamic>);
+        await localDataSource.saveUser(user);
         return Right(user);
       }
-      return const Left('No user found');
+
+      // Fallback to cached user only if remote profile fetch fails.
+      final cachedUser = await localDataSource.getUser();
+      if (cachedUser != null) {
+        return Right(cachedUser);
+      }
+
+      return Left(remote.errorMessage ?? 'No user found');
     } catch (e) {
       AppLogger.error('Get current user failed: $e');
       return Left(_handleError(e));

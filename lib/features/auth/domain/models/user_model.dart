@@ -20,10 +20,10 @@ class UserModel extends Equatable {
   });
 
   /// Check if user has admin privileges
-  bool get isAdmin => userRole == 'admin';
+  bool get isAdmin => userRole.trim().toLowerCase() == 'admin';
 
   /// Check if user is a mentor
-  bool get isMentor => userRole == 'mentor';
+  bool get isMentor => userRole.trim().toLowerCase() == 'mentor';
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(

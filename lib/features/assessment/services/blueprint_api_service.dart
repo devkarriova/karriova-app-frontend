@@ -18,6 +18,43 @@ class BlueprintApiService {
     return '$normalizedBase$path';
   }
 
+  /// Resolve latest completed assessment attempt and fetch its blueprint carousel.
+  Future<LatestBlueprintBundle> getLatestCarouselBlueprints() async {
+    try {
+      final response = await _dio.get(_buildUrl('/assessments/results'));
+      final raw = response.data;
+      final data = raw['data'] ?? raw;
+
+      String attemptId = '';
+      if (data is Map<String, dynamic>) {
+        attemptId = (data['attempt_id'] ?? '').toString();
+        if (attemptId.isEmpty) {
+          final result = data['result'];
+          if (result is Map<String, dynamic>) {
+            attemptId = (result['attempt_id'] ?? '').toString();
+          }
+        }
+      }
+
+      if (attemptId.isEmpty) {
+        // Some environments support latest alias directly.
+        final fallback = await getCarouselBlueprints('latest');
+        final effectiveAttempt = fallback.assessmentAttemptId.isNotEmpty
+            ? fallback.assessmentAttemptId
+            : 'latest';
+        return LatestBlueprintBundle(
+          attemptId: effectiveAttempt,
+          carousel: fallback,
+        );
+      }
+
+      final carousel = await getCarouselBlueprints(attemptId);
+      return LatestBlueprintBundle(attemptId: attemptId, carousel: carousel);
+    } catch (e) {
+      throw BlueprintException('Failed to load latest career blueprints: $e');
+    }
+  }
+
   /// Get carousel view with 3 blueprint summaries
   Future<BlueprintCarouselResponse> getCarouselBlueprints(String attemptId) async {
     try {
@@ -114,4 +151,14 @@ class BlueprintException implements Exception {
 
   @override
   String toString() => 'BlueprintException: $message';
+}
+
+class LatestBlueprintBundle {
+  final String attemptId;
+  final BlueprintCarouselResponse carousel;
+
+  LatestBlueprintBundle({
+    required this.attemptId,
+    required this.carousel,
+  });
 }

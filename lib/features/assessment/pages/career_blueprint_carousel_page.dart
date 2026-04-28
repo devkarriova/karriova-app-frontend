@@ -18,6 +18,7 @@ class CareerBlueprintCarouselPage extends StatefulWidget {
   final VoidCallback? onBlueprintSelected;
   final Dio? dio;
   final String? apiBaseUrl;
+  final bool embedded;
 
   const CareerBlueprintCarouselPage({
     required this.attemptId,
@@ -25,6 +26,7 @@ class CareerBlueprintCarouselPage extends StatefulWidget {
     this.onBlueprintSelected,
     this.dio,
     this.apiBaseUrl,
+    this.embedded = false,
     Key? key,
   }) : super(key: key);
 
@@ -140,15 +142,29 @@ class _CareerBlueprintCarouselPageState
     final assessmentDone =
         context.watch<AuthBloc>().state.assessmentCompleted == true;
 
-    if (!assessmentDone) {
+    Widget withScaffold({
+      required Widget body,
+      String title = 'Your Career Options',
+      bool centerTitle = true,
+    }) {
+      if (widget.embedded) {
+        return body;
+      }
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Career Blueprint'),
-          centerTitle: true,
+          title: Text(title),
+          centerTitle: centerTitle,
           backgroundColor: AppColors.white,
           elevation: 0,
           foregroundColor: AppColors.textPrimary,
         ),
+        body: body,
+      );
+    }
+
+    if (!assessmentDone) {
+      return withScaffold(
+        title: 'Career Blueprint',
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(32),
@@ -208,14 +224,7 @@ class _CareerBlueprintCarouselPageState
     }
 
     if (_isLoading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Your Career Options'),
-          centerTitle: true,
-          backgroundColor: AppColors.white,
-          elevation: 0,
-          foregroundColor: AppColors.textPrimary,
-        ),
+      return withScaffold(
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -233,12 +242,9 @@ class _CareerBlueprintCarouselPageState
     }
 
     if (_errorMessage != null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Error'),
-          backgroundColor: AppColors.white,
-          foregroundColor: AppColors.textPrimary,
-        ),
+      return withScaffold(
+        title: 'Error',
+        centerTitle: false,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -264,25 +270,13 @@ class _CareerBlueprintCarouselPageState
     }
 
     if (_carouselData == null || _carouselData!.blueprints.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Your Career Options'),
-          backgroundColor: AppColors.white,
-          foregroundColor: AppColors.textPrimary,
-        ),
+      return withScaffold(
         body: const Center(
           child: Text('No blueprints available'),
         ),
       );
     }
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Your Career Options'),
-        centerTitle: true,
-        backgroundColor: AppColors.white,
-        elevation: 0,
-        foregroundColor: AppColors.textPrimary,
-      ),
+    return withScaffold(
       body: SingleChildScrollView(
         child: Column(
           children: [

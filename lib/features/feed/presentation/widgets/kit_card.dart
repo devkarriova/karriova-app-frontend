@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/di/injection.dart';
-import '../../../assessment/data/datasources/assessment_remote_datasource.dart';
+import '../../../assessment/data/repositories/assessment_repository_impl.dart';
 
 /// Card prompting users to take the KIT (Karriova Insight Test)
 /// Shows completed state if already taken with next available date
@@ -28,18 +28,16 @@ class _KitCardState extends State<KitCard> {
 
   Future<void> _checkAssessmentStatus() async {
     try {
-      final datasource = getIt<AssessmentRemoteDataSource>();
-      final result = await datasource.getMyResults();
+      final repo = getIt<AssessmentRepository>();
+      final result = await repo.hasCompletedAssessment();
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _hasCompleted = result.completed;
-          // Assume completed recently if no date available
-          _completedAt = DateTime.now();
+          _hasCompleted = result.fold((_) => false, (completed) => completed);
+          if (_hasCompleted) _completedAt = DateTime.now();
         });
       }
     } catch (e) {
-      // No results yet or error - show take test UI
       if (mounted) {
         setState(() {
           _isLoading = false;
