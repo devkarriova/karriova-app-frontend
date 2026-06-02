@@ -127,14 +127,17 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
               const SizedBox(height: AppDimensions.paddingLG),
               Text(
                 state.errorMessage ?? 'Something went wrong',
-                style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
+                style: const TextStyle(
+                    fontSize: 16, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppDimensions.paddingXL),
               GradientButton(
                 text: 'Try Again',
                 onPressed: () {
-                  context.read<AssessmentBloc>().add(const AssessmentLoadRequested());
+                  context
+                      .read<AssessmentBloc>()
+                      .add(const AssessmentLoadRequested());
                 },
               ),
             ],
@@ -165,6 +168,7 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
             totalTestDurationMinutes: state.totalTestDurationMinutes,
             sectionDurationMinutes: state.currentSection?.durationMinutes ?? 15,
           ),
+          const _AiGuidanceNotice(),
 
           // Main content area
           Expanded(
@@ -186,12 +190,10 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
                               currentSection: state.currentSection!,
                               currentParameterName:
                                   state.currentParameter?.name,
-                              sectionQuestions:
-                                  state.currentParameterQuestions,
+                              sectionQuestions: state.currentParameterQuestions,
                               currentQuestionId:
                                   state.currentQuestion?.id ?? '',
-                              attemptedQuestionIds:
-                                  state.attemptedQuestionIds,
+                              attemptedQuestionIds: state.attemptedQuestionIds,
                               onQuestionTap: (localIndex) {
                                 final globalIndex =
                                     _getGlobalIndexForParameterQuestion(
@@ -202,11 +204,10 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
                                       AssessmentNavigateToQuestion(globalIndex),
                                     );
                               },
-                              onNextParameter:
-                                  state.canProceedToNextParameter
-                                      ? () => _navigateToNextParameter(
-                                          context, state)
-                                      : null,
+                              onNextParameter: state.canProceedToNextParameter
+                                  ? () =>
+                                      _navigateToNextParameter(context, state)
+                                  : null,
                               onNextSection: state.canProceedToNextSection
                                   ? () {
                                       context.read<AssessmentBloc>().add(
@@ -231,90 +232,94 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
                     Expanded(
                       child: Center(
                         child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 860),
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppDimensions.paddingXL),
-                        child: Column(
-                          children: [
-                            // Minimal header
-                            _buildMinimalHeader(),
-                            const SizedBox(height: AppDimensions.paddingMD),
+                          constraints: const BoxConstraints(maxWidth: 860),
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.all(AppDimensions.paddingXL),
+                            child: Column(
+                              children: [
+                                // Minimal header
+                                _buildMinimalHeader(),
+                                const SizedBox(height: AppDimensions.paddingMD),
 
-                            // Hamburger menu for mobile
-                            if (!showSidebarPermanent)
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: IconButton(
-                                  icon: const Icon(Icons.menu),
-                                  onPressed: () =>
-                                      _showMobileSidebar(context, state),
-                                ),
-                              ),
-
-                            // Question card with animation
-                            Expanded(
-                              child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 300),
-                                transitionBuilder: (child, animation) {
-                                  return FadeTransition(
-                                    opacity: animation,
-                                    child: SlideTransition(
-                                      position: Tween<Offset>(
-                                        begin: const Offset(0.05, 0),
-                                        end: Offset.zero,
-                                      ).animate(CurvedAnimation(
-                                        parent: animation,
-                                        curve: Curves.easeOut,
-                                      )),
-                                      child: child,
+                                // Hamburger menu for mobile
+                                if (!showSidebarPermanent)
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: IconButton(
+                                      icon: const Icon(Icons.menu),
+                                      onPressed: () =>
+                                          _showMobileSidebar(context, state),
                                     ),
-                                  );
-                                },
-                                child: Container(
-                                  key: ValueKey(currentQuestion.id),
-                                  padding:
-                                      const EdgeInsets.all(AppDimensions.paddingXL),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surface,
-                                    borderRadius:
-                                        BorderRadius.circular(AppDimensions.radiusLG),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.08),
-                                        blurRadius: 16,
-                                        offset: const Offset(0, 4),
+                                  ),
+
+                                // Question card with animation
+                                Expanded(
+                                  child: AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 300),
+                                    transitionBuilder: (child, animation) {
+                                      return FadeTransition(
+                                        opacity: animation,
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0.05, 0),
+                                            end: Offset.zero,
+                                          ).animate(CurvedAnimation(
+                                            parent: animation,
+                                            curve: Curves.easeOut,
+                                          )),
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      key: ValueKey(currentQuestion.id),
+                                      padding: const EdgeInsets.all(
+                                          AppDimensions.paddingXL),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surface,
+                                        borderRadius: BorderRadius.circular(
+                                            AppDimensions.radiusLG),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.08),
+                                            blurRadius: 16,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                  child: SingleChildScrollView(
-                                    child: QuestionCard(
-                                      question: currentQuestion,
-                                      selectedOptionId: state.selectedOptionId,
-                                      onOptionSelected: (optionId) {
-                                        context.read<AssessmentBloc>().add(
-                                              AssessmentOptionSelected(
-                                                questionId: currentQuestion.id,
-                                                optionId: optionId,
-                                              ),
-                                            );
-                                      },
+                                      child: SingleChildScrollView(
+                                        child: QuestionCard(
+                                          question: currentQuestion,
+                                          selectedOptionId:
+                                              state.selectedOptionId,
+                                          onOptionSelected: (optionId) {
+                                            context.read<AssessmentBloc>().add(
+                                                  AssessmentOptionSelected(
+                                                    questionId:
+                                                        currentQuestion.id,
+                                                    optionId: optionId,
+                                                  ),
+                                                );
+                                          },
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(height: AppDimensions.paddingLG),
+                                const SizedBox(height: AppDimensions.paddingLG),
 
-                            // Arrow navigation (keep existing)
-                            _buildArrowNavigation(context, state),
-                          ],
+                                // Arrow navigation (keep existing)
+                                _buildArrowNavigation(context, state),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
 
                 // Floating toggle button at the sidebar edge
                 if (showSidebarPermanent)
@@ -391,7 +396,8 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
         // Debug: Fill Random button (password-gated)
         TextButton.icon(
           onPressed: () => _showFillRandomDialog(context, bloc),
-          icon: const Icon(Icons.shuffle, size: 16, color: AppColors.textSecondary),
+          icon: const Icon(Icons.shuffle,
+              size: 16, color: AppColors.textSecondary),
           label: const Text(
             'Fill Random',
             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
@@ -461,14 +467,18 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
                 decoration: BoxDecoration(
                   gradient: isAnswered
                       ? const LinearGradient(
-                          colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                          colors: [
+                            AppColors.gradientStart,
+                            AppColors.gradientEnd
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         )
                       : null,
                   color: isAnswered ? null : AppColors.surface,
                   shape: BoxShape.circle,
-                  border: isAnswered ? null : Border.all(color: AppColors.border),
+                  border:
+                      isAnswered ? null : Border.all(color: AppColors.border),
                   boxShadow: [
                     BoxShadow(
                       color: isAnswered
@@ -480,7 +490,9 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
                   ],
                 ),
                 child: Icon(
-                  isLastQuestion ? Icons.check_rounded : Icons.arrow_forward_rounded,
+                  isLastQuestion
+                      ? Icons.check_rounded
+                      : Icons.arrow_forward_rounded,
                   color: isAnswered ? AppColors.white : AppColors.textSecondary,
                   size: 24,
                 ),
@@ -573,7 +585,8 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
     );
   }
 
-  void _submitFillRandom(BuildContext ctx, String password, AssessmentBloc bloc) {
+  void _submitFillRandom(
+      BuildContext ctx, String password, AssessmentBloc bloc) {
     Navigator.pop(ctx);
     if (password == 'youcantdothis') {
       bloc.add(const AssessmentFillRandom());
@@ -632,6 +645,24 @@ class _AssessmentPageContentState extends State<_AssessmentPageContent> {
           canProceedToNextSection: state.canProceedToNextSection,
           answeredCount: state.currentParameterAnsweredCount,
         ),
+      ),
+    );
+  }
+}
+
+class _AiGuidanceNotice extends StatelessWidget {
+  const _AiGuidanceNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: AppColors.info.withOpacity(0.08),
+      child: const Text(
+        'Karriova provides career guidance, not diagnosis, guaranteed admissions, employment promises, or final career decisions.',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
       ),
     );
   }
@@ -720,4 +751,3 @@ class AssessmentResultsFullPage extends StatelessWidget {
     );
   }
 }
-

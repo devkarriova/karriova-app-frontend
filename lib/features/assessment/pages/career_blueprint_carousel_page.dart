@@ -119,6 +119,22 @@ class _CareerBlueprintCarouselPageState
     super.dispose();
   }
 
+  Future<void> _goToPage(int index) async {
+    final blueprints = _carouselData?.blueprints;
+    if (blueprints == null || blueprints.isEmpty) return;
+    if (index < 0 || index >= blueprints.length) return;
+
+    await _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Future<void> _goToPreviousPage() => _goToPage(_currentIndex - 1);
+
+  Future<void> _goToNextPage() => _goToPage(_currentIndex + 1);
+
   Future<void> _selectBlueprint(CarouselBlueprint blueprint) async {
     final effectiveAttemptId = _carouselData?.assessmentAttemptId ?? widget.attemptId;
     var targetBlueprintId = blueprint.id;
@@ -358,22 +374,76 @@ class _CareerBlueprintCarouselPageState
           // Indicator dots
           Padding(
             padding: const EdgeInsets.only(top: 24, bottom: 24),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                _carouselData!.blueprints.length,
-                (index) => Container(
-                  width: 8,
-                  height: 8,
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: index == _currentIndex
-                        ? AppColors.primary
-                        : AppColors.border,
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    _carouselData!.blueprints.length,
+                    (index) => Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: index == _currentIndex
+                            ? AppColors.primary
+                            : AppColors.border,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _currentIndex > 0 ? _goToPreviousPage : null,
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: const Text('Previous'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(
+                          color: _currentIndex > 0
+                              ? AppColors.primary.withOpacity(0.35)
+                              : AppColors.border,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '${_currentIndex + 1} of ${_carouselData!.blueprints.length}',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: _currentIndex < _carouselData!.blueprints.length - 1
+                          ? _goToNextPage
+                          : null,
+                      icon: const Icon(Icons.arrow_forward_rounded),
+                      label: const Text('Next'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.white,
+                        disabledBackgroundColor: AppColors.border,
+                        disabledForegroundColor: AppColors.textSecondary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
 
@@ -436,13 +506,29 @@ class _CareerBlueprintCarouselPageState
       return withScaffold(
         body: Stack(
           children: [
-            // Blur background
+            // Dimmed background
             bodyContent,
-            // Overlay
+            // Semi-transparent dark overlay
             Container(
-              color: Colors.black.withOpacity(0.5),
-              child: const Center(
-                child: BlueprintLoadingWidget(
+              color: Colors.black.withOpacity(0.6),
+            ),
+            // Loading card
+            Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const BlueprintLoadingWidget(
                   variant: BlueprintLoadingVariant.generating,
                 ),
               ),
