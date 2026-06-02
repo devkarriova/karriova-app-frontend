@@ -1423,10 +1423,6 @@ class _LandingFooterState extends State<LandingFooter> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _FooterSmallLink(
-                        label: 'Legal & Safety',
-                        onTap: () => context.go('/legal')),
-                    const SizedBox(width: 24),
-                    _FooterSmallLink(
                         label: 'Privacy',
                         onTap: () => context.go('/legal/privacy-policy')),
                     const SizedBox(width: 24),
