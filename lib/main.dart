@@ -56,9 +56,6 @@ class _KarriovaAppState extends State<KarriovaApp> {
     _chatBloc = getIt<ChatBloc>();
     _notificationBloc = getIt<NotificationBloc>();
 
-    // Load theme preference
-    _themeCubit.loadThemePreference();
-
     // Setup token expiration callback
     _setupTokenExpirationCallback();
     _setupAuthListeners();
@@ -121,24 +118,27 @@ class _KarriovaAppState extends State<KarriovaApp> {
       child: BlocBuilder<ThemeCubit, ThemeMode>(
         builder: (context, themeMode) {
           return MaterialApp.router(
-              title: AppConfig.appName,
-              debugShowCheckedModeBanner: false,
-              theme: AppTheme.lightTheme,
-              darkTheme: AppTheme.darkTheme,
-              // Theme switching disabled — AppColors uses hardcoded light values,
-              // dark mode causes inconsistent UI until full theme-aware refactor.
-              // themeMode: themeMode,
-              themeMode: ThemeMode.light,
-              routerConfig: AppRouter.router,
-              builder: (context, child) {
-                return Shortcuts(
-                  shortcuts: const {
-                    SingleActivator(LogicalKeyboardKey.tab): NextFocusIntent(),
-                    SingleActivator(LogicalKeyboardKey.tab, shift: true): PreviousFocusIntent(),
-                  },
-                  child: _NotificationListener(child: child!),
-                );
-              },
+            title: AppConfig.appName,
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            // Theme switching disabled — AppColors uses hardcoded light values,
+            // dark mode causes inconsistent UI until full theme-aware refactor.
+            // themeMode: themeMode,
+            themeMode: ThemeMode.light,
+            routerConfig: AppRouter.router,
+            builder: (context, child) {
+              return Shortcuts(
+                shortcuts: const {
+                  SingleActivator(LogicalKeyboardKey.tab): NextFocusIntent(),
+                  SingleActivator(LogicalKeyboardKey.tab, shift: true):
+                      PreviousFocusIntent(),
+                },
+                child: _NotificationListener(
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              );
+            },
           );
         },
       ),
@@ -162,19 +162,22 @@ class _NotificationListenerState extends State<_NotificationListener> {
     return BlocListener<ChatBloc, ChatState>(
       listenWhen: (previous, current) {
         // Detect new messages by comparing message counts
-        int prevCount = previous.messagesMap.values.fold(0, (sum, msgs) => sum + msgs.length);
-        int currCount = current.messagesMap.values.fold(0, (sum, msgs) => sum + msgs.length);
+        int prevCount = previous.messagesMap.values
+            .fold(0, (sum, msgs) => sum + msgs.length);
+        int currCount = current.messagesMap.values
+            .fold(0, (sum, msgs) => sum + msgs.length);
         return currCount > prevCount;
       },
       listener: (context, state) {
         // Find and show newest message
-        final allMessages = state.messagesMap.values.expand((list) => list).toList();
+        final allMessages =
+            state.messagesMap.values.expand((list) => list).toList();
         if (allMessages.isNotEmpty) {
           final lastMessage = allMessages.last;
           // Get current user ID to check if message is incoming
           final authState = context.read<AuthBloc>().state;
           final currentUserId = authState.user?.id;
-          
+
           if (currentUserId != null && lastMessage.senderId != currentUserId) {
             _showChatNotification(lastMessage.content);
           }
@@ -203,7 +206,8 @@ class _NotificationListenerState extends State<_NotificationListener> {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.notifications_active, color: Colors.white, size: 20),
+            const Icon(Icons.notifications_active,
+                color: Colors.white, size: 20),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

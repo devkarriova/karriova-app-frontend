@@ -22,6 +22,7 @@ import '../../features/admin/presentation/pages/admin_moderation_page.dart';
 import '../../features/admin/presentation/pages/admin_careers_page.dart';
 import '../../features/admin/presentation/pages/admin_career_parameters_page.dart';
 import '../../features/admin/presentation/pages/admin_mentors_page.dart';
+import '../../features/admin/presentation/pages/admin_users_page.dart';
 import '../../features/assessment/pages/career_library_page.dart';
 import '../../features/assessment/pages/career_detail_page.dart';
 import '../../features/mentor/pages/mentor_browse_page.dart';
@@ -44,8 +45,9 @@ import '../../features/settings/presentation/pages/privacy_settings_page.dart';
 import '../../features/settings/presentation/pages/appearance_settings_page.dart';
 import '../../features/settings/presentation/pages/help_center_page.dart';
 import '../../features/settings/presentation/pages/about_page.dart';
-import '../../features/settings/presentation/pages/privacy_policy_page.dart';
-import '../../features/settings/presentation/pages/terms_of_service_page.dart';
+import '../../features/legal/legal_document_page.dart';
+import '../../features/legal/legal_safety_center_page.dart';
+import '../../features/legal/policy_review_page.dart';
 import '../../features/opportunities/presentation/pages/internships_page.dart';
 import '../../features/opportunities/presentation/pages/events_page.dart';
 import '../di/injection.dart';
@@ -97,8 +99,10 @@ class AppRouter {
   static const String adminFeedback = '/admin/feedback';
   static const String adminReminders = '/admin/reminders';
   static const String adminModeration = '/admin/moderation';
+  static const String adminUsers = '/admin/users';
   static const String adminCareers = '/admin/careers';
-  static const String adminCareerParameters = '/admin/careers/:careerId/parameters';
+  static const String adminCareerParameters =
+      '/admin/careers/:careerId/parameters';
   static const String adminMentors = '/admin/mentors';
   static const String careerLibrary = '/careers';
   static const String careerDetail = '/careers/:careerId';
@@ -109,8 +113,10 @@ class AppRouter {
   static const String profileSetup = '/profile-setup';
   static const String assessment = '/assessment';
   static const String assessmentResults = '/assessment/results';
-  static const String careerBlueprintCarousel = '/career-blueprint/carousel/:attemptId';
-  static const String careerBlueprintDetail = '/career-blueprint/detail/:blueprintId';
+  static const String careerBlueprintCarousel =
+      '/career-blueprint/carousel/:attemptId';
+  static const String careerBlueprintDetail =
+      '/career-blueprint/detail/:blueprintId';
   static const String careerRoadmap = '/career-roadmap';
 
   // Chat routes
@@ -126,6 +132,8 @@ class AppRouter {
   static const String settingsAbout = '/settings/about';
   static const String privacyPolicy = '/privacy-policy';
   static const String termsOfService = '/terms-of-service';
+  static const String legalSafety = '/legal';
+  static const String policyReview = '/policy-review';
 
   // Routes that don't require authentication
   static const List<String> _publicRoutes = [
@@ -135,6 +143,7 @@ class AppRouter {
     '/about',
     '/privacy-policy',
     '/terms-of-service',
+    '/legal',
     '/careers',
     '/mentors',
   ];
@@ -147,14 +156,16 @@ class AppRouter {
   }
 
   static final GoRouter router = GoRouter(
-    initialLocation: auth, // Default landing page is login
+    initialLocation:
+        landing, // Public web entry should open on the landing page
     refreshListenable: _authChangeNotifier, // Refresh routes when auth changes
     redirect: (context, state) {
       final authBloc = getIt<AuthBloc>();
       final authState = authBloc.state;
       final currentPath = state.uri.path;
-      final isPublicRoute =
-          _publicRoutes.contains(currentPath) || currentPath.isEmpty;
+      final isPublicRoute = _publicRoutes.contains(currentPath) ||
+          currentPath.startsWith('/legal') ||
+          currentPath.isEmpty;
 
       // If session is being verified, wait (don't redirect to login)
       if (authState.status == AuthStatus.loading) {
@@ -170,7 +181,10 @@ class AppRouter {
       }
 
       // If authenticated user is on landing or login, go to feed.
-      if (isAuthenticated && (currentPath == '/' || currentPath == '/login' || currentPath.isEmpty)) {
+      if (isAuthenticated &&
+          (currentPath == '/' ||
+              currentPath == '/login' ||
+              currentPath.isEmpty)) {
         if (authState.assessmentCompleted == null) {
           return null; // Still loading assessment status — wait
         }
@@ -405,6 +419,17 @@ class AppRouter {
         },
       ),
 
+      // Admin Users Page
+      GoRoute(
+        path: '/admin/users',
+        name: 'admin-users',
+        pageBuilder: (context, state) {
+          return const MaterialPage(
+            child: AdminUsersPage(),
+          );
+        },
+      ),
+
       // Career Library (student-facing)
       GoRoute(
         path: '/careers',
@@ -422,7 +447,8 @@ class AppRouter {
           final careerId = state.pathParameters['careerId'] ?? '';
           final initialData = state.extra as Map<String, dynamic>?;
           return MaterialPage(
-            child: CareerDetailPage(careerId: careerId, initialData: initialData),
+            child:
+                CareerDetailPage(careerId: careerId, initialData: initialData),
           );
         },
       ),
@@ -480,7 +506,8 @@ class AppRouter {
           final mentorId = state.pathParameters['mentorId'] ?? '';
           final initialData = state.extra as Map<String, dynamic>?;
           return MaterialPage(
-            child: MentorProfilePage(mentorId: mentorId, initialData: initialData),
+            child:
+                MentorProfilePage(mentorId: mentorId, initialData: initialData),
           );
         },
       ),
@@ -573,7 +600,7 @@ class AppRouter {
           final attemptId = extraData['attemptId'] as String? ?? '';
           final dio = extraData['dio'] as Dio?;
           final apiBaseUrl = extraData['apiBaseUrl'] as String?;
-          
+
           return MaterialPage(
             child: CareerBlueprintDetailPage(
               blueprintId: blueprintId,
@@ -586,16 +613,16 @@ class AppRouter {
         },
       ),
 
-        // Career Roadmap (career portal - entry point)
-        GoRoute(
-          path: '/career-roadmap',
-          name: 'career-roadmap',
-          pageBuilder: (context, state) {
-            return const MaterialPage(
-              child: CareerRoadmapPage(),
-            );
-          },
-        ),
+      // Career Roadmap (career portal - entry point)
+      GoRoute(
+        path: '/career-roadmap',
+        name: 'career-roadmap',
+        pageBuilder: (context, state) {
+          return const MaterialPage(
+            child: CareerRoadmapPage(),
+          );
+        },
+      ),
       // Settings Page
       GoRoute(
         path: '/settings',
@@ -675,11 +702,38 @@ class AppRouter {
 
       // Privacy Policy Page
       GoRoute(
+        path: '/legal',
+        name: 'legal-safety',
+        pageBuilder: (context, state) {
+          return const MaterialPage(child: LegalSafetyCenterPage());
+        },
+      ),
+
+      GoRoute(
+        path: '/legal/:slug',
+        name: 'legal-document',
+        pageBuilder: (context, state) {
+          return MaterialPage(
+            child: LegalDocumentPage(slug: state.pathParameters['slug'] ?? ''),
+          );
+        },
+      ),
+
+      GoRoute(
+        path: '/policy-review',
+        name: 'policy-review',
+        pageBuilder: (context, state) {
+          return const MaterialPage(child: PolicyReviewPage());
+        },
+      ),
+
+      GoRoute(
         path: '/privacy-policy',
         name: 'privacy-policy',
         pageBuilder: (context, state) {
           return const MaterialPage(
-            child: PrivacyPolicyPage(),
+            child: LegalDocumentPage(
+                slug: 'privacy-policy', initialTitle: 'Privacy Policy'),
           );
         },
       ),
@@ -690,7 +744,8 @@ class AppRouter {
         name: 'terms-of-service',
         pageBuilder: (context, state) {
           return const MaterialPage(
-            child: TermsOfServicePage(),
+            child: LegalDocumentPage(
+                slug: 'terms-of-service', initialTitle: 'Terms of Service'),
           );
         },
       ),

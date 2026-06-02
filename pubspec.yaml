@@ -114,7 +114,7 @@ flutter_launcher_icons:
   web:
     generate: true
     image_path: "assets/images/branding/karriova_logo_transparent.png"
-    background_color: "#ffffff"
+    background_color: "#FFFBF4"
   windows:
     generate: true
     image_path: "assets/images/branding/karriova_logo_transparent.png"

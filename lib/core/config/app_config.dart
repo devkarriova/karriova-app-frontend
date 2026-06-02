@@ -3,9 +3,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AppConfig {
   static const String appName = 'Karriova';
-  static const String _prodApiBaseUrl = 'https://karriova-backend-services-production.up.railway.app/api/v1';
-  static const String _localApiBaseUrl = 'http://localhost:8080/api/v1';
-  static const String _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+  static const String _defaultProdApiBaseUrl = 'https://api.karriova.com/api/v1';
+  static const String _defaultLocalApiBaseUrl = 'http://localhost:8080/api/v1';
+  static const String _apiBaseUrlOverride =
+      String.fromEnvironment('API_BASE_URL', defaultValue: '');
+  static const String _prodApiBaseUrl =
+      String.fromEnvironment('PROD_API_BASE_URL', defaultValue: _defaultProdApiBaseUrl);
+  static const String _localApiBaseUrl =
+      String.fromEnvironment('LOCAL_API_BASE_URL', defaultValue: _defaultLocalApiBaseUrl);
 
   static bool get _isLocal {
     if (kIsWeb) {
@@ -17,15 +22,28 @@ class AppConfig {
 
   // Base URL - auto-detects local vs prod
   static String get apiBaseUrl {
-    if (_apiBaseUrlOverride.isNotEmpty) return '$_apiBaseUrlOverride/api/v1';
+    if (_apiBaseUrlOverride.isNotEmpty) return _normalizeApiBaseUrl(_apiBaseUrlOverride);
     if (kIsWeb) {
       return _isLocal ? _localApiBaseUrl : _prodApiBaseUrl;
     } else if (Platform.isAndroid) {
       // Emulator: 10.0.2.2 = host localhost. Physical device: use ngrok or local IP.
-      return 'http://10.0.2.2:8080/api/v1';
+      return _normalizeApiBaseUrl(
+        const String.fromEnvironment(
+          'ANDROID_API_BASE_URL',
+          defaultValue: 'http://10.0.2.2:8080/api/v1',
+        ),
+      );
     } else {
       return _localApiBaseUrl;
     }
+  }
+
+  static String _normalizeApiBaseUrl(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return _defaultProdApiBaseUrl;
+    if (trimmed.endsWith('/api/v1')) return trimmed;
+    if (trimmed.endsWith('/')) return '${trimmed}api/v1';
+    return '$trimmed/api/v1';
   }
 
   // Auth Endpoints

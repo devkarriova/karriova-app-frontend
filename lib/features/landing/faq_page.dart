@@ -117,6 +117,12 @@ class _RightColumn extends StatelessWidget {
         _FaqParagraph(
           'Yes, schools can join to partner with Karriova, give their students access to structured career guidance, and use shared insights to strengthen counselling, parent communication, and future-readiness programs.',
         ),
+        const SizedBox(height: 40),
+        _FaqHeading('How does Karriova handle safety and AI limitations?'),
+        const SizedBox(height: 12),
+        _FaqParagraph(
+          'Karriova uses AI to support career exploration, not to make final decisions, diagnose students, guarantee admissions, or promise jobs. Our Legal & Safety Center includes parent safety, acceptable use, privacy, grievance, refund, and AI limitation policies.',
+        ),
       ],
     );
   }

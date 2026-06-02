@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 
 class AdminMentorsPage extends StatefulWidget {
   const AdminMentorsPage({super.key});
@@ -16,18 +19,60 @@ class _AdminMentorsPageState extends State<AdminMentorsPage> {
   bool _loading = true;
   String? _error;
   String _filter = 'all'; // 'all' | 'pending' | 'verified'
+  StreamSubscription<AuthState>? _authSubscription;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _loadWhenAuthenticated();
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _loadWhenAuthenticated() {
+    final authBloc = getIt<AuthBloc>();
+    final authState = authBloc.state;
+
+    if (authState.status == AuthStatus.authenticated) {
+      _load();
+      return;
+    }
+
+    if (authState.status == AuthStatus.unauthenticated) {
+      setState(() {
+        _loading = false;
+        _error = 'Your session is no longer active. Please sign in again.';
+      });
+      return;
+    }
+
+    _authSubscription?.cancel();
+    _authSubscription = authBloc.stream.listen((state) {
+      if (!mounted) return;
+      if (state.status == AuthStatus.authenticated) {
+        _authSubscription?.cancel();
+        _authSubscription = null;
+        _load();
+      } else if (state.status == AuthStatus.unauthenticated) {
+        _authSubscription?.cancel();
+        _authSubscription = null;
+        setState(() {
+          _loading = false;
+          _error = 'Your session is no longer active. Please sign in again.';
+        });
+      }
+    });
   }
 
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
       final api = getIt<ApiClient>();
-      final resp = await api.get('/admin/mentors');
+      final resp = await api.get('/admin/mentors', requiresAuth: true);
       if (resp.isSuccess && resp.data != null) {
         final list = (resp.data['mentors'] as List?) ?? [];
         setState(() { _mentors = list.cast<Map<String, dynamic>>(); _loading = false; });
@@ -41,7 +86,11 @@ class _AdminMentorsPageState extends State<AdminMentorsPage> {
 
   Future<void> _verify(String userId, bool verified) async {
     final api = getIt<ApiClient>();
-    final resp = await api.put('/admin/mentors/$userId/verify', body: {'verified': verified});
+    final resp = await api.put(
+      '/admin/mentors/$userId/verify',
+      requiresAuth: true,
+      body: {'verified': verified},
+    );
     if (resp.isSuccess) {
       _load();
     } else if (mounted) {
@@ -70,7 +119,11 @@ class _AdminMentorsPageState extends State<AdminMentorsPage> {
     if (confirmed != true) return;
 
     final api = getIt<ApiClient>();
-    final resp = await api.put('/admin/mentors/$userId/promote', body: {});
+    final resp = await api.put(
+      '/admin/mentors/$userId/promote',
+      requiresAuth: true,
+      body: {},
+    );
     if (!mounted) return;
     if (resp.isSuccess) {
       ScaffoldMessenger.of(context).showSnackBar(

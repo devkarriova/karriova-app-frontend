@@ -112,6 +112,7 @@ class ApiClient {
   LogoutCallback? _onLogoutRequired;
   TokenProviderCallback? _tokenProvider;
   bool _isRefreshing = false;
+
   /// Completer shared by all callers queued behind an in-progress token refresh.
   Completer<bool>? _refreshCompleter;
 
